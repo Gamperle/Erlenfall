@@ -1,0 +1,39 @@
+{
+	"buildings": [
+		{ "id": "grandfather_house", "x": -16, "z": 22, "width": 8, "depth": 7, "height": 4, "rotation": 10, "color": "#8a6f52" },
+		{ "id": "forge", "x": 15, "z": 14, "width": 9, "depth": 7, "height": 3.5, "rotation": -15, "color": "#5f5852" },
+		{ "id": "town_hall", "x": 0, "z": -28, "width": 14, "depth": 9, "height": 6, "rotation": 0, "color": "#7d7468" },
+		{ "id": "grandmother_house", "x": -24, "z": -6, "width": 7, "depth": 6, "height": 3.5, "rotation": 80, "color": "#90785c" },
+		{ "id": "inn", "x": 25, "z": -14, "width": 11, "depth": 8, "height": 5, "rotation": -80, "color": "#7f6548" },
+		{ "id": "abandoned_house_1", "x": -36, "z": 28, "width": 7, "depth": 6, "height": 3, "rotation": 25, "color": "#5c5247", "ruined": true },
+		{ "id": "abandoned_house_2", "x": 38, "z": 26, "width": 8, "depth": 6, "height": 3, "rotation": -30, "color": "#5a5045", "ruined": true },
+		{ "id": "abandoned_house_3", "x": -40, "z": -30, "width": 6, "depth": 6, "height": 2.5, "rotation": 50, "color": "#584e44", "ruined": true },
+		{ "id": "north_farm", "x": 130, "z": -80, "width": 10, "depth": 7, "height": 4, "rotation": 35, "color": "#857058" },
+		{ "id": "west_farm", "x": -150, "z": 40, "width": 10, "depth": 7, "height": 4, "rotation": 100, "color": "#80694f" },
+		{ "id": "south_farm", "x": 90, "z": 150, "width": 9, "depth": 7, "height": 4, "rotation": -20, "color": "#8b7459" }
+	],
+	"fields": [
+		{ "x": 155, "z": -55, "width": 34, "depth": 22, "rotation": 35, "color": "#8d8240" },
+		{ "x": -178, "z": 20, "width": 28, "depth": 36, "rotation": 10, "color": "#5f6f32" },
+		{ "x": 115, "z": 172, "width": 36, "depth": 20, "rotation": -20, "color": "#a08f4a" }
+	],
+	"roads": [
+		{ "width": 3, "points": [[0, 220], [-3, 165], [0, 110], [3, 60], [0, 20], [0, -12]] },
+		{ "width": 3, "points": [[0, -12], [-13, -20], [-12, -45], [4, -110], [12, -165]] }
+	],
+	"trees": {
+		"seed": 7,
+		"count": 450,
+		"min_radius": 75,
+		"max_radius": 440,
+		"road_clearance": 6,
+		"field_clearance": 32
+	},
+	"boulders": {
+		"seed": 11,
+		"count": 500,
+		"min_size": 0.5,
+		"max_size": 6.0,
+		"solid_size": 1.5
+	}
+}

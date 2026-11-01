@@ -5,7 +5,7 @@ Contributions are welcome. For anything larger than a small fix, please open an 
 ## Workflow
 
 1. Create a branch from `main`.
-2. Make your change and run the game to confirm it works.
+2. Make your change, run the game to confirm it works, and run the smoke test: `godot --headless --path . --script res://tests/smoke_test.gd`.
 3. Open a pull request that describes what changed and how you tested it.
 
 ## Guidelines

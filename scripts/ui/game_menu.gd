@@ -8,10 +8,12 @@ signal resume_chosen
 signal quit_chosen
 
 const PANEL_WIDTH := 360.0
+const ASSET_LIST_URL := "https://github.com/Gamperle/Erlenfall/blob/main/ASSETS.md"
 
 var _panel: PanelContainer
 var _title: Label
 var _buttons: VBoxContainer
+var _asset_note: VBoxContainer
 
 
 func _ready() -> void:
@@ -31,6 +33,7 @@ func open_title(can_continue: bool) -> void:
 		_add_button("UI_CONTINUE_GAME", continue_chosen)
 	_add_button("UI_NEW_GAME", new_game_chosen)
 	_add_button("UI_QUIT", quit_chosen)
+	_asset_note.visible = true
 	_show()
 
 
@@ -39,6 +42,7 @@ func open_pause() -> void:
 	_clear_buttons()
 	_add_button("UI_RESUME", resume_chosen)
 	_add_button("UI_SAVE_AND_QUIT", quit_chosen)
+	_asset_note.visible = false
 	_show()
 
 
@@ -98,3 +102,18 @@ func _build() -> void:
 	_buttons = VBoxContainer.new()
 	_buttons.add_theme_constant_override("separation", 6)
 	column.add_child(_buttons)
+
+	_asset_note = VBoxContainer.new()
+	column.add_child(_asset_note)
+
+	var note := Label.new()
+	note.text = tr("UI_AI_ASSETS_NOTE")
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_asset_note.add_child(note)
+
+	var link := LinkButton.new()
+	link.text = tr("UI_AI_ASSETS_LINK")
+	link.uri = ASSET_LIST_URL
+	link.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_asset_note.add_child(link)

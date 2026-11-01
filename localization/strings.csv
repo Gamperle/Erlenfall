@@ -110,3 +110,5 @@ UI_RESUME,Resume,Weiterspielen
 UI_SAVE_AND_QUIT,Save and quit,Speichern und beenden
 UI_SLEPT,"You sleep until morning and wake up rested. Game saved.","Du schläfst bis zum Morgen und wachst erholt auf. Spiel gespeichert."
 UI_DEMO_END,"The inn has its roof back. You've reached the end of this first version, and you can keep crafting and exploring. Talk to the villagers to see what has changed.","Das Gasthaus hat sein Dach wieder. Du hast das Ende dieser ersten Version erreicht und kannst weiter schmieden und die Gegend erkunden. Sprich mit den Dorfbewohnern und sieh, was sich geändert hat."
+UI_AI_ASSETS_NOTE,Many assets are AI-generated.,Viele Assets sind KI-generiert.
+UI_AI_ASSETS_LINK,See the asset list,Zur Asset-Liste

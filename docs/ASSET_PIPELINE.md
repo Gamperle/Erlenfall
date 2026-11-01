@@ -82,17 +82,18 @@ Both environments should report that the GPU is available. The first runs also d
 The picture matters more than anything else, because TripoSR sees only that one image. Drawing six candidates and keeping the best three costs very little.
 
 - **Reject** pictures that show several objects, a room or scenery, a cropped object, or a flat pattern that fills the frame.
-- **Use a straight-on view at eye level.** Objects drawn from above came out leaning in the first batch.
+- **Use a straight-on view at eye level.** It gave cleaner pictures in the second batch, but barrels, bowls, and doors still lean, so expect to straighten models during cleanup.
 - **Check it's the right object.** SDXL has drawn an axe when asked for a hammer, and it doesn't reliably know bellows.
 - **Describe the shape, not only the name.** "Pointed horn" and "square steel head" helped the anvil and hammer. Asking for closed cupboard doors or three stool legs often still failed.
 - **Prefer solid shapes.** Forges, jugs, lanterns, and doors worked best. Glass, thin parts, and hidden sides are the weakest.
-- **Don't use this for walls yet.** See [#61](https://github.com/Gamperle/Erlenfall/issues/61).
+- **Walls are unreliable.** A stone wall works when the picture shows a clear outline, in 3 of 6 candidates. Every timber wall picture ran off the frame or showed a room. See [#61](https://github.com/Gamperle/Erlenfall/issues/61).
+- **Some objects need another source.** SDXL drew machines for bellows in all six candidates, and glass flasks still come out poorly.
 
 ## Known problems
 
 | Problem | Current handling | Issue |
 | --- | --- | --- |
-| About half of first attempts crashed at startup in `MIOpen.dll` with `0xC0000005` | `make_models.ps1` retries | [#59](https://github.com/Gamperle/Erlenfall/issues/59) |
+| 34 of 77 first attempts across two batches crashed at startup in `MIOpen.dll` with `0xC0000005`. Crashes come in runs, and 5 models failed all 8 attempts before working in a later rerun | `make_models.ps1` retries, and running it again picks up failed models | [#59](https://github.com/Gamperle/Erlenfall/issues/59) |
 | A run can also hang at "Initializing model" with no CPU use, which stops the batch | Run `watchdog.ps1` beside the batch. It stops a run after 5 idle minutes, and `make_models.ps1` retries it | [#59](https://github.com/Gamperle/Erlenfall/issues/59) |
 | The SDXL VAE crashes on the GPU with `hipErrorProfilerNotInitialized` | `AttnProcessor()` and `vae.enable_tiling()`. Check larger pictures for seams, because only small previews have been checked | [#47](https://github.com/Gamperle/Erlenfall/issues/47) |
 | `torchmcubes` can't build, because PyTorch's CMake files use an undefined `hip::host` target on Windows | Stand-in using scikit-image on the CPU | [#47](https://github.com/Gamperle/Erlenfall/issues/47) |

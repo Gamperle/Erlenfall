@@ -136,6 +136,23 @@ This covers parts 1 and 2 for assets that TripoSR can't make: anything rigged, t
 
 **[Poly Haven's models](https://polyhaven.com/models) don't fit as they are.** They have the right kinds of objects (`fir_tree_01`, `boulder_01`, `grass_medium_01`) and the most realistic look, but they are far too detailed. Its small `fir_sapling` has about 433,000 faces, and `grass_medium_01` about 1.6 million. They would need heavy reduction, while the [boulder](https://polyhaven.com/a/boulder_01), at about 124,000 faces, is the most realistic option to try reducing.
 
+### Test results
+
+A small set was tried in the game at 1280x720 on a Radeon 680M, in a temporary copy of the project. Nothing from it is in the repository yet.
+
+| Model | Faces | Result |
+| --- | --- | --- |
+| Pines, Stylized Nature MegaKit | 1,600 to 5,000 | Look much better than the current firs. 450 trees would add up to about 2 million faces, so they need lower detail versions at a distance |
+| Grass, flowers, and bushes, same kit | 300 to 900 | Too bright and cartoonish as they are, and the grass is up to 1.9 m tall. They need recoloring and scaling, and they are too heavy to use in the numbers grass needs |
+| Rock, same kit | 342 | Fits |
+| Plaster walls, Medieval Village MegaKit | 86 to 96 per 2 m section | Timber frames and stone fit the village well and are very cheap. Roofs and corners are untested |
+| Mannequin, Universal Animation Library | 13,744 | Plays its idle animation in Godot. It's a yellow test figure, so it needs a body and clothes |
+| Goblin, OpenGameArt | 1,198 | Reads clearly as a goblin but has no animations. Whether the human animations can be applied to it is untested |
+
+**Getting the packs.** OpenGameArt has CC0 copies of the [nature](https://opengameart.org/content/stylized-nature-megakit), [village](https://opengameart.org/content/medieval-village-megakit), and [animation](https://opengameart.org/content/universal-animation-library) packs, each with a CC0 `License` file inside. These contain only the free part of each pack. The base characters and fantasy outfits aren't there, and their itch.io pages couldn't be opened by a script ([#67](https://github.com/Gamperle/Erlenfall/issues/67)).
+
+**License warning.** Quaternius's pack pages say CC0, but the site also has a [Quaternius Asset License](https://quaternius.com/license.html), dated 2026-08-28, that forbids redistributing assets on their own, even modified. A public repository may count as that, so only use copies that include a CC0 license file, and record that file with each asset ([#67](https://github.com/Gamperle/Erlenfall/issues/67)).
+
 **Consistency.** These packs are stylized, while the game aims for a grounded look. Using one creator's packs for characters, plants, and buildings should keep them consistent, and the first download should be a test of a few models against the new surfaces.
 
 ## Order of work

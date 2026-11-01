@@ -2,6 +2,8 @@ class_name Terrain
 extends StaticBody3D
 ## Generates the valley: a flat village site, rolling farmland, and a ring of mountains.
 
+const TERRAIN_SHADER := preload("res://shaders/terrain.gdshader")
+
 const SIZE := 1600.0
 const STEP := 4.0
 const VILLAGE_RADIUS := 60.0
@@ -9,17 +11,23 @@ const VALLEY_RADIUS := 240.0
 const MOUNTAIN_RADIUS := 640.0
 const MOUNTAIN_HEIGHT := 170.0
 const LANDSLIDE_CENTER := Vector2(40.0, -300.0)
-const LANDSLIDE_RADIUS := 90.0
-const LANDSLIDE_HEIGHT := 28.0
-const ROAD_HALF_WIDTH := 4.0
+const LANDSLIDE_EXTENT := Vector2(90.0, 130.0)
+const LANDSLIDE_HEIGHT := 20.0
+const LANDSLIDE_ROUGHNESS := 26.0
+const LANDSLIDE_EDGE_NOISE := 0.3
+const SCAR_HALF_WIDTH := 55.0
+const SCAR_DEPTH := 14.0
 
-const GRASS_COLOR := Color(0.27, 0.36, 0.17)
-const DIRT_COLOR := Color(0.36, 0.29, 0.2)
-const ROCK_COLOR := Color(0.33, 0.32, 0.31)
+const GRASS_COLOR := Color(0.25, 0.36, 0.14)
+const LIGHT_GRASS_COLOR := Color(0.36, 0.45, 0.17)
+const ROCK_COLOR := Color(0.38, 0.37, 0.36)
+const RUBBLE_COLOR := Color(0.33, 0.28, 0.23)
 const SNOW_COLOR := Color(0.85, 0.87, 0.9)
 
 var _hills := FastNoiseLite.new()
 var _peaks := FastNoiseLite.new()
+var _rubble := FastNoiseLite.new()
+var _patches := FastNoiseLite.new()
 
 
 func _init() -> void:
@@ -28,6 +36,12 @@ func _init() -> void:
 	_peaks.seed = 2
 	_peaks.frequency = 0.004
 	_peaks.fractal_octaves = 5
+	_rubble.seed = 3
+	_rubble.frequency = 0.04
+	_rubble.fractal_type = FastNoiseLite.FRACTAL_RIDGED
+	_rubble.fractal_octaves = 3
+	_patches.seed = 4
+	_patches.frequency = 0.02
 
 
 func _ready() -> void:
@@ -45,10 +59,25 @@ func height_at(x: float, z: float) -> float:
 	return hills + peaks + _landslide_height(x, z)
 
 
+## True on the debris field and on the bare scar the slide tore into the mountain above it.
+func is_on_landslide(x: float, z: float) -> bool:
+	var edge := 1.0 + _patches.get_noise_2d(x, z) * LANDSLIDE_EDGE_NOISE
+	if _landslide_distance(x, z) < edge:
+		return true
+	return z < LANDSLIDE_CENTER.y and absf(x - LANDSLIDE_CENTER.x) < SCAR_HALF_WIDTH * edge
+
+
+## 0 at the center of the debris field, 1 at its edge.
+func _landslide_distance(x: float, z: float) -> float:
+	return ((Vector2(x, z) - LANDSLIDE_CENTER) / LANDSLIDE_EXTENT).length()
+
+
 func _landslide_height(x: float, z: float) -> float:
-	var distance := Vector2(x, z).distance_to(LANDSLIDE_CENTER)
-	var shape := 1.0 - smoothstep(0.0, LANDSLIDE_RADIUS, distance)
-	return shape * (LANDSLIDE_HEIGHT + _peaks.get_noise_2d(z, x) * 14.0)
+	var rubble := _rubble.get_noise_2d(x, z) * 0.5 + 0.5
+	var debris := 1.0 - smoothstep(0.0, 1.0, _landslide_distance(x, z))
+	var across := 1.0 - smoothstep(SCAR_HALF_WIDTH * 0.4, SCAR_HALF_WIDTH, absf(x - LANDSLIDE_CENTER.x))
+	var scar := across * smoothstep(0.0, 80.0, LANDSLIDE_CENTER.y - z)
+	return debris * (LANDSLIDE_HEIGHT + rubble * LANDSLIDE_ROUGHNESS) - scar * SCAR_DEPTH * (0.5 + rubble)
 
 
 func _sample_heights(count: int) -> PackedFloat32Array:
@@ -104,25 +133,38 @@ func _build_mesh(heights: PackedFloat32Array, count: int) -> void:
 
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	var material := StandardMaterial3D.new()
-	material.vertex_color_use_as_albedo = true
-	material.roughness = 1.0
-	mesh.surface_set_material(0, material)
+	mesh.surface_set_material(0, _ground_material())
 
 	var instance := MeshInstance3D.new()
 	instance.mesh = mesh
 	add_child(instance)
 
 
+func _ground_material() -> ShaderMaterial:
+	var noise := FastNoiseLite.new()
+	noise.seed = 6
+	noise.frequency = 0.02
+	noise.fractal_octaves = 4
+	var texture := NoiseTexture2D.new()
+	texture.noise = noise
+	texture.seamless = true
+	texture.generate_mipmaps = true
+
+	var material := ShaderMaterial.new()
+	material.shader = TERRAIN_SHADER
+	material.set_shader_parameter("detail_noise", texture)
+	material.set_shader_parameter("rubble_color", RUBBLE_COLOR)
+	return material
+
+
 func _color_at(x: float, z: float, height: float, normal: Vector3) -> Color:
+	var color := GRASS_COLOR.lerp(LIGHT_GRASS_COLOR, _patches.get_noise_2d(x, z) * 0.5 + 0.5)
 	if height > 190.0:
-		return SNOW_COLOR
-	var on_landslide := Vector2(x, z).distance_to(LANDSLIDE_CENTER) < LANDSLIDE_RADIUS * 0.8
-	if on_landslide or normal.y < 0.8 or height > 110.0:
-		return ROCK_COLOR
-	if absf(x) < ROAD_HALF_WIDTH and z > -220.0 and z < 220.0:
-		return DIRT_COLOR
-	return GRASS_COLOR
+		color = SNOW_COLOR
+	elif normal.y < 0.8 or height > 110.0:
+		color = ROCK_COLOR
+	color.a = 1.0 if is_on_landslide(x, z) and height <= 190.0 else 0.0
+	return color
 
 
 func _build_collision(heights: PackedFloat32Array, count: int) -> void:

@@ -23,6 +23,9 @@ func _run() -> void:
 	_check(player.is_on_floor(), "player lands on terrain")
 	_check(absf(player.position.y - terrain.height_at(player.position.x, player.position.z)) < 1.0, "collision matches terrain")
 	_check(village.get_node_or_null("forge") != null, "buildings load from data")
+	_check(village.get_node("Roads").get_child_count() == 2, "roads load from data")
+	_check(village.get_node("Boulders").get_child_count() > 0, "boulders have collision")
+	_check(terrain.is_on_landslide(40.0, -300.0) and not terrain.is_on_landslide(0.0, 0.0), "landslide stays out of the village")
 
 	var start := player.position
 	Input.action_press("move_forward")

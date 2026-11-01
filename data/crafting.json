@@ -5,15 +5,15 @@
 		"wood": { "name": "ITEM_WOOD", "material": true },
 		"iron_ingot": { "name": "ITEM_IRON_INGOT", "material": true },
 		"iron_nails": { "name": "ITEM_IRON_NAILS" },
-		"iron_dagger": { "name": "ITEM_IRON_DAGGER" },
-		"iron_sword": { "name": "ITEM_IRON_SWORD" },
-		"iron_axe": { "name": "ITEM_IRON_AXE" }
+		"iron_dagger": { "name": "ITEM_IRON_DAGGER", "damage": 10 },
+		"iron_sword": { "name": "ITEM_IRON_SWORD", "damage": 20 },
+		"iron_axe": { "name": "ITEM_IRON_AXE", "damage": 16 }
 	},
 	"qualities": [
-		{ "id": "crude", "name": "QUALITY_CRUDE", "min_score": 0.0 },
-		{ "id": "common", "name": "QUALITY_COMMON", "min_score": 0.4 },
-		{ "id": "fine", "name": "QUALITY_FINE", "min_score": 0.7 },
-		{ "id": "masterwork", "name": "QUALITY_MASTERWORK", "min_score": 0.9 }
+		{ "id": "crude", "name": "QUALITY_CRUDE", "min_score": 0.0, "damage_multiplier": 0.8 },
+		{ "id": "common", "name": "QUALITY_COMMON", "min_score": 0.4, "damage_multiplier": 1.0 },
+		{ "id": "fine", "name": "QUALITY_FINE", "min_score": 0.7, "damage_multiplier": 1.25 },
+		{ "id": "masterwork", "name": "QUALITY_MASTERWORK", "min_score": 0.9, "damage_multiplier": 1.6 }
 	],
 	"recipes": [
 		{ "id": "smelt_iron", "station": "furnace", "inputs": { "iron_ore": 2, "coal": 1 }, "result": "iron_ingot", "count": 1 },

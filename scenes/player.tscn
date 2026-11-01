@@ -14,6 +14,13 @@ material = SubResource("2")
 radius = 0.35
 height = 1.8
 
+[sub_resource type="StandardMaterial3D" id="4"]
+albedo_color = Color(0.45, 0.47, 0.5, 1)
+
+[sub_resource type="BoxMesh" id="5"]
+material = SubResource("4")
+size = Vector3(0.07, 0.9, 0.07)
+
 [node name="Player" type="CharacterBody3D"]
 script = ExtResource("1")
 
@@ -34,3 +41,10 @@ margin = 0.1
 [node name="Camera" type="Camera3D" parent="CameraPivot/SpringArm"]
 far = 3000.0
 current = true
+
+[node name="Weapon" type="Node3D" parent="CameraPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.45, -0.45, -0.6)
+
+[node name="Blade" type="MeshInstance3D" parent="CameraPivot/Weapon"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+mesh = SubResource("5")

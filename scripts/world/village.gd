@@ -39,6 +39,10 @@ func _ready() -> void:
 		npc.setup(npc_data)
 		npc.position = _ground_position(npc_data["x"], npc_data["z"])
 		add_child(npc)
+	for enemy_data: Dictionary in layout["enemies"]:
+		var enemy := Enemy.new()
+		enemy.setup(enemy_data["type"], _ground_position(enemy_data["x"], enemy_data["z"]) + Vector3.UP * 0.2)
+		add_child(enemy)
 	for station: Dictionary in layout["stations"]:
 		_add_station(station)
 	for resource: Dictionary in layout["resources"]:

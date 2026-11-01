@@ -1,6 +1,6 @@
 keys,en,de
 UI_WELCOME,Welcome to Erlenfall,Willkommen in Erlenfall
-UI_CONTROLS,"WASD / left stick: walk   Mouse / right stick: look   Shift / LB: sprint   Space / A: jump   E / X: use   I / Back: inventory   V / Y: switch camera   T / RB: speed up time   Esc: release mouse","WASD / linker Stick: gehen   Maus / rechter Stick: umsehen   Umschalt / LB: sprinten   Leertaste / A: springen   E / X: benutzen   I / Back: Inventar   V / Y: Kamera wechseln   T / RB: Zeit vorspulen   Esc: Maus freigeben"
+UI_CONTROLS,"WASD / left stick: walk   Mouse / right stick: look   Shift / LB: sprint   Space / A: jump   Left click / RT: attack   Right click / LT: block   C / B: dodge   E / X: use   I / Back: inventory   V / Y: switch camera   T / RB: speed up time   Esc: release mouse","WASD / linker Stick: gehen   Maus / rechter Stick: umsehen   Umschalt / LB: sprinten   Leertaste / A: springen   Linksklick / RT: angreifen   Rechtsklick / LT: blocken   C / B: ausweichen   E / X: benutzen   I / Back: Inventar   V / Y: Kamera wechseln   T / RB: Zeit vorspulen   Esc: Maus freigeben"
 UI_INTERACT_PROMPT,E / X: %s,E / X: %s
 UI_INVENTORY,Inventory,Inventar
 UI_CARRYING,Carrying: %s,Dabei: %s
@@ -66,7 +66,7 @@ DLG_BERTRAM_REMINDER,"No nails yet? Two ore and one coal in the furnace, then th
 DLG_BERTRAM_THANKS,"Let me see. Honest work! Here, take two ingots as your pay. One more thing: Mayor Brandt doesn't like hearing about repairs secondhand. Better he hears it from you.","Zeig her. Ehrliche Arbeit! Hier, zwei Barren als Lohn. Noch etwas: Bürgermeister Brandt erfährt ungern aus zweiter Hand von Reparaturen. Besser, er hört es von dir."
 DLG_BERTRAM_AFTER,It's good to hear a second hammer in this valley again.,"Es tut gut, wieder einen zweiten Hammer in diesem Tal zu hören."
 DLG_BERTRAM_IDLE,Mind the sparks.,Pass auf die Funken auf.
-DLG_MIRA_HINT,"Ore? Follow the north road to the landslide. Look for the rust-colored rocks; the black ones are coal. There's wood stacked by the anvil if you need any.","Erz? Folge der Nordstraße bis zum Erdrutsch. Achte auf die rostfarbenen Felsen, die schwarzen sind Kohle. Neben dem Amboss ist Holz gestapelt, falls du welches brauchst."
+DLG_MIRA_HINT,"Ore? Follow the north road to the landslide. Look for the rust-colored rocks; the black ones are coal. There's wood stacked by the anvil if you need any. And keep clear of the woods east of there: goblins have moved in since the slide.","Erz? Folge der Nordstraße bis zum Erdrutsch. Achte auf die rostfarbenen Felsen, die schwarzen sind Kohle. Neben dem Amboss ist Holz gestapelt, falls du welches brauchst. Und halte dich vom Wald östlich davon fern: Seit dem Erdrutsch haben sich dort Goblins eingenistet."
 DLG_MIRA_AFTER,"People are talking about you at the inn. Mostly nice things. It's strange to hear anyone talk about the future here.","Im Gasthaus reden sie über dich. Meist Gutes. Es ist seltsam, hier jemanden über die Zukunft reden zu hören."
 DLG_MIRA_IDLE,"You actually came! Grandma's been watching the road for days. You'll find her by her house, just west of the square.","Du bist wirklich gekommen! Oma schaut seit Tagen auf die Straße. Du findest sie bei ihrem Haus, gleich westlich vom Platz."
 DLG_BRANDT_CONFRONT,"I hear you've been making nails for the inn's roof. Nobody asked me. In Erlenfall, repairs go through the mayor.","Ich höre, du machst Nägel für das Dach des Gasthauses. Mich hat niemand gefragt. In Erlenfall laufen Reparaturen über den Bürgermeister."
@@ -77,3 +77,5 @@ DLG_BRANDT_ANNOYED,"Someone. I have kept this village standing for eleven years,
 DLG_BRANDT_WARM,"You again. The inn's roof no longer drips on the guests, I'm told. Carry on, then.","Du schon wieder. Das Dach des Gasthauses tropft nicht mehr auf die Gäste, höre ich. Dann mach weiter."
 DLG_BRANDT_COLD,I'm watching what you do in my village. That is all.,Ich beobachte, was du in meinem Dorf tust. Das ist alles.
 DLG_BRANDT_IDLE,"I am Mayor Brandt. Erlenfall has its own way of doing things, and you would do well to learn it.","Ich bin Bürgermeister Brandt. Erlenfall hat seine eigene Art, die Dinge zu regeln, und du tätest gut daran, sie zu lernen."
+ENEMY_GOBLIN,Goblin,Goblin
+UI_WOKE_UP,"You wake up in the village, sore and bruised. Some of the materials you carried are gone.","Du wachst im Dorf auf, wund und zerschlagen. Ein Teil deiner Materialien ist verloren."

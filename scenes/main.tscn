@@ -26,6 +26,17 @@ fog_light_color = Color(0.72, 0.76, 0.8, 1)
 fog_density = 0.0016
 fog_sky_affect = 0.3
 
+[sub_resource type="LabelSettings" id="8"]
+font_size = 24
+outline_size = 6
+outline_color = Color(0, 0, 0, 0.8)
+
+[sub_resource type="StyleBoxFlat" id="6"]
+bg_color = Color(0.1, 0.08, 0.08, 0.7)
+
+[sub_resource type="StyleBoxFlat" id="7"]
+bg_color = Color(0.72, 0.13, 0.1, 1)
+
 [sub_resource type="LabelSettings" id="4"]
 font_size = 48
 outline_size = 6
@@ -72,6 +83,31 @@ offset_right = 500.0
 offset_bottom = 120.0
 label_settings = SubResource("4")
 horizontal_alignment = 1
+
+[node name="HealthBar" type="ProgressBar" parent="UI"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 276.0
+offset_bottom = 38.0
+theme_override_styles/background = SubResource("6")
+theme_override_styles/fill = SubResource("7")
+value = 100.0
+show_percentage = false
+
+[node name="MessageLabel" type="Label" parent="UI"]
+modulate = Color(1, 1, 1, 0)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -400.0
+offset_top = -120.0
+offset_right = 400.0
+offset_bottom = -60.0
+label_settings = SubResource("8")
+horizontal_alignment = 1
+autowrap_mode = 3
 
 [node name="QuestLabel" type="Label" parent="UI"]
 anchors_preset = 1

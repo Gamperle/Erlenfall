@@ -22,6 +22,15 @@ static func quality_name(quality_id: String) -> String:
 	return ""
 
 
+## Returns how hard this item hits with this quality, or 0 if it isn't a weapon.
+static func weapon_damage(item_id: String, quality_id: String) -> float:
+	var damage: float = _get_data()["items"][item_id].get("damage", 0.0)
+	for quality: Dictionary in _get_data()["qualities"]:
+		if quality["id"] == quality_id:
+			return damage * float(quality["damage_multiplier"])
+	return damage
+
+
 ## Returns the id of the best quality tier this score reaches.
 static func quality_for_score(score: float) -> String:
 	var best := ""

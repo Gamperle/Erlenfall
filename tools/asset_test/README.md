@@ -1,5 +1,7 @@
 # TripoSR test on an AMD GPU
 
+**The RX 7900 XT runs Windows, so use [the asset pipeline](../../docs/ASSET_PIPELINE.md) instead.** This Linux kit remains for reference.
+
 This kit checks whether [TripoSR](https://github.com/VAST-AI-Research/TripoSR) can generate 3D models for Erlenfall on an AMD Radeon RX 7900 XT through ROCm. **The kit itself is untested**, because the machine it was written on has no such GPU. Expect that a step may need adjusting.
 
 ## Before you start

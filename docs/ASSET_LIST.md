@@ -1,0 +1,126 @@
+# Asset list
+
+This lists the 3D models and surfaces the game needs, in the order to make them. Part 1 replaces what's in the game now, part 2 builds the [defining scene](GAME_DESIGN.md#defining-moment), and part 3 is for later milestones. Audio is tracked in [#23](https://github.com/Gamperle/Erlenfall/issues/23).
+
+Variants are the number of different models to make, not how many appear in the world. The sources and face budgets are proposals to test, and the budgets target integrated graphics.
+
+## Sources
+
+| Key | Source | Best for |
+| --- | --- | --- |
+| **Build** | Modeled by hand or in code, with CC0 surface textures ([#61](https://github.com/Gamperle/Erlenfall/issues/61), [#45](https://github.com/Gamperle/Erlenfall/issues/45)) | Buildings, walls, roads, and anything that must fit exact sizes |
+| **Gen** | The [TripoSR pipeline](ASSET_PIPELINE.md), after cleanup ([#55](https://github.com/Gamperle/Erlenfall/issues/55)) and the SDXL license check ([#60](https://github.com/Gamperle/Erlenfall/issues/60)) | Solid, standalone props |
+| **CC0** | A CC0 library such as Poly Haven, Kenney, or Quaternius, if a suitable model exists | Plants, rocks, and rigged characters and animals |
+
+TripoSR doesn't produce rigged models, so anything that walks or fights needs a CC0 model or manual rigging. Every asset goes in [ASSETS.md](../ASSETS.md).
+
+## Part 1: Replace what's in the game (milestone 6)
+
+### Characters
+
+| Asset | Variants | Used for | Source | Faces |
+| --- | --- | --- | --- | --- |
+| Human body, rigged, with walk, idle, attack, block, and dodge | 2 | Player and villagers | CC0 | 5,000 |
+| Clothes and hair sets | 5 | Hedda, Bertram, Mira, Greta, and Brandt | CC0 | Included |
+| Player clothes and hair | 1 | Player | CC0 | Included |
+| Goblin, rigged, with walk, attack, and death | 1 | Goblin camp | CC0 | 4,000 |
+
+### Buildings
+
+Each is sized to its entry in `data/village_layout.json`.
+
+| Asset | Variants | Used for | Source | Faces |
+| --- | --- | --- | --- | --- |
+| Grandfather's house | 1 | Player's home | Build | 3,000 |
+| Grandmother's house | 1 | Hedda's home | Build | 3,000 |
+| Forge | 1 | Bertram's workplace | Build | 3,000 |
+| Inn, damaged and repaired | 2 | Greta's inn and the first quest | Build | 4,000 |
+| Town hall | 1 | Brandt's workplace | Build | 5,000 |
+| Farmhouse | 3 | North, west, and south farms | Build | 3,000 |
+| Ruined house | 3 | Abandoned houses | Build | 2,500 |
+
+### Crafting and quest props
+
+| Asset | Variants | Used for | Source | Faces |
+| --- | --- | --- | --- | --- |
+| Furnace | 1 | Smelting | Gen | 3,000 |
+| Anvil on a stump | 1 | Forging | Gen | 2,000 |
+| Bed | 1 | Saving and sleeping | Gen | 1,500 |
+| Ladder | 1 | Inn repair | Build | 300 |
+| Wood pile | 2 | Gathering wood | Gen | 1,500 |
+| Iron ore rock | 2 | Gathering ore | Gen | 1,000 |
+| Coal rock | 2 | Gathering coal | Gen | 1,000 |
+
+### Held items
+
+| Asset | Variants | Used for | Source | Faces |
+| --- | --- | --- | --- | --- |
+| Iron dagger | 1 | Weapon | Gen | 500 |
+| Iron sword | 1 | Weapon | Gen | 800 |
+| Iron axe | 1 | Weapon | Gen | 800 |
+| Torch | 1 | Light | Build | 300 |
+
+### Landscape
+
+| Asset | Variants | Used for | Source | Faces |
+| --- | --- | --- | --- | --- |
+| Fir tree, with lower detail for distance | 3 | Forest | CC0 | 1,500 |
+| Grass tuft | 3 | Meadows | CC0 | 50 |
+| Crops | 2 | Fields | CC0 | 200 |
+| Boulder | 4 | Landslide and valley | CC0 | 500 |
+
+### Surfaces
+
+These are CC0 textures, with no model needed.
+
+| Surface | Used for |
+| --- | --- |
+| Grass, dirt, rock, and snow | Terrain |
+| Packed dirt road | Roads |
+| Rubble | Landslide |
+| Plaster, timber, stone, and roof shingles | Buildings |
+
+## Part 2: Build the defining scene (milestone 6)
+
+These are new, and they make Erlenfall feel lived in when you walk into it.
+
+| Asset | Variants | Used for | Source | Faces |
+| --- | --- | --- | --- | --- |
+| Wooden fence and gate | 2 | Farms and gardens | Build | 300 |
+| Stone well | 1 | Village square | Gen | 1,500 |
+| Hay cart | 1 | Farms | Gen | 2,000 |
+| Barrel | 1 | Forge and inn | Gen | 800 |
+| Crate | 1 | Around the village | Gen | 300 |
+| Sack | 1 | Farms and inn | Gen | 500 |
+| Bench | 1 | Village square | Gen | 500 |
+| Inn sign and forge sign | 2 | Marking buildings | Build | 200 |
+| Lantern on a post | 1 | Light at night | Gen | 800 |
+| Haystack | 1 | Farms | Gen | 800 |
+| Broken road section and rubble | 2 | Where the landslide cut the road | Build | 1,500 |
+| Buried mine entrance | 1 | North of the village | Build | 3,000 |
+| Goblin tent and campfire | 2 | Goblin camp | Gen | 1,500 |
+| Broadleaf tree, such as alder | 2 | The village's namesake | CC0 | 1,500 |
+| Bush and wildflowers | 3 | Meadows and roadsides | CC0 | 200 |
+
+## Part 3: Later milestones
+
+These are grouped by need, and they can be refined when each milestone starts.
+
+| Milestone | Assets | Source |
+| --- | --- | --- |
+| 7: Launch crafts | Alchemy table, cauldron, bottles and potions, herbs, carpentry bench, saw, planks, and furniture to craft | Gen, CC0 |
+| 7: Items | Ingots, nails, and crafted items shown in 3D ([#12](https://github.com/Gamperle/Erlenfall/issues/12)), and interchangeable blades and handles ([#13](https://github.com/Gamperle/Erlenfall/issues/13)) | Gen |
+| 8: Living village | 5 to 10 more villagers, market stalls, shop goods, and building interiors ([#39](https://github.com/Gamperle/Erlenfall/issues/39)) | CC0, Build, Gen |
+| 8: Animals | Farm animals, and wildlife to hunt or fight, all rigged | CC0 |
+| 9: Town | Town wall and gate, new town buildings, the repaired road, and the reopened mine | Build |
+| 9: Enemies | More non-human enemies, all rigged | CC0 |
+| 10: Beyond | Bows and arrows, magic effects, and tools and stations for cooking, tailoring, pottery, enchanting, and jewelry | Gen, CC0 |
+
+## Order of work
+
+1. **Surfaces.** They improve everything on screen and carry no generation risk.
+2. **Trees, grass, and rocks.** These take up most of the view.
+3. **Buildings.** These set the village's look.
+4. **Characters.** The rig must work before any of the held items can be fitted.
+5. **Props.** These depend on the pipeline's open issues.
+6. **Part 2.** This uses the same materials and tools as above.

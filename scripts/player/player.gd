@@ -105,6 +105,11 @@ func interact() -> void:
 		interact_target.interact(self)
 
 
+## The direction the camera faces, in degrees clockwise from north (-Z).
+func heading_degrees() -> float:
+	return fposmod(-rad_to_deg(_pivot.rotation.y), 360.0)
+
+
 func is_dodging() -> bool:
 	return _dodge_time > 0.0
 

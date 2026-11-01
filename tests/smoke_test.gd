@@ -58,6 +58,19 @@ func _run() -> void:
 	day_night.hour = 1.0
 	var night := day_night.daylight()
 	_check(noon == 1.0 and night == 0.0, "daylight follows the hour")
+	var sun: DirectionalLight3D = scene.get_node("Sun")
+	var sky_position := func(hour: float) -> Vector3:
+		day_night.hour = hour
+		day_night._apply()
+		return sun.basis.z
+	var morning: Vector3 = sky_position.call(DayNight.SUNRISE + 0.5)
+	var midday: Vector3 = sky_position.call((DayNight.SUNRISE + DayNight.SUNSET) / 2.0)
+	var evening: Vector3 = sky_position.call(DayNight.SUNSET - 0.5)
+	_check(morning.x > 0.9 and morning.y > 0.0, "the sun rises in the east")
+	_check(midday.y > 0.7 and midday.z > 0.5 and absf(midday.x) < 0.01, "the sun is high in the south at midday")
+	_check(evening.x < -0.9 and evening.y > 0.0, "the sun sets in the west")
+	day_night.hour = 9.0
+	day_night._apply()
 
 	for action in ["move_forward", "look_left", "jump", "sprint", "toggle_camera", "toggle_torch"]:
 		var kinds := {}
@@ -65,6 +78,7 @@ func _run() -> void:
 			kinds[input.get_class()] = true
 		_check(kinds.size() >= 1 and _has_joypad(kinds), "%s has a controller binding" % action)
 
+	_test_hud(scene, player)
 	_test_feature_flags()
 	await _test_torch(player)
 	await _test_crafting(scene, player)
@@ -75,6 +89,28 @@ func _run() -> void:
 
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")
 	quit(1 if _failures > 0 else 0)
+
+
+func _test_hud(scene: Node, player: Player) -> void:
+	var compass: Compass = scene.get_node("UI/Compass")
+	var overlay: PerformanceOverlay = scene.get_node("UI/PerformanceOverlay")
+	var pivot: Node3D = player.get_node("CameraPivot")
+	pivot.rotation = Vector3.ZERO
+	_check(is_equal_approx(player.heading_degrees(), 0.0), "facing -Z is north")
+	pivot.rotation.y = -PI / 2.0
+	_check(is_equal_approx(player.heading_degrees(), 90.0), "facing +X is east")
+	compass.heading = 90.0
+	_check(is_equal_approx(compass.offset_of(90.0), 0.0), "the faced direction is in the middle of the compass")
+	_check(compass.offset_of(0.0) == -1.0 and compass.offset_of(180.0) == 1.0, "north is to the left when facing east")
+	compass.heading = 350.0
+	_check(is_equal_approx(compass.offset_of(10.0), 20.0 / Compass.VISIBLE_DEGREES), "the compass wraps around north")
+	pivot.rotation = Vector3.ZERO
+
+	overlay.refresh()
+	_check(overlay.visible and overlay.text.contains("FPS"), "the performance overlay shows measurements")
+	TranslationServer.set_locale("de")
+	_check(tr("UI_COMPASS_E") == "O", "east is translated on the compass")
+	TranslationServer.set_locale("en")
 
 
 func _test_feature_flags() -> void:

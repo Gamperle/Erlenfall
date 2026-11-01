@@ -36,6 +36,19 @@ ITEM_IRON_DAGGER,Iron dagger,Eisendolch
 ITEM_IRON_SWORD,Iron sword,Eisenschwert
 ITEM_IRON_AXE,Iron axe,Eisenaxt
 ITEM_TORCH,Torch,Fackel
+UI_COMPASS_N,N,N
+UI_COMPASS_NE,NE,NO
+UI_COMPASS_E,E,O
+UI_COMPASS_SE,SE,SO
+UI_COMPASS_S,S,S
+UI_COMPASS_SW,SW,SW
+UI_COMPASS_W,W,W
+UI_COMPASS_NW,NW,NW
+UI_METRICS,"%d FPS, slowest frame %.1f ms
+%d draw calls, %.0fk triangles
+%.0f MB video memory","%d FPS, langsamster Frame %.1f ms
+%d Draw Calls, %.0fk Dreiecke
+%.0f MB Videospeicher"
 UI_NO_TORCH,You have no torch.,Du hast keine Fackel.
 UI_TORCH_BURNED_OUT,Your torch has burned out.,Deine Fackel ist abgebrannt.
 QUALITY_CRUDE,Crude,Grob

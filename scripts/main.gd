@@ -31,6 +31,8 @@ var _ending_shown := false
 @onready var _quest_label: Label = $UI/QuestLabel
 @onready var _health_bar: ProgressBar = $UI/HealthBar
 @onready var _message_label: Label = $UI/MessageLabel
+@onready var _compass: Compass = $UI/Compass
+@onready var _performance_overlay: PerformanceOverlay = $UI/PerformanceOverlay
 
 
 func _enter_tree() -> void:
@@ -41,6 +43,11 @@ func _ready() -> void:
 	_welcome_label.modulate.a = 0.0
 	_welcome_label.text = tr("UI_WELCOME")
 	_controls_label.text = tr("UI_CONTROLS")
+	_compass.visible = FeatureFlags.enabled("compass")
+	_performance_overlay.visible = FeatureFlags.enabled("performance_overlay")
+	_performance_overlay.set_process(_performance_overlay.visible)
+	if not _performance_overlay.visible:
+		_quest_label.offset_top = _performance_overlay.offset_top
 
 	_player.quests.changed.connect(_on_quests_changed)
 	_player.inventory.changed.connect(_update_quest_label)
@@ -64,6 +71,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_compass.heading = _player.heading_degrees()
 	var target := _player.interact_target
 	_prompt_label.visible = target != null and not _player.is_busy()
 	if _prompt_label.visible:

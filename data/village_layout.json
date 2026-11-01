@@ -30,7 +30,7 @@
 		{ "type": "goblin", "x": 112, "z": -140 }
 	],
 	"repair_sites": [
-		{ "quest": "first_nails", "objective": "repair_roof", "flag": "inn_roof_repaired", "model": "ladder", "rotation": 90, "prompt": "PROMPT_REPAIR_ROOF", "x": 19, "z": -15, "width": 0.6, "depth": 0.3, "height": 5, "color": "#8a6a42" }
+		{ "quest": "first_nails", "objective": "repair_roof", "flag": "inn_roof_repaired", "model": "ladder", "rotation": -80, "prompt": "PROMPT_REPAIR_ROOF", "x": 20.6, "z": -11.5, "width": 0.6, "depth": 0.3, "height": 5, "color": "#8a6a42" }
 	],
 	"beds": [
 		{ "model": "bed", "prompt": "PROMPT_SLEEP", "x": -9, "z": 21, "width": 2, "depth": 1, "height": 0.5, "color": "#6f5a4a" }

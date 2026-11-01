@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/world/terrain.gd" id="2"]
@@ -9,6 +9,8 @@
 [ext_resource type="Script" path="res://scripts/ui/dialogue_ui.gd" id="7"]
 [ext_resource type="Script" path="res://scripts/ui/game_menu.gd" id="8"]
 [ext_resource type="Script" path="res://scripts/world/mist.gd" id="9"]
+[ext_resource type="Script" path="res://scripts/ui/compass.gd" id="10"]
+[ext_resource type="Script" path="res://scripts/ui/performance_overlay.gd" id="11"]
 
 [sub_resource type="ProceduralSkyMaterial" id="1"]
 sky_top_color = Color(0.34, 0.45, 0.58, 1)
@@ -84,11 +86,36 @@ anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
 offset_left = -500.0
-offset_top = 48.0
+offset_top = 176.0
 offset_right = 500.0
-offset_bottom = 120.0
+offset_bottom = 248.0
 label_settings = SubResource("4")
 horizontal_alignment = 1
+
+[node name="Compass" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 12.0
+offset_right = 200.0
+offset_bottom = 40.0
+mouse_filter = 2
+script = ExtResource("10")
+
+[node name="PerformanceOverlay" type="Label" parent="UI"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -360.0
+offset_top = 12.0
+offset_right = -16.0
+offset_bottom = 84.0
+grow_horizontal = 0
+label_settings = SubResource("5")
+horizontal_alignment = 2
+script = ExtResource("11")
 
 [node name="HealthBar" type="ProgressBar" parent="UI"]
 offset_left = 16.0
@@ -120,9 +147,9 @@ anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -560.0
-offset_top = 16.0
+offset_top = 92.0
 offset_right = -16.0
-offset_bottom = 90.0
+offset_bottom = 166.0
 grow_horizontal = 0
 label_settings = SubResource("5")
 horizontal_alignment = 2

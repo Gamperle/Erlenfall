@@ -204,7 +204,7 @@ static func _ladder(size: Vector3) -> Node3D:
 	var rung_count := int(size.y / 0.4)
 	for rung in rung_count:
 		ladder.add_child(box(Vector3(size.x, 0.05, 0.05), Surfaces.Pattern.WOOD, WOOD_COLOR, Vector3(0.0, 0.3 + rung * 0.4, 0.0)))
-	ladder.rotation.z = -0.15
+	ladder.rotation.x = -0.15
 	return ladder
 
 

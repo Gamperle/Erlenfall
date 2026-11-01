@@ -21,6 +21,7 @@ const INTERACT_FACING := 0.3
 var first_person := false
 var inventory := Inventory.new()
 var known_recipes: Dictionary = {}
+var quests := QuestLog.new()
 ## What pressing the use button would act on right now, if anything.
 var interact_target: Interactable
 
@@ -42,6 +43,10 @@ func _ready() -> void:
 func set_busy(busy: bool) -> void:
 	_busy = busy
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if busy else Input.MOUSE_MODE_CAPTURED
+
+
+func is_busy() -> bool:
+	return _busy
 
 
 func interact() -> void:

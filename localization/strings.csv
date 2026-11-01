@@ -39,3 +39,41 @@ QUALITY_CRUDE,Crude,Grob
 QUALITY_COMMON,Common,Gewöhnlich
 QUALITY_FINE,Fine,Fein
 QUALITY_MASTERWORK,Masterwork,Meisterwerk
+UI_CONTINUE,Continue,Weiter
+PROMPT_TALK,Talk to %s,Mit %s sprechen
+NPC_HEDDA,Grandma Hedda,Oma Hedda
+NPC_BERTRAM,Bertram the smith,Schmied Bertram
+NPC_MIRA,Mira,Mira
+NPC_BRANDT,Mayor Brandt,Bürgermeister Brandt
+QUEST_ARRIVAL,Coming home,Heimkehr
+OBJ_SEE_GRANDMOTHER,Find your grandmother in the village,Finde deine Großmutter im Dorf
+OBJ_SEE_SMITH,Visit the smith at the forge,Besuche den Schmied an der Schmiede
+QUEST_FIRST_NAILS,Honest work,Ehrliche Arbeit
+OBJ_MAKE_NAILS,Forge nails and bring them to Bertram,Schmiede Nägel und bringe sie Bertram
+OBJ_TELL_MAYOR,Tell Mayor Brandt about the repairs,Berichte Bürgermeister Brandt von den Reparaturen
+DLG_HEDDA_WELCOME,"There you are. You have your grandfather's eyes, you know. He would have been glad to see his house lived in again. Half the village is gone since the mountain came down.","Da bist du ja. Du hast die Augen deines Großvaters, weißt du. Er hätte sich gefreut, sein Haus wieder bewohnt zu sehen. Das halbe Dorf ist fort, seit der Berg herunterkam."
+DLG_HEDDA_CHOICE_HELP,I came to help. Tell me where to start.,"Ich bin gekommen, um zu helfen. Sag mir, wo ich anfangen soll."
+DLG_HEDDA_CHOICE_HOW_BAD,How bad is it here?,Wie schlimm ist es hier?
+DLG_HEDDA_HOW_BAD,"The landslide took the road and buried the mine, and the mine fed us all. Now we have only wood and the farms, and every year another house stands empty.","Der Erdrutsch hat die Straße genommen und die Mine verschüttet, und die Mine hat uns alle ernährt. Jetzt haben wir nur noch Holz und die Höfe, und jedes Jahr steht ein weiteres Haus leer."
+DLG_HEDDA_SEND,"Go and see Bertram at the forge, just down the road. He has more work than hands, and he knew your grandfather well.","Geh zu Bertram an die Schmiede, gleich die Straße hinunter. Er hat mehr Arbeit als Hände, und er kannte deinen Großvater gut."
+DLG_HEDDA_PROUD,"Bertram told me about those nails. It's a small thing, but people noticed. Your grandfather would be proud of you.","Bertram hat mir von den Nägeln erzählt. Eine Kleinigkeit, aber die Leute haben es bemerkt. Dein Großvater wäre stolz auf dich."
+DLG_HEDDA_IDLE,Don't work yourself to the bone. There's always soup at my table.,Arbeite dich nicht zu Tode. An meinem Tisch gibt es immer Suppe.
+DLG_BERTRAM_MEET,So you're the grandchild. Your grandfather could mend anything with four good nails. Can you hold a hammer?,"Du bist also das Enkelkind. Dein Großvater konnte alles mit vier guten Nägeln flicken. Kannst du einen Hammer halten?"
+DLG_BERTRAM_CHOICE_SHOW,Give me a chance and I'll show you.,"Gib mir eine Chance, dann zeige ich es dir."
+DLG_BERTRAM_CHOICE_NEVER,"Never tried, but I'm willing to learn.","Noch nie versucht, aber ich lerne gern."
+DLG_BERTRAM_TASK,"The inn's roof leaks, and I'm out of nails. Take two lumps of iron ore and one of coal to my furnace for an ingot, then work that ingot alone on the anvil. It gives four nails. The ore is up the north road, at the landslide.","Das Dach des Gasthauses ist undicht, und mir sind die Nägel ausgegangen. Bring zwei Brocken Eisenerz und einen Brocken Kohle zu meinem Ofen für einen Barren, und bearbeite diesen Barren allein auf dem Amboss. Das ergibt vier Nägel. Das Erz liegt die Nordstraße hinauf, am Erdrutsch."
+DLG_BERTRAM_REMINDER,"No nails yet? Two ore and one coal in the furnace, then the ingot alone on the anvil. Strike when the iron is ready, not before.","Noch keine Nägel? Zwei Erz und eine Kohle in den Ofen, dann den Barren allein auf den Amboss. Schlag zu, wenn das Eisen bereit ist, nicht vorher."
+DLG_BERTRAM_THANKS,"Let me see. Honest work! Here, take two ingots as your pay. One more thing: Mayor Brandt doesn't like hearing about repairs secondhand. Better he hears it from you.","Zeig her. Ehrliche Arbeit! Hier, zwei Barren als Lohn. Noch etwas: Bürgermeister Brandt erfährt ungern aus zweiter Hand von Reparaturen. Besser, er hört es von dir."
+DLG_BERTRAM_AFTER,It's good to hear a second hammer in this valley again.,"Es tut gut, wieder einen zweiten Hammer in diesem Tal zu hören."
+DLG_BERTRAM_IDLE,Mind the sparks.,Pass auf die Funken auf.
+DLG_MIRA_HINT,"Ore? Follow the north road to the landslide. Look for the rust-colored rocks; the black ones are coal. There's wood stacked by the anvil if you need any.","Erz? Folge der Nordstraße bis zum Erdrutsch. Achte auf die rostfarbenen Felsen, die schwarzen sind Kohle. Neben dem Amboss ist Holz gestapelt, falls du welches brauchst."
+DLG_MIRA_AFTER,"People are talking about you at the inn. Mostly nice things. It's strange to hear anyone talk about the future here.","Im Gasthaus reden sie über dich. Meist Gutes. Es ist seltsam, hier jemanden über die Zukunft reden zu hören."
+DLG_MIRA_IDLE,"You actually came! Grandma's been watching the road for days. You'll find her by her house, just west of the square.","Du bist wirklich gekommen! Oma schaut seit Tagen auf die Straße. Du findest sie bei ihrem Haus, gleich westlich vom Platz."
+DLG_BRANDT_CONFRONT,"I hear you've been making nails for the inn's roof. Nobody asked me. In Erlenfall, repairs go through the mayor.","Ich höre, du machst Nägel für das Dach des Gasthauses. Mich hat niemand gefragt. In Erlenfall laufen Reparaturen über den Bürgermeister."
+DLG_BRANDT_CHOICE_SORRY,"You're right, I should have come to you first.","Sie haben recht, ich hätte zuerst zu Ihnen kommen sollen."
+DLG_BRANDT_CHOICE_LEAK,"The roof leaks. Someone had to do something.","Das Dach ist undicht. Jemand musste etwas tun."
+DLG_BRANDT_RESPECTED,"Hm. Manners, at least. Come to me before the next one, and we may get along.","Hm. Wenigstens Manieren. Komm vor dem nächsten Mal zu mir, dann kommen wir vielleicht miteinander aus."
+DLG_BRANDT_ANNOYED,"Someone. I have kept this village standing for eleven years, newcomer. Remember that when you're mending its roofs.","Jemand. Ich halte dieses Dorf seit elf Jahren am Leben, Neuankömmling. Denk daran, wenn du seine Dächer flickst."
+DLG_BRANDT_WARM,"You again. The inn's roof no longer drips on the guests, I'm told. Carry on, then.","Du schon wieder. Das Dach des Gasthauses tropft nicht mehr auf die Gäste, höre ich. Dann mach weiter."
+DLG_BRANDT_COLD,I'm watching what you do in my village. That is all.,Ich beobachte, was du in meinem Dorf tust. Das ist alles.
+DLG_BRANDT_IDLE,"I am Mayor Brandt. Erlenfall has its own way of doing things, and you would do well to learn it.","Ich bin Bürgermeister Brandt. Erlenfall hat seine eigene Art, die Dinge zu regeln, und du tätest gut daran, sie zu lernen."

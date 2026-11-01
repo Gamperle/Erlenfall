@@ -1,0 +1,140 @@
+{
+	"hedda": [
+		{
+			"when": { "objective": ["arrival", "see_grandmother"] },
+			"start": "welcome",
+			"nodes": {
+				"welcome": {
+					"text": "DLG_HEDDA_WELCOME",
+					"choices": [
+						{ "text": "DLG_HEDDA_CHOICE_HELP", "next": "send" },
+						{ "text": "DLG_HEDDA_CHOICE_HOW_BAD", "next": "how_bad" }
+					]
+				},
+				"how_bad": { "text": "DLG_HEDDA_HOW_BAD", "next": "send" },
+				"send": {
+					"text": "DLG_HEDDA_SEND",
+					"effects": [{ "type": "advance_quest", "quest": "arrival" }]
+				}
+			}
+		},
+		{
+			"when": { "quest_done": "first_nails" },
+			"start": "proud",
+			"nodes": { "proud": { "text": "DLG_HEDDA_PROUD" } }
+		},
+		{
+			"start": "idle",
+			"nodes": { "idle": { "text": "DLG_HEDDA_IDLE" } }
+		}
+	],
+	"bertram": [
+		{
+			"when": { "objective": ["arrival", "see_smith"] },
+			"start": "meet",
+			"nodes": {
+				"meet": {
+					"text": "DLG_BERTRAM_MEET",
+					"choices": [
+						{ "text": "DLG_BERTRAM_CHOICE_SHOW", "next": "task" },
+						{ "text": "DLG_BERTRAM_CHOICE_NEVER", "next": "task" }
+					]
+				},
+				"task": {
+					"text": "DLG_BERTRAM_TASK",
+					"effects": [
+						{ "type": "advance_quest", "quest": "arrival" },
+						{ "type": "start_quest", "quest": "first_nails" }
+					]
+				}
+			}
+		},
+		{
+			"when": { "objective": ["first_nails", "make_nails"], "has_item": ["iron_nails", 4] },
+			"start": "thanks",
+			"nodes": {
+				"thanks": {
+					"text": "DLG_BERTRAM_THANKS",
+					"effects": [
+						{ "type": "take_item", "item": "iron_nails", "count": 4 },
+						{ "type": "give_item", "item": "iron_ingot", "count": 2 },
+						{ "type": "advance_quest", "quest": "first_nails" }
+					]
+				}
+			}
+		},
+		{
+			"when": { "objective": ["first_nails", "make_nails"] },
+			"start": "reminder",
+			"nodes": { "reminder": { "text": "DLG_BERTRAM_REMINDER" } }
+		},
+		{
+			"when": { "quest_done": "first_nails" },
+			"start": "after",
+			"nodes": { "after": { "text": "DLG_BERTRAM_AFTER" } }
+		},
+		{
+			"start": "idle",
+			"nodes": { "idle": { "text": "DLG_BERTRAM_IDLE" } }
+		}
+	],
+	"mira": [
+		{
+			"when": { "objective": ["first_nails", "make_nails"] },
+			"start": "hint",
+			"nodes": { "hint": { "text": "DLG_MIRA_HINT" } }
+		},
+		{
+			"when": { "quest_done": "first_nails" },
+			"start": "after",
+			"nodes": { "after": { "text": "DLG_MIRA_AFTER" } }
+		},
+		{
+			"start": "idle",
+			"nodes": { "idle": { "text": "DLG_MIRA_IDLE" } }
+		}
+	],
+	"brandt": [
+		{
+			"when": { "objective": ["first_nails", "tell_mayor"] },
+			"start": "confront",
+			"nodes": {
+				"confront": {
+					"text": "DLG_BRANDT_CONFRONT",
+					"choices": [
+						{ "text": "DLG_BRANDT_CHOICE_SORRY", "next": "respected" },
+						{ "text": "DLG_BRANDT_CHOICE_LEAK", "next": "annoyed" }
+					]
+				},
+				"respected": {
+					"text": "DLG_BRANDT_RESPECTED",
+					"effects": [
+						{ "type": "set_flag", "flag": "mayor_respected" },
+						{ "type": "advance_quest", "quest": "first_nails" }
+					]
+				},
+				"annoyed": {
+					"text": "DLG_BRANDT_ANNOYED",
+					"effects": [
+						{ "type": "set_flag", "flag": "mayor_annoyed" },
+						{ "type": "advance_quest", "quest": "first_nails" }
+					]
+				}
+			}
+		},
+		{
+			"when": { "flag": "mayor_respected" },
+			"start": "warm",
+			"nodes": { "warm": { "text": "DLG_BRANDT_WARM" } }
+		},
+		{
+			"when": { "flag": "mayor_annoyed" },
+			"start": "cold",
+			"nodes": { "cold": { "text": "DLG_BRANDT_COLD" } }
+		},
+		{
+			"start": "idle",
+			"nodes": { "idle": { "text": "DLG_BRANDT_IDLE" } }
+		}
+	]
+}

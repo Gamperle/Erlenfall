@@ -34,6 +34,11 @@ func _ready() -> void:
 	_add_roads(layout["roads"])
 	_add_trees(layout["trees"], layout["fields"])
 	_add_boulders(layout["boulders"])
+	for npc_data: Dictionary in layout["npcs"]:
+		var npc := Npc.new()
+		npc.setup(npc_data)
+		npc.position = _ground_position(npc_data["x"], npc_data["z"])
+		add_child(npc)
 	for station: Dictionary in layout["stations"]:
 		_add_station(station)
 	for resource: Dictionary in layout["resources"]:

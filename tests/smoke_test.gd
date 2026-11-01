@@ -59,6 +59,8 @@ func _run() -> void:
 		_check(kinds.size() >= 1 and _has_joypad(kinds), "%s has a controller binding" % action)
 
 	await _test_crafting(scene, player)
+	await _test_story(scene, player)
+	_test_translations()
 
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")
 	quit(1 if _failures > 0 else 0)
@@ -120,6 +122,71 @@ func _test_crafting(scene: Node, player: Player) -> void:
 	_check(CraftingData.quality_for_score(clumsy.score()) == "crude", "bad forging gives crude quality")
 	_check(CraftingData.find_recipe("anvil", {"coal": 1}).is_empty(), "unknown combinations match nothing")
 	_check(CraftingData.item_name("iron_sword") != "ITEM_IRON_SWORD", "item names are translated")
+
+
+func _test_story(scene: Node, player: Player) -> void:
+	var ui: DialogueUI = scene.get_node("DialogueUI")
+	var village: Village = scene.get_node("Village")
+	var quests := player.quests
+
+	_check(quests.current_objective("arrival") == "see_grandmother", "the first quest starts on its own")
+	_check(quests.tracker_lines(player.inventory).size() == 1, "the tracker shows the active quest")
+
+	var hedda: Npc = village.get_node("hedda")
+	var pivot: Node3D = player.get_node("CameraPivot")
+	pivot.rotation = Vector3.ZERO
+	player.position = hedda.position + Vector3(0.0, 0.5, 2.0)
+	await _physics_frames(10)
+	_check(player.interact_target == hedda, "player can target a villager")
+	player.interact()
+	_check(ui.is_open() and player.is_busy(), "talking opens the dialogue screen")
+	ui.choose(1)
+	ui.choose(0)
+	_check(quests.current_objective("arrival") == "see_smith", "grandmother sends the player to the smith")
+	ui.choose(0)
+	_check(not ui.is_open() and not player.is_busy(), "the conversation ends")
+
+	_talk(ui, "bertram", player, [0, 0, 0])
+	_check(quests.is_done("arrival") and quests.current_objective("first_nails") == "make_nails", "the smith gives the nails quest")
+
+	player.inventory.remove("iron_nails", player.inventory.count("iron_nails"))
+	_talk(ui, "bertram", player, [0])
+	_check(quests.current_objective("first_nails") == "make_nails", "the smith waits for the nails")
+
+	player.inventory.add("iron_nails", 4, "fine")
+	var ingots := player.inventory.count("iron_ingot")
+	_check(quests.tracker_lines(player.inventory)[0].contains("(4/4)"), "the tracker counts the nails")
+	_talk(ui, "bertram", player, [0])
+	_check(player.inventory.count("iron_nails") == 0, "the smith takes the nails")
+	_check(player.inventory.count("iron_ingot") == ingots + 2, "the smith pays the player")
+	_check(quests.current_objective("first_nails") == "tell_mayor", "the smith sends the player to the mayor")
+
+	_talk(ui, "brandt", player, [1, 0])
+	_check(quests.is_done("first_nails"), "telling the mayor completes the quest")
+	_check(quests.flags.has("mayor_annoyed"), "the player's choice is remembered")
+	var cold := DialogueRunner.new("brandt", player)
+	_check(cold.text_key() == "DLG_BRANDT_COLD", "the mayor reacts to the choice")
+	_check(DialogueRunner.new("hedda", player).text_key() == "DLG_HEDDA_PROUD", "grandmother reacts to the finished quest")
+
+
+func _talk(ui: DialogueUI, npc_id: String, player: Player, answers: Array) -> void:
+	ui.open_conversation(npc_id, npc_id, player)
+	for answer: int in answers:
+		ui.choose(answer)
+
+
+## Every story and item key must exist in both languages.
+func _test_translations() -> void:
+	var missing := PackedStringArray()
+	var text := FileAccess.get_file_as_string("res://data/dialogue.json") + FileAccess.get_file_as_string("res://data/quests.json") + FileAccess.get_file_as_string("res://data/crafting.json")
+	var pattern := RegEx.create_from_string("\"((?:DLG|OBJ|QUEST|ITEM)_[A-Z_]+)\"")
+	for locale in ["en", "de"]:
+		TranslationServer.set_locale(locale)
+		for found in pattern.search_all(text):
+			if TranslationServer.translate(found.get_string(1)) == found.get_string(1):
+				missing.append("%s:%s" % [locale, found.get_string(1)])
+	TranslationServer.set_locale("en")
+	_check(missing.is_empty(), "all text is translated %s" % ", ".join(missing))
 
 
 func _has_joypad(kinds: Dictionary) -> bool:

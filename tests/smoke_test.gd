@@ -402,6 +402,7 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	scene.resume()
 	_check(not menu.is_open() and not player.is_busy() and not paused, "resuming unpauses the game")
 	menu.open_title(true)
+	_check(menu._asset_note.is_visible_in_tree(), "the title menu notes AI-generated assets")
 	_check(menu.is_open(), "the title menu opens")
 	menu.close()
 	DirAccess.remove_absolute(TEST_SAVE)

@@ -105,7 +105,9 @@ These answers pulled against each other. The decision below applies until you ch
 
 **Commercial use.** The project itself is free and non-commercial. MIT and CC BY-SA allow others to sell copies or derivatives, and that is accepted.
 
-**AI asset tool.** The default for milestone 6 is [TRELLIS.2](https://github.com/microsoft/TRELLIS.2), whose code and model are MIT-licensed, though some of its dependencies have separate licenses that need checking. It needs an NVIDIA GPU with at least 24 GB of memory, so it has to run on a rented GPU rather than the development machine. Hunyuan3D is not an option: its license excludes the EU, the UK, and South Korea.
+**AI asset tool.** Generation runs locally on an AMD Radeon RX 7900 XT. The default for milestone 6 is [TripoSR](https://github.com/VAST-AI-Research/TripoSR) (MIT), which uses about 6 GB of video memory and has no hard dependency on NVIDIA libraries in its requirements. It targets CUDA, so running it through AMD's ROCm has to be tested first; milestone 6 starts with that test. Its output is draft quality, so expect cleanup in Blender. TRELLIS and TRELLIS.2 are MIT-licensed but require an NVIDIA GPU, and Hunyuan3D is not an option because its license excludes the EU, the UK, and South Korea.
+
+Realistic surfaces can come from CC0 material libraries such as [Poly Haven](https://polyhaven.com/), which suit the art style better than draft-quality generated textures.
 
 Until then, the game uses placeholder geometry built in Godot. AI assets need rigging and style checks, and their copyright status varies by country and tool, so each one is logged in [ASSETS.md](../ASSETS.md).
 

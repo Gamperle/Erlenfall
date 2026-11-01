@@ -105,11 +105,11 @@ These answers pulled against each other. The decision below applies until you ch
 
 **Commercial use.** The project itself is free and non-commercial. MIT and CC BY-SA allow others to sell copies or derivatives, and that is accepted.
 
-**AI asset tool.** Generation runs locally on an AMD Radeon RX 7900 XT. The default for milestone 6 is [TripoSR](https://github.com/VAST-AI-Research/TripoSR) (MIT), which uses about 6 GB of video memory and has no hard dependency on NVIDIA libraries in its requirements. It targets CUDA, so running it through AMD's ROCm has to be tested first; milestone 6 starts with that test. Its output is draft quality, so expect cleanup in Blender. TRELLIS and TRELLIS.2 are MIT-licensed but require an NVIDIA GPU, and Hunyuan3D is not an option because its license excludes the EU, the UK, and South Korea.
+**AI asset tool.** Generation runs locally on an AMD Radeon RX 7900 XT. The default for milestone 6 is [TripoSR](https://github.com/VAST-AI-Research/TripoSR) (MIT), which uses about 6 GB of video memory and has no hard dependency on NVIDIA libraries in its requirements. It targets CUDA, but it now runs through AMD's ROCm on native Windows with a few changes, and SDXL draws its input pictures; see [the asset pipeline](ASSET_PIPELINE.md). Its output is draft quality, so expect cleanup in Blender. TRELLIS and TRELLIS.2 are MIT-licensed but require an NVIDIA GPU, and Hunyuan3D is not an option because its license excludes the EU, the UK, and South Korea.
 
 Realistic surfaces can come from CC0 material libraries such as [Poly Haven](https://polyhaven.com/), which suit the art style better than draft-quality generated textures.
 
-Until then, the game's art is built in code from simple shapes and procedural materials (`scripts/world/model_builder.gd`, `scripts/world/humanoid.gd`, `shaders/`). To test the generator, see [tools/asset_test](../tools/asset_test/README.md). AI assets need rigging and style checks, and their copyright status varies by country and tool, so each one is logged in [ASSETS.md](../ASSETS.md).
+Until then, the game's art is built in code from simple shapes and procedural materials (`scripts/world/model_builder.gd`, `scripts/world/humanoid.gd`, `shaders/`). The models and surfaces needed are in [the asset list](ASSET_LIST.md). To run the generator, see [the asset pipeline](ASSET_PIPELINE.md). AI assets need rigging and style checks, and their copyright status varies by country and tool, so each one is logged in [ASSETS.md](../ASSETS.md).
 
 ## Milestones
 

@@ -1,6 +1,10 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/world/terrain.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/world/village.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/world/day_night.gd" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="5"]
 
 [sub_resource type="ProceduralSkyMaterial" id="1"]
 sky_top_color = Color(0.34, 0.45, 0.58, 1)
@@ -13,20 +17,22 @@ sky_material = SubResource("1")
 [sub_resource type="Environment" id="3"]
 background_mode = 2
 sky = SubResource("2")
+ambient_light_source = 3
 tonemap_mode = 2
 fog_enabled = true
 fog_light_color = Color(0.72, 0.76, 0.8, 1)
-fog_density = 0.02
+fog_density = 0.0016
+fog_sky_affect = 0.3
 
-[sub_resource type="StandardMaterial3D" id="4"]
-albedo_color = Color(0.3, 0.38, 0.22, 1)
-
-[sub_resource type="PlaneMesh" id="5"]
-material = SubResource("4")
-size = Vector2(1000, 1000)
-
-[sub_resource type="LabelSettings" id="6"]
+[sub_resource type="LabelSettings" id="4"]
 font_size = 48
+outline_size = 6
+outline_color = Color(0, 0, 0, 0.6)
+
+[sub_resource type="LabelSettings" id="5"]
+font_size = 16
+outline_size = 4
+outline_color = Color(0, 0, 0, 0.7)
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1")
@@ -35,14 +41,22 @@ script = ExtResource("1")
 environment = SubResource("3")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.866, -0.25, 0.433, 0, 0.866, 0.5, -0.5, -0.433, 0.75, 0, 20, 0)
 shadow_enabled = true
+directional_shadow_max_distance = 200.0
 
-[node name="Ground" type="MeshInstance3D" parent="."]
-mesh = SubResource("5")
+[node name="DayNight" type="Node" parent="." node_paths=PackedStringArray("sun", "world_environment")]
+script = ExtResource("4")
+sun = NodePath("../Sun")
+world_environment = NodePath("../WorldEnvironment")
 
-[node name="Camera" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 8)
+[node name="Terrain" type="StaticBody3D" parent="."]
+script = ExtResource("2")
+
+[node name="Village" type="Node3D" parent="." node_paths=PackedStringArray("terrain")]
+script = ExtResource("3")
+terrain = NodePath("../Terrain")
+
+[node name="Player" parent="." instance=ExtResource("5")]
 
 [node name="UI" type="CanvasLayer" parent="."]
 
@@ -50,9 +64,20 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 8)
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -400.0
+offset_left = -500.0
 offset_top = 48.0
-offset_right = 400.0
+offset_right = 500.0
 offset_bottom = 120.0
-label_settings = SubResource("6")
+label_settings = SubResource("4")
 horizontal_alignment = 1
+
+[node name="ControlsLabel" type="Label" parent="UI"]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -48.0
+offset_right = 1200.0
+offset_bottom = -16.0
+grow_vertical = 0
+label_settings = SubResource("5")

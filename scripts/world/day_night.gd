@@ -6,6 +6,8 @@ const DAY_LENGTH_SECONDS := 600.0
 const FAST_FORWARD := 30.0
 const SUNRISE := 6.0
 const SUNSET := 20.0
+## How far the sun leans to the south at midday. North is -Z and east is +X.
+const SOUTH_TILT := deg_to_rad(40.0)
 
 const DAY_TOP := Color(0.34, 0.45, 0.58)
 const DAY_HORIZON := Color(0.72, 0.76, 0.8)
@@ -40,6 +42,16 @@ func daylight() -> float:
 	return smoothstep(0.0, 0.12, sin(day_progress * PI)) if day_progress > 0.0 and day_progress < 1.0 else 0.0
 
 
+## Returns where the sun or moon is at this share of its path, from the east over the south to the west.
+func sky_direction(progress: float) -> Vector3:
+	var arc := sin(progress * PI)
+	return Vector3(cos(progress * PI), arc * cos(SOUTH_TILT), arc * sin(SOUTH_TILT))
+
+
+func _aim_light(progress: float) -> void:
+	sun.basis = Basis.looking_at(-sky_direction(progress))
+
+
 func _apply() -> void:
 	var day_progress := (hour - SUNRISE) / (SUNSET - SUNRISE)
 	var light := daylight()
@@ -47,12 +59,12 @@ func _apply() -> void:
 
 	# The same light plays the sun by day and the moon by night, fading out as they swap.
 	if light > 0.0:
-		sun.rotation = Vector3(-PI * clampf(day_progress, 0.0, 1.0), deg_to_rad(-30.0), 0.0)
+		_aim_light(clampf(day_progress, 0.0, 1.0))
 		sun.light_energy = light * 1.2
 		sun.light_color = DAY_SUN.lerp(DUSK_SUN, dusk)
 	else:
 		var night_progress := fposmod(hour - SUNSET, 24.0) / (24.0 - SUNSET + SUNRISE)
-		sun.rotation = Vector3(-PI * night_progress, deg_to_rad(-30.0), 0.0)
+		_aim_light(night_progress)
 		sun.light_energy = sin(night_progress * PI) * MOON_ENERGY
 		sun.light_color = MOON_LIGHT
 

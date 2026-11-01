@@ -58,6 +58,19 @@ func _run() -> void:
 	day_night.hour = 1.0
 	var night := day_night.daylight()
 	_check(noon == 1.0 and night == 0.0, "daylight follows the hour")
+	var sun: DirectionalLight3D = scene.get_node("Sun")
+	var sky_position := func(hour: float) -> Vector3:
+		day_night.hour = hour
+		day_night._apply()
+		return sun.basis.z
+	var morning: Vector3 = sky_position.call(DayNight.SUNRISE + 0.5)
+	var midday: Vector3 = sky_position.call((DayNight.SUNRISE + DayNight.SUNSET) / 2.0)
+	var evening: Vector3 = sky_position.call(DayNight.SUNSET - 0.5)
+	_check(morning.x > 0.9 and morning.y > 0.0, "the sun rises in the east")
+	_check(midday.y > 0.7 and midday.z > 0.5 and absf(midday.x) < 0.01, "the sun is high in the south at midday")
+	_check(evening.x < -0.9 and evening.y > 0.0, "the sun sets in the west")
+	day_night.hour = 9.0
+	day_night._apply()
 
 	for action in ["move_forward", "look_left", "jump", "sprint", "toggle_camera", "toggle_torch"]:
 		var kinds := {}

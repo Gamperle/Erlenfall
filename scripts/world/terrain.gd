@@ -18,8 +18,8 @@ const LANDSLIDE_EDGE_NOISE := 0.3
 const SCAR_HALF_WIDTH := 55.0
 const SCAR_DEPTH := 14.0
 
-const GRASS_COLOR := Color(0.25, 0.36, 0.14)
-const LIGHT_GRASS_COLOR := Color(0.36, 0.45, 0.17)
+const GRASS_COLOR := Color(0.24, 0.3, 0.15)
+const LIGHT_GRASS_COLOR := Color(0.33, 0.37, 0.19)
 const ROCK_COLOR := Color(0.38, 0.37, 0.36)
 const RUBBLE_COLOR := Color(0.33, 0.28, 0.23)
 const SNOW_COLOR := Color(0.85, 0.87, 0.9)
@@ -111,7 +111,7 @@ func _build_mesh(heights: PackedFloat32Array, count: int) -> void:
 			var normal := Vector3(left - right, 2.0 * STEP, back - front).normalized()
 			vertices[index] = Vector3(x, heights[index], z)
 			normals[index] = normal
-			colors[index] = _color_at(x, z, heights[index], normal)
+			colors[index] = _color_at(x, z)
 
 	var cursor := 0
 	for j in count - 1:
@@ -141,29 +141,18 @@ func _build_mesh(heights: PackedFloat32Array, count: int) -> void:
 
 
 func _ground_material() -> ShaderMaterial:
-	var noise := FastNoiseLite.new()
-	noise.seed = 6
-	noise.frequency = 0.02
-	noise.fractal_octaves = 4
-	var texture := NoiseTexture2D.new()
-	texture.noise = noise
-	texture.seamless = true
-	texture.generate_mipmaps = true
-
 	var material := ShaderMaterial.new()
 	material.shader = TERRAIN_SHADER
-	material.set_shader_parameter("detail_noise", texture)
+	material.set_shader_parameter("detail_noise", Surfaces.noise_texture())
 	material.set_shader_parameter("rubble_color", RUBBLE_COLOR)
+	material.set_shader_parameter("rock_color", ROCK_COLOR)
+	material.set_shader_parameter("snow_color", SNOW_COLOR)
 	return material
 
 
-func _color_at(x: float, z: float, height: float, normal: Vector3) -> Color:
+func _color_at(x: float, z: float) -> Color:
 	var color := GRASS_COLOR.lerp(LIGHT_GRASS_COLOR, _patches.get_noise_2d(x, z) * 0.5 + 0.5)
-	if height > 190.0:
-		color = SNOW_COLOR
-	elif normal.y < 0.8 or height > 110.0:
-		color = ROCK_COLOR
-	color.a = 1.0 if is_on_landslide(x, z) and height <= 190.0 else 0.0
+	color.a = 1.0 if is_on_landslide(x, z) and height_at(x, z) < 150.0 else 0.0
 	return color
 
 

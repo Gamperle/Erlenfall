@@ -14,16 +14,9 @@ func setup(data: Dictionary) -> void:
 	prompt_key = data["name"]
 	name = npc_id
 
-	var mesh := CapsuleMesh.new()
-	mesh.radius = BODY_RADIUS
-	mesh.height = BODY_HEIGHT
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(data["color"])
-	mesh.material = material
-	var body := MeshInstance3D.new()
-	body.mesh = mesh
-	body.position.y = BODY_HEIGHT / 2.0
-	add_child(body)
+	var figure := Humanoid.new()
+	figure.setup(Color(data["color"]), Humanoid.DEFAULT_SKIN, Color(data.get("hair", Humanoid.DEFAULT_HAIR.to_html())))
+	add_child(figure)
 
 	var shape := CapsuleShape3D.new()
 	shape.radius = BODY_RADIUS
@@ -36,7 +29,7 @@ func setup(data: Dictionary) -> void:
 	var label := Label3D.new()
 	label.text = tr(prompt_key)
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.position.y = BODY_HEIGHT + 0.3
+	label.position.y = BODY_HEIGHT + 0.15
 	label.pixel_size = 0.006
 	label.outline_size = 8
 	add_child(label)

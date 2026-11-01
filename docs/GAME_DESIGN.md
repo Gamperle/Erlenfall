@@ -109,7 +109,7 @@ These answers pulled against each other. The decision below applies until you ch
 
 Realistic surfaces can come from CC0 material libraries such as [Poly Haven](https://polyhaven.com/), which suit the art style better than draft-quality generated textures.
 
-Until then, the game uses placeholder geometry built in Godot. AI assets need rigging and style checks, and their copyright status varies by country and tool, so each one is logged in [ASSETS.md](../ASSETS.md).
+Until then, the game's art is built in code from simple shapes and procedural materials (`scripts/world/model_builder.gd`, `scripts/world/humanoid.gd`, `shaders/`). To test the generator, see [tools/asset_test](../tools/asset_test/README.md). AI assets need rigging and style checks, and their copyright status varies by country and tool, so each one is logged in [ASSETS.md](../ASSETS.md).
 
 ## Milestones
 

@@ -20,6 +20,7 @@ const MOON_ENERGY := 0.35
 
 @export var sun: DirectionalLight3D
 @export var world_environment: WorldEnvironment
+@export var mist: Mist
 @export_range(0.0, 24.0) var hour := 9.0
 
 
@@ -64,4 +65,5 @@ func _apply() -> void:
 	sky.ground_horizon_color = horizon
 	sky.ground_bottom_color = horizon.darkened(0.4)
 	environment.fog_light_color = horizon
+	mist.set_color(horizon.lerp(top, 0.2).lightened(0.15))
 	environment.ambient_light_energy = lerpf(0.6, 1.0, light)

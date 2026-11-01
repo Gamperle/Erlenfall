@@ -4,14 +4,19 @@ extends Node3D
 
 const LAYOUT_PATH := "res://data/village_layout.json"
 const FOUNDATION_DEPTH := 3.0
-const ROOF_HEIGHT := 2.5
 const TRUNK_HEIGHT := 3.0
 const TRUNK_RADIUS := 0.3
-const CROWN_HEIGHT := 9.0
+const TREE_HEIGHT := 12.0
+const TREE_TIERS := 4
 const CROWN_RADIUS := 2.6
-const ROOF_COLOR := Color(0.3, 0.2, 0.15)
 const TRUNK_COLOR := Color(0.25, 0.17, 0.11)
-const CROWN_COLOR := Color(0.12, 0.24, 0.14)
+const CROWN_COLOR := Color(0.09, 0.2, 0.11)
+const CROWN_TIP_COLOR := Color(0.2, 0.34, 0.17)
+const GRASS_BLADES := 7
+const GRASS_BASE_COLOR := Color(0.17, 0.22, 0.1)
+const GRASS_TIP_COLOR := Color(0.36, 0.4, 0.2)
+const GRASS_ROAD_CLEARANCE := 3.0
+const GRASS_BUILDING_CLEARANCE := 8.0
 const MAX_TREE_HEIGHT := 90.0
 const MAX_PLACEMENT_ATTEMPTS := 10
 const ROAD_COLOR := Color(0.4, 0.32, 0.22)
@@ -24,16 +29,19 @@ const BOULDER_LUMPINESS := 0.35
 
 var _road_samples: Array[PackedVector2Array] = []
 var _repairs: Array[Dictionary] = []
+var _building_spots: Array[Vector2] = []
 
 
 func _ready() -> void:
 	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(LAYOUT_PATH))
 	for building: Dictionary in layout["buildings"]:
 		_add_building(building)
+		_building_spots.append(Vector2(building["x"], building["z"]))
 	for field: Dictionary in layout["fields"]:
 		_add_field(field)
 	_add_roads(layout["roads"])
 	_add_trees(layout["trees"], layout["fields"])
+	_add_grass(layout["grass"], layout["fields"])
 	_add_boulders(layout["boulders"])
 	for npc_data: Dictionary in layout["npcs"]:
 		var npc := Npc.new()
@@ -70,16 +78,16 @@ func apply_flags(flags: Dictionary) -> void:
 func _add_box_interactable(node: Interactable, data: Dictionary) -> void:
 	node.prompt_key = data["prompt"]
 	node.position = _ground_position(data["x"], data["z"])
+	node.rotation_degrees.y = data.get("rotation", 0.0)
 	add_child(node)
 
 	var size := Vector3(data["width"], data["height"], data["depth"])
-	var center := Vector3.UP * (size.y / 2.0)
-	node.add_child(_mesh_instance(_box(size, Color(data["color"])), center))
+	node.add_child(ModelBuilder.prop(data.get("model", ""), size))
 	var shape := BoxShape3D.new()
 	shape.size = size
 	var collision := CollisionShape3D.new()
 	collision.shape = shape
-	collision.position = center
+	collision.position = Vector3.UP * (size.y / 2.0)
 	node.add_child(collision)
 
 
@@ -88,6 +96,9 @@ func _add_resource(data: Dictionary) -> void:
 	node.position = _ground_position(data["x"], data["z"])
 	add_child(node)
 
+	if data["item"] == "wood":
+		node.setup(data, ModelBuilder.wood_pile(data["size"]))
+		return
 	var mesh := _boulder_mesh()
 	mesh.surface_set_material(0, _material(Color(data["color"])))
 	var visual := _mesh_instance(mesh, Vector3.UP * (data["size"] * 0.4))
@@ -210,51 +221,38 @@ func _add_building(data: Dictionary) -> void:
 	body.rotation_degrees.y = data["rotation"]
 	add_child(body)
 
-	var wall_height: float = data["height"] + FOUNDATION_DEPTH
-	var size := Vector3(data["width"], wall_height, data["depth"])
-	var center := Vector3.UP * (wall_height / 2.0 - FOUNDATION_DEPTH)
-	body.add_child(_mesh_instance(_box(size, Color(data["color"])), center))
+	var width: float = data["width"]
+	var depth: float = data["depth"]
+	var height: float = data["height"]
+	var ruined: bool = data.get("ruined", false)
+	var walls := ModelBuilder.house_walls(Vector3(width, height, depth), Color(data["color"]), ruined)
+	body.add_child(walls)
 
 	var shape := BoxShape3D.new()
-	shape.size = size
+	shape.size = Vector3(width, height + FOUNDATION_DEPTH, depth)
 	var collision := CollisionShape3D.new()
 	collision.shape = shape
-	collision.position = center
+	collision.position = Vector3.UP * (height - FOUNDATION_DEPTH) / 2.0
 	body.add_child(collision)
 
-	if not data.get("ruined", false):
-		var roof := PrismMesh.new()
-		roof.size = Vector3(data["width"] + 1.0, ROOF_HEIGHT, data["depth"] + 1.0)
-		roof.material = _material(ROOF_COLOR)
-		var roof_position: Vector3 = Vector3.UP * (data["height"] + ROOF_HEIGHT / 2.0)
-		var full_roof := _mesh_instance(roof, roof_position)
-		body.add_child(full_roof)
-		if data.has("repaired_by_flag"):
-			full_roof.name = "RepairedRoof"
-			var damaged := _damaged_roof(data["width"], data["depth"], data["height"])
-			body.add_child(damaged)
-			_repairs.append({ "flag": data["repaired_by_flag"], "repaired": full_roof, "damaged": damaged })
-
-
-## A few bare rafters and loose planks where the roof should be.
-func _damaged_roof(width: float, depth: float, wall_height: float) -> Node3D:
-	var damaged := Node3D.new()
-	damaged.name = "DamagedRoof"
-	for offset: float in [-0.4, -0.05, 0.3]:
-		var rafter_size := Vector3(width * 0.65, 0.2, 0.3)
-		var rafter := _mesh_instance(_box(rafter_size, ROOF_COLOR), Vector3(width * -0.2, wall_height + 1.0, depth * offset))
-		rafter.rotation.z = 0.4
-		damaged.add_child(rafter)
-	var plank_size := Vector3(width * 0.45, 0.1, depth * 0.4)
-	var plank := _mesh_instance(_box(plank_size, ROOF_COLOR), Vector3(width * 0.2, wall_height + 0.6, depth * 0.25))
-	plank.rotation.z = -0.35
-	damaged.add_child(plank)
-	return damaged
+	if ruined:
+		var fallen := ModelBuilder.damaged_roof(width, depth, height - 1.0)
+		body.add_child(fallen)
+		return
+	var full_roof := ModelBuilder.house_roof(width, depth, height)
+	body.add_child(full_roof)
+	if data.has("repaired_by_flag"):
+		full_roof.name = "RepairedRoof"
+		var damaged := ModelBuilder.damaged_roof(width, depth, height)
+		body.add_child(damaged)
+		_repairs.append({ "flag": data["repaired_by_flag"], "repaired": full_roof, "damaged": damaged })
+	else:
+		body.add_child(ModelBuilder.chimney(width, depth, height))
 
 
 func _add_field(data: Dictionary) -> void:
 	var size := Vector3(data["width"], 1.0, data["depth"])
-	var field := _mesh_instance(_box(size, Color(data["color"])), _ground_position(data["x"], data["z"]))
+	var field := ModelBuilder.box(size, Surfaces.Pattern.CROPS, Color(data["color"]), _ground_position(data["x"], data["z"]))
 	field.rotation_degrees.y = data["rotation"]
 	add_child(field)
 
@@ -274,21 +272,95 @@ func _add_trees(data: Dictionary, fields: Array) -> void:
 				transforms.append(Transform3D(basis, _ground_position(point.x, point.y)))
 				break
 
-	var trunk := CylinderMesh.new()
-	trunk.top_radius = TRUNK_RADIUS
-	trunk.bottom_radius = TRUNK_RADIUS
-	trunk.height = TRUNK_HEIGHT
-	trunk.material = _material(TRUNK_COLOR)
-	_add_multimesh(trunk, transforms, TRUNK_HEIGHT / 2.0)
-
-	var crown := CylinderMesh.new()
-	crown.top_radius = 0.0
-	crown.bottom_radius = CROWN_RADIUS
-	crown.height = CROWN_HEIGHT
-	crown.material = _material(CROWN_COLOR)
-	_add_multimesh(crown, transforms, TRUNK_HEIGHT + CROWN_HEIGHT / 2.0 - 1.0)
+	_add_multimesh(_fir_mesh(), transforms, 0.0, random)
 
 	_add_tree_collision(transforms)
+
+
+## A fir tree built as one mesh: a trunk under overlapping tiers of drooping branches.
+func _fir_mesh() -> ArrayMesh:
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	surface.set_smooth_group(-1)
+	var jitter := RandomNumberGenerator.new()
+	jitter.seed = 21
+	_add_cone(surface, TRUNK_RADIUS, 0.1, 0.0, TREE_HEIGHT * 0.6, 6, TRUNK_COLOR, TRUNK_COLOR, jitter, 0.0)
+	for tier in TREE_TIERS:
+		var progress := float(tier) / (TREE_TIERS - 1)
+		var radius := lerpf(CROWN_RADIUS, CROWN_RADIUS * 0.35, progress)
+		var bottom := lerpf(TRUNK_HEIGHT, TREE_HEIGHT * 0.72, progress)
+		var top := bottom + lerpf(TREE_HEIGHT * 0.32, TREE_HEIGHT * 0.28, progress)
+		var edge := CROWN_COLOR.lerp(CROWN_TIP_COLOR, progress)
+		_add_cone(surface, radius, 0.0, bottom, top, 9, edge.darkened(0.35), edge, jitter, radius * 0.18)
+	surface.generate_normals()
+	return surface.commit()
+
+
+## Adds an open cone. The jitter makes its lower rim uneven, like branch tips.
+func _add_cone(surface: SurfaceTool, bottom_radius: float, top_radius: float, bottom: float, top: float, sides: int, bottom_color: Color, top_color: Color, jitter: RandomNumberGenerator, roughness: float) -> void:
+	var rim: Array[Vector3] = []
+	for side in sides:
+		var angle := TAU * side / sides
+		var radius := bottom_radius + jitter.randf_range(-roughness, roughness)
+		rim.append(Vector3(cos(angle) * radius, bottom + jitter.randf_range(-roughness, roughness), sin(angle) * radius))
+	for side in sides:
+		var next := (side + 1) % sides
+		var angle_a := TAU * side / sides
+		var angle_b := TAU * next / sides
+		var tip_a := Vector3(cos(angle_a) * top_radius, top, sin(angle_a) * top_radius)
+		var tip_b := Vector3(cos(angle_b) * top_radius, top, sin(angle_b) * top_radius)
+		for corner: Array in [[rim[side], bottom_color], [tip_a, top_color], [rim[next], bottom_color], [rim[next], bottom_color], [tip_a, top_color], [tip_b, top_color]]:
+			surface.set_color(corner[1])
+			surface.add_vertex(corner[0])
+
+
+func _add_grass(data: Dictionary, fields: Array) -> void:
+	var random := RandomNumberGenerator.new()
+	random.seed = data["seed"]
+	var transforms: Array[Transform3D] = []
+	for i in int(data["count"]):
+		var point := Vector2.from_angle(random.randf() * TAU) * sqrt(random.randf()) * float(data["radius"])
+		if not _is_clear_ground(point, fields):
+			continue
+		var scale_factor := random.randf_range(0.7, 1.3)
+		var basis := Basis(Vector3.UP, random.randf() * TAU).scaled(Vector3.ONE * scale_factor)
+		transforms.append(Transform3D(basis, _ground_position(point.x, point.y)))
+
+	var instance := _add_multimesh(_grass_tuft_mesh(), transforms, 0.0, random)
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+func _is_clear_ground(point: Vector2, fields: Array) -> bool:
+	if terrain.is_on_landslide(point.x, point.y):
+		return false
+	for samples in _road_samples:
+		for i in range(0, samples.size(), 4):
+			if point.distance_squared_to(samples[i]) < GRASS_ROAD_CLEARANCE * GRASS_ROAD_CLEARANCE:
+				return false
+	for building: Vector2 in _building_spots:
+		if point.distance_squared_to(building) < GRASS_BUILDING_CLEARANCE * GRASS_BUILDING_CLEARANCE:
+			return false
+	for field: Dictionary in fields:
+		if point.distance_to(Vector2(field["x"], field["z"])) < float(field["width"]) * 0.65:
+			return false
+	return true
+
+
+func _grass_tuft_mesh() -> ArrayMesh:
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	surface.set_normal(Vector3.UP)
+	var jitter := RandomNumberGenerator.new()
+	jitter.seed = 22
+	for blade in GRASS_BLADES:
+		var direction := Vector3.RIGHT.rotated(Vector3.UP, jitter.randf() * TAU) + Vector3.FORWARD * jitter.randf_range(-0.2, 0.2)
+		surface.set_color(GRASS_BASE_COLOR)
+		surface.add_vertex(direction * -0.04)
+		surface.set_color(GRASS_BASE_COLOR)
+		surface.add_vertex(direction * 0.04)
+		surface.set_color(GRASS_TIP_COLOR)
+		surface.add_vertex(direction * jitter.randf_range(0.0, 0.15) + Vector3.UP * jitter.randf_range(0.18, 0.36))
+	return surface.commit()
 
 
 func _is_tree_allowed(point: Vector2, data: Dictionary, fields: Array) -> bool:
@@ -306,17 +378,29 @@ func _is_tree_allowed(point: Vector2, data: Dictionary, fields: Array) -> bool:
 	return true
 
 
-func _add_multimesh(mesh: Mesh, transforms: Array[Transform3D], height_offset: float) -> void:
+func _add_multimesh(mesh: Mesh, transforms: Array[Transform3D], height_offset: float, tint_random: RandomNumberGenerator = null) -> MultiMeshInstance3D:
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.use_colors = tint_random != null
 	multimesh.mesh = mesh
 	multimesh.instance_count = transforms.size()
 	for i in transforms.size():
 		var offset := transforms[i].basis * (Vector3.UP * height_offset)
 		multimesh.set_instance_transform(i, transforms[i].translated(offset))
+		if tint_random != null:
+			var brightness := tint_random.randf_range(0.8, 1.15)
+			multimesh.set_instance_color(i, Color(brightness, brightness, brightness * 0.95))
 	var instance := MultiMeshInstance3D.new()
 	instance.multimesh = multimesh
+	if tint_random != null:
+		var material := StandardMaterial3D.new()
+		material.vertex_color_use_as_albedo = true
+		material.vertex_color_is_srgb = true
+		material.roughness = 1.0
+		material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		instance.material_override = material
 	add_child(instance)
+	return instance
 
 
 func _add_tree_collision(transforms: Array[Transform3D]) -> void:

@@ -25,9 +25,7 @@ var _home := Vector3.ZERO
 var _timer := 0.0
 var _flash := 0.0
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
-var _material := StandardMaterial3D.new()
-var _base_color := Color.WHITE
-var _body: MeshInstance3D
+var _body: Humanoid
 var _collision: CollisionShape3D
 var _bar: MeshInstance3D
 
@@ -39,7 +37,6 @@ func setup(enemy_type: String, home: Vector3) -> void:
 	health = Health.new(_stats["health"])
 	health.changed.connect(_update_bar)
 	health.died.connect(_die)
-	_base_color = Color(_stats["color"])
 	_build()
 
 
@@ -71,6 +68,7 @@ func _physics_process(delta: float) -> void:
 			if _timer <= 0.0:
 				state = State.CHASE
 	move_and_slide()
+	_body.animate(Vector2(velocity.x, velocity.z).length(), delta)
 	_update_color(delta)
 
 
@@ -166,11 +164,11 @@ func _stop() -> void:
 func _update_color(delta: float) -> void:
 	_flash = maxf(_flash - delta, 0.0)
 	if _flash > 0.0:
-		_material.albedo_color = HIT_COLOR
+		_body.set_glow(HIT_COLOR, 1.5)
 	elif state == State.WINDUP:
-		_material.albedo_color = WINDUP_COLOR
+		_body.set_glow(WINDUP_COLOR, 1.2)
 	else:
-		_material.albedo_color = _base_color
+		_body.set_glow(HIT_COLOR, 0.0)
 
 
 func _update_bar() -> void:
@@ -182,13 +180,9 @@ func _build() -> void:
 	var height: float = _stats["height"]
 	var radius: float = _stats["radius"]
 
-	var mesh := CapsuleMesh.new()
-	mesh.radius = radius
-	mesh.height = height
-	mesh.material = _material
-	_body = MeshInstance3D.new()
-	_body.mesh = mesh
-	_body.position.y = height / 2.0
+	_body = Humanoid.new()
+	_body.setup(Color(_stats["color"]), Color(_stats["skin"]), Color.BLACK, false, true)
+	_body.scale = Vector3.ONE * (height / Npc.BODY_HEIGHT)
 	add_child(_body)
 
 	var shape := CapsuleShape3D.new()

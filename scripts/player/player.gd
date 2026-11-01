@@ -17,6 +17,7 @@ const THIRD_PERSON_DISTANCE := 3.5
 const SHOULDER_OFFSET := 0.8
 
 const GROUP := "player"
+const PLAYER_CLOTH_COLOR := Color(0.45, 0.3, 0.2)
 const MAX_HEALTH := 100.0
 const REGEN_DELAY := 8.0
 const REGEN_PER_SECOND := 2.0
@@ -33,7 +34,7 @@ const DODGE_SECONDS := 0.25
 const DODGE_COOLDOWN := 0.8
 const INTERACT_DISTANCE := 3.5
 const INTERACT_FACING := 0.3
-const WEAPON_THIRD_PERSON_POSITION := Vector3(0.45, -0.45, -0.6)
+const WEAPON_HAND_POSITION := Vector3(0.0, -0.58, -0.05)
 const WEAPON_FIRST_PERSON_POSITION := Vector3(0.3, -0.42, -0.7)
 const WEAPON_FIRST_PERSON_SCALE := 0.4
 const WEAPON_REST_ANGLE := 0.0
@@ -60,7 +61,7 @@ var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 @onready var _pivot: Node3D = $CameraPivot
 @onready var _spring_arm: SpringArm3D = $CameraPivot/SpringArm
-@onready var _body_mesh: Node3D = $Body
+@onready var _body_mesh: Humanoid = $Body
 @onready var _weapon: Node3D = $CameraPivot/Weapon
 
 
@@ -69,6 +70,7 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
+	_body_mesh.setup(PLAYER_CLOTH_COLOR)
 	_spring_arm.add_excluded_object(get_rid())
 	_apply_camera_mode()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -102,6 +104,7 @@ func attack() -> void:
 	if _attack_cooldown <= 0.0 and not is_blocking() and not is_dodging():
 		_attack_cooldown = ATTACK_COOLDOWN
 		_attack_windup = ATTACK_WINDUP
+		_body_mesh.rotation.y = _pivot.rotation.y
 
 
 ## Rolls in the direction of movement, or backward when standing still. Avoids all damage.
@@ -191,6 +194,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_keep_inside_world()
 	interact_target = _find_interact_target()
+	_body_mesh.animate(Vector2(velocity.x, velocity.z).length(), delta)
 
 	if direction.length_squared() > 0.01:
 		var target_yaw := atan2(-direction.x, -direction.z)
@@ -265,5 +269,7 @@ func _apply_camera_mode() -> void:
 	_spring_arm.spring_length = 0.0 if first_person else THIRD_PERSON_DISTANCE
 	_spring_arm.position.x = 0.0 if first_person else SHOULDER_OFFSET
 	_body_mesh.visible = not first_person
-	_weapon.position = WEAPON_FIRST_PERSON_POSITION if first_person else WEAPON_THIRD_PERSON_POSITION
+	# In first person the body is hidden, so the weapon follows the camera instead of the hand.
+	_weapon.reparent(_pivot if first_person else _body_mesh.right_hand(), false)
+	_weapon.position = WEAPON_FIRST_PERSON_POSITION if first_person else WEAPON_HAND_POSITION
 	_weapon.scale = Vector3.ONE * (WEAPON_FIRST_PERSON_SCALE if first_person else 1.0)

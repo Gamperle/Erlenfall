@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/ui/crafting_ui.gd" id="6"]
 [ext_resource type="Script" path="res://scripts/ui/dialogue_ui.gd" id="7"]
 [ext_resource type="Script" path="res://scripts/ui/game_menu.gd" id="8"]
+[ext_resource type="Script" path="res://scripts/world/mist.gd" id="9"]
 
 [sub_resource type="ProceduralSkyMaterial" id="1"]
 sky_top_color = Color(0.34, 0.45, 0.58, 1)
@@ -24,7 +25,7 @@ ambient_light_source = 3
 tonemap_mode = 2
 fog_enabled = true
 fog_light_color = Color(0.72, 0.76, 0.8, 1)
-fog_density = 0.0016
+fog_density = 0.0005
 fog_sky_affect = 0.3
 
 [sub_resource type="LabelSettings" id="8"]
@@ -58,10 +59,14 @@ environment = SubResource("3")
 shadow_enabled = true
 directional_shadow_max_distance = 200.0
 
-[node name="DayNight" type="Node" parent="." node_paths=PackedStringArray("sun", "world_environment")]
+[node name="Mist" type="Node3D" parent="."]
+script = ExtResource("9")
+
+[node name="DayNight" type="Node" parent="." node_paths=PackedStringArray("sun", "world_environment", "mist")]
 script = ExtResource("4")
 sun = NodePath("../Sun")
 world_environment = NodePath("../WorldEnvironment")
+mist = NodePath("../Mist")
 
 [node name="Terrain" type="StaticBody3D" parent="."]
 script = ExtResource("2")

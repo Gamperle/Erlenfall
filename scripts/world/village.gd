@@ -148,7 +148,7 @@ func _road_mesh(samples: PackedVector2Array, width: float) -> MeshInstance3D:
 			for index in [left, left + 1, left + 2, left + 1, left + 3, left + 2]:
 				surface.add_index(index)
 
-	var material := _material(ROAD_COLOR)
+	var material := Surfaces.get_material(Surfaces.Pattern.ROAD, ROAD_COLOR)
 	var instance := MeshInstance3D.new()
 	instance.mesh = surface.commit()
 	instance.material_override = material

@@ -2,6 +2,9 @@ class_name Player
 extends CharacterBody3D
 ## Walks the valley with third- and first-person cameras, on keyboard, mouse, and controller.
 
+## Asks the game to show the player a short message.
+signal notice(text_key: String)
+
 const WALK_SPEED := 3.5
 const SPRINT_SPEED := 6.5
 const ACCELERATION := 12.0
@@ -40,6 +43,11 @@ const WEAPON_FIRST_PERSON_SCALE := 0.4
 const WEAPON_REST_ANGLE := 0.0
 const WEAPON_SWING_ANGLE := -1.4
 const WEAPON_BLOCK_ANGLE := 1.3
+const TORCH_ITEM := "torch"
+const TORCH_ARM_RAISE := 1.2
+const TORCH_HAND_POSITION := Vector3(0.0, -0.58, -0.05)
+const TORCH_FIRST_PERSON_POSITION := Vector3(-0.4, -0.5, -0.7)
+const TORCH_FIRST_PERSON_SCALE := 0.7
 
 var first_person := false
 var inventory := Inventory.new()
@@ -47,6 +55,10 @@ var known_recipes: Dictionary = {}
 var quests := QuestLog.new()
 ## What pressing the use button would act on right now, if anything.
 var interact_target: Interactable
+var torch_lit := false
+var torch_given := false
+## How long the current torch has burned, when torches burn out.
+var torch_burned_seconds := 0.0
 
 var health := Health.new(MAX_HEALTH)
 
@@ -58,6 +70,7 @@ var _dodge_cooldown := 0.0
 var _dodge_direction := Vector3.ZERO
 var _since_hit := REGEN_DELAY
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+var _torch := Torch.new()
 
 @onready var _pivot: Node3D = $CameraPivot
 @onready var _spring_arm: SpringArm3D = $CameraPivot/SpringArm
@@ -72,6 +85,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	_body_mesh.setup(PLAYER_CLOTH_COLOR)
 	_spring_arm.add_excluded_object(get_rid())
+	add_child(_torch)
 	_apply_camera_mode()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -97,6 +111,28 @@ func is_dodging() -> bool:
 
 func is_blocking() -> bool:
 	return not _busy and Input.is_action_pressed("block")
+
+
+## Gives the starting torch once per game, including to games saved before torches existed.
+func give_starting_items() -> void:
+	if not torch_given and FeatureFlags.enabled("torch_at_start"):
+		torch_given = true
+		inventory.add(TORCH_ITEM)
+
+
+func toggle_torch() -> void:
+	if not FeatureFlags.enabled("torches"):
+		return
+	if not torch_lit and inventory.count(TORCH_ITEM) == 0:
+		notice.emit("UI_NO_TORCH")
+		return
+	set_torch_lit(not torch_lit)
+
+
+func set_torch_lit(lit: bool) -> void:
+	torch_lit = lit
+	_torch.set_lit(lit)
+	_body_mesh.left_arm_raise = TORCH_ARM_RAISE if lit else 0.0
 
 
 ## Starts a swing. The hit lands after a short windup.
@@ -158,6 +194,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		interact()
 	elif event.is_action_pressed("inventory"):
 		get_tree().call_group(CraftingStation.UI_GROUP, "open_inventory", self)
+	elif event.is_action_pressed("toggle_torch"):
+		toggle_torch()
 	elif event.is_action_pressed("toggle_camera"):
 		first_person = not first_person
 		_apply_camera_mode()
@@ -167,6 +205,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _physics_process(delta: float) -> void:
 	_update_combat(delta)
+	_update_torch(delta)
 	if not _busy:
 		var stick := Input.get_vector("look_left", "look_right", "look_up", "look_down")
 		_look(stick * STICK_SENSITIVITY * delta)
@@ -223,6 +262,17 @@ func _update_combat(delta: float) -> void:
 		_weapon.rotation.z = 0.0
 
 
+func _update_torch(delta: float) -> void:
+	if not torch_lit or not FeatureFlags.enabled("torch_burns_out"):
+		return
+	torch_burned_seconds += delta
+	if torch_burned_seconds >= float(FeatureFlags.value("torch_burn_seconds", 0.0)):
+		torch_burned_seconds = 0.0
+		inventory.remove(TORCH_ITEM)
+		set_torch_lit(false)
+		notice.emit("UI_TORCH_BURNED_OUT")
+
+
 func _land_attack() -> void:
 	var damage := maxf(inventory.best_weapon_damage(), UNARMED_DAMAGE)
 	for node in get_tree().get_nodes_in_group(Enemy.GROUP):
@@ -273,3 +323,8 @@ func _apply_camera_mode() -> void:
 	_weapon.reparent(_pivot if first_person else _body_mesh.right_hand(), false)
 	_weapon.position = WEAPON_FIRST_PERSON_POSITION if first_person else WEAPON_HAND_POSITION
 	_weapon.scale = Vector3.ONE * (WEAPON_FIRST_PERSON_SCALE if first_person else 1.0)
+	# The raised arm would tilt the torch, so turn it back to stand upright.
+	_torch.reparent(_pivot if first_person else _body_mesh.left_hand(), false)
+	_torch.position = TORCH_FIRST_PERSON_POSITION if first_person else TORCH_HAND_POSITION
+	_torch.rotation.x = 0.0 if first_person else -TORCH_ARM_RAISE
+	_torch.scale = Vector3.ONE * (TORCH_FIRST_PERSON_SCALE if first_person else 1.0)

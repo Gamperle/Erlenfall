@@ -82,7 +82,7 @@ Combat is about 15% of play time and is simple, real-time, and often avoidable.
 | Input | Keyboard and mouse, and controller |
 | Saving | Autosave, plus manual save at a bed |
 | Multiplayer | Single-player. Possible online co-op later, so game state stays separate from presentation where this costs little, without building networking now |
-| Mods | No official support at launch, but items, recipes, and quests live in data files |
+| Mods | No official support at launch, but items, recipes, and quests live in data files, and [feature flags](FEATURE_FLAGS.md) can be overridden in mod load order |
 | Licenses | Code: MIT. Art, music, and story: CC BY-SA 4.0 |
 | Large files | Git LFS |
 | Releases | GitHub Releases, built by GitHub Actions |

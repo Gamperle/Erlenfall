@@ -2,6 +2,8 @@ extends SceneTree
 ## Run with: godot --headless --path . --script res://tests/smoke_test.gd
 
 const TEST_SAVE := "user://smoke_test_save.json"
+const TEST_FLAGS_A := "user://smoke_test_flags_a.json"
+const TEST_FLAGS_B := "user://smoke_test_flags_b.json"
 
 var _failures := 0
 
@@ -57,12 +59,14 @@ func _run() -> void:
 	var night := day_night.daylight()
 	_check(noon == 1.0 and night == 0.0, "daylight follows the hour")
 
-	for action in ["move_forward", "look_left", "jump", "sprint", "toggle_camera"]:
+	for action in ["move_forward", "look_left", "jump", "sprint", "toggle_camera", "toggle_torch"]:
 		var kinds := {}
 		for input in InputMap.action_get_events(action):
 			kinds[input.get_class()] = true
 		_check(kinds.size() >= 1 and _has_joypad(kinds), "%s has a controller binding" % action)
 
+	_test_feature_flags()
+	await _test_torch(player)
 	await _test_crafting(scene, player)
 	await _test_story(scene, player)
 	await _test_combat(scene, player)
@@ -71,6 +75,58 @@ func _run() -> void:
 
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")
 	quit(1 if _failures > 0 else 0)
+
+
+func _test_feature_flags() -> void:
+	_check(FeatureFlags.enabled("torch_recipe"), "an aggregate of enabled flags is on")
+	_check(not FeatureFlags.enabled("torch_burns_out"), "an aggregate with a disabled flag is off")
+
+	_write_flags(TEST_FLAGS_A, { "flags": { "torch_burn_time_enabled": true, "test_not": { "not": "torches" }, "test_nested": { "any": [false, { "all": ["torches", "test_not"] }, "torch_recipe"] }, "test_loop": { "all": ["test_loop"] } }, "values": { "torch_burn_seconds": 5 } })
+	_write_flags(TEST_FLAGS_B, { "flags": { "torch_burn_time_enabled": false }, "values": { "torch_burn_seconds": 9 } })
+	FeatureFlags.load_layers([TEST_FLAGS_A])
+	_check(FeatureFlags.enabled("torch_burns_out"), "a mod's flag changes an aggregate")
+	_check(not FeatureFlags.enabled("test_not") and FeatureFlags.enabled("test_nested"), "aggregates can be negated and nested")
+	_check(FeatureFlags.value("torch_burn_seconds") == 5, "a mod overrides a value")
+	FeatureFlags.load_layers([TEST_FLAGS_A, TEST_FLAGS_B])
+	_check(not FeatureFlags.enabled("torch_burns_out") and FeatureFlags.value("torch_burn_seconds") == 9, "the last mod in the load order wins")
+	FeatureFlags.load_layers([TEST_FLAGS_B, TEST_FLAGS_A])
+	_check(FeatureFlags.enabled("torch_burns_out") and FeatureFlags.value("torch_burn_seconds") == 5, "swapping the load order swaps the winner")
+	_check(not FeatureFlags.enabled("test_loop"), "a flag that depends on itself counts as off")
+	_check(not FeatureFlags.enabled("test_missing"), "an unknown flag counts as off")
+
+	_write_flags(TEST_FLAGS_A, { "flags": { "torch_crafting_enabled": false } })
+	FeatureFlags.load_layers([TEST_FLAGS_A])
+	_check(CraftingData.find_recipe("furnace", { "wood": 1, "coal": 1 }).is_empty(), "a disabled flag removes a recipe")
+	FeatureFlags.load_layers()
+	_check(not CraftingData.find_recipe("furnace", { "wood": 1, "coal": 1 }).is_empty(), "the torch recipe is on by default")
+
+
+func _test_torch(player: Player) -> void:
+	_check(player.inventory.count("torch") == 1, "a new game starts with a torch")
+	player.give_starting_items()
+	_check(player.inventory.count("torch") == 1, "the starting torch is only given once")
+
+	player.toggle_torch()
+	_check(player.torch_lit, "the torch lights")
+	await _physics_frames(30)
+	_check(player.torch_lit and player.inventory.count("torch") == 1, "by default a torch burns forever")
+
+	_write_flags(TEST_FLAGS_A, { "flags": { "torch_burn_time_enabled": true }, "values": { "torch_burn_seconds": 0.1 } })
+	FeatureFlags.load_layers([TEST_FLAGS_A])
+	await _physics_frames(30)
+	_check(not player.torch_lit and player.inventory.count("torch") == 0, "with a burn time, a torch burns out and is used up")
+	player.toggle_torch()
+	_check(not player.torch_lit, "no torch means no light")
+	FeatureFlags.load_layers()
+	player.inventory.add("torch")
+	DirAccess.remove_absolute(TEST_FLAGS_A)
+	DirAccess.remove_absolute(TEST_FLAGS_B)
+
+
+func _write_flags(path: String, data: Dictionary) -> void:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(JSON.stringify(data))
+	file.close()
 
 
 func _test_crafting(scene: Node, player: Player) -> void:
@@ -107,6 +163,13 @@ func _test_crafting(scene: Node, player: Player) -> void:
 	ui.add_material("coal")
 	ui.craft()
 	_check(player.inventory.count("iron_ingot") == 1, "smelting makes an ingot")
+	var torches := player.inventory.count("torch")
+	player.inventory.add("wood", 1)
+	ui.add_material("wood")
+	ui.add_material("coal")
+	ui.craft()
+	_check(player.inventory.count("torch") == torches + 1, "wood and coal make a torch")
+	_check(player.known_recipes.has("make_torch"), "the torch recipe is discovered")
 	_check(player.known_recipes.has("smelt_iron"), "smelting is discovered")
 	ui.close()
 	_check(not ui.is_open(), "crafting screen closes")
@@ -257,6 +320,9 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	var saved_position := player.position
 	var saved_coal := player.inventory.count("coal")
 	var recipes := player.known_recipes.size()
+	player.set_torch_lit(true)
+	player.torch_burned_seconds = 12.0
+	scene.save_game()
 
 	# Quest changes autosave, which would overwrite the save this test wants to restore.
 	scene._playing = false
@@ -264,6 +330,9 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	player.inventory.add("coal", 7)
 	player.known_recipes.clear()
 	player.health.current = 1.0
+	player.set_torch_lit(false)
+	player.torch_burned_seconds = 0.0
+	player.torch_given = false
 	player.quests.load_data({ "stages": {}, "flags": [] })
 	_check(not full_roof.visible, "the roof depends on saved flags")
 	day_night.hour = 3.0
@@ -273,6 +342,8 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	_check(player.inventory.count("coal") == saved_coal, "inventory is restored")
 	_check(player.known_recipes.size() == recipes, "recipes are restored")
 	_check(player.health.current == 100.0, "health is restored")
+	_check(player.torch_lit and player.torch_burned_seconds == 12.0 and player.torch_given, "the torch is restored")
+	player.set_torch_lit(false)
 	_check(player.quests.is_done("first_nails") and player.quests.flags.has("mayor_annoyed"), "quests and choices are restored")
 	_check(full_roof.visible, "the repaired roof is restored")
 	_check(day_night.hour != 3.0, "the time of day is restored")

@@ -1,6 +1,6 @@
 keys,en,de
 UI_WELCOME,Welcome to Erlenfall,Willkommen in Erlenfall
-UI_CONTROLS,"WASD / left stick: walk   Mouse / right stick: look   Shift / LB: sprint   Space / A: jump   Left click / RT: attack   Right click / LT: block   C / B: dodge   E / X: use   I / Back: inventory   V / Y: switch camera   T / RB: speed up time   Esc / Start: menu","WASD / linker Stick: gehen   Maus / rechter Stick: umsehen   Umschalt / LB: sprinten   Leertaste / A: springen   Linksklick / RT: angreifen   Rechtsklick / LT: blocken   C / B: ausweichen   E / X: benutzen   I / Back: Inventar   V / Y: Kamera wechseln   T / RB: Zeit vorspulen   Esc / Start: Menü"
+UI_CONTROLS,"WASD / left stick: walk   Mouse / right stick: look   Shift / LB: sprint   Space / A: jump   Left click / RT: attack   Right click / LT: block   C / B: dodge   E / X: use   I / Back: inventory   V / Y: switch camera   F / D-pad up: torch   T / RB: speed up time   Esc / Start: menu","WASD / linker Stick: gehen   Maus / rechter Stick: umsehen   Umschalt / LB: sprinten   Leertaste / A: springen   Linksklick / RT: angreifen   Rechtsklick / LT: blocken   C / B: ausweichen   E / X: benutzen   I / Back: Inventar   V / Y: Kamera wechseln   F / Steuerkreuz hoch: Fackel   T / RB: Zeit vorspulen   Esc / Start: Menü"
 UI_INTERACT_PROMPT,E / X: %s,E / X: %s
 UI_INVENTORY,Inventory,Inventar
 UI_CARRYING,Carrying: %s,Dabei: %s
@@ -35,6 +35,9 @@ ITEM_IRON_NAILS,Iron nails,Eisennägel
 ITEM_IRON_DAGGER,Iron dagger,Eisendolch
 ITEM_IRON_SWORD,Iron sword,Eisenschwert
 ITEM_IRON_AXE,Iron axe,Eisenaxt
+ITEM_TORCH,Torch,Fackel
+UI_NO_TORCH,You have no torch.,Du hast keine Fackel.
+UI_TORCH_BURNED_OUT,Your torch has burned out.,Deine Fackel ist abgebrannt.
 QUALITY_CRUDE,Crude,Grob
 QUALITY_COMMON,Common,Gewöhnlich
 QUALITY_FINE,Fine,Fein

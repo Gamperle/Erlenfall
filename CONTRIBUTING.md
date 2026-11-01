@@ -13,6 +13,7 @@ Contributions are welcome. For anything larger than a small fix, please open an 
 - Use Godot 4.7.2 and GDScript. C++ needs a profiling result that justifies it.
 - Follow the [GDScript style guide](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html).
 - Keep items, recipes, and quests in data files, not in code.
+- Put optional or tunable features behind [feature flags](docs/FEATURE_FLAGS.md). Mods can override flags, and the mod load order decides which one wins.
 - Add all player-facing text to `localization/strings.csv`, in English and German.
 - Large binary files go through Git LFS. See `.gitattributes`.
 

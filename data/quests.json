@@ -10,7 +10,8 @@
 		"title": "QUEST_FIRST_NAILS",
 		"objectives": [
 			{ "id": "make_nails", "text": "OBJ_MAKE_NAILS", "item": "iron_nails", "count": 4 },
-			{ "id": "tell_mayor", "text": "OBJ_TELL_MAYOR" }
+			{ "id": "tell_mayor", "text": "OBJ_TELL_MAYOR" },
+			{ "id": "repair_roof", "text": "OBJ_REPAIR_ROOF" }
 		]
 	}
 }

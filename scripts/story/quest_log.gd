@@ -52,6 +52,21 @@ func tracker_lines(inventory: Inventory) -> PackedStringArray:
 	return lines
 
 
+func to_data() -> Dictionary:
+	return { "stages": _stages.duplicate(), "flags": flags.keys() }
+
+
+func load_data(data: Dictionary) -> void:
+	_stages.clear()
+	var stages: Dictionary = data["stages"]
+	for quest_id: String in stages:
+		_stages[quest_id] = int(stages[quest_id])
+	flags.clear()
+	for flag: String in data["flags"]:
+		flags[flag] = true
+	changed.emit()
+
+
 func _current(quest_id: String) -> Dictionary:
 	if not is_active(quest_id):
 		return {}

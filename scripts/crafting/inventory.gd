@@ -57,6 +57,17 @@ func lose_materials(share: float) -> void:
 	changed.emit()
 
 
+func to_data() -> Dictionary:
+	return _stacks.duplicate()
+
+
+func load_data(data: Dictionary) -> void:
+	_stacks.clear()
+	for stack_key: String in data:
+		_stacks[stack_key] = int(data[stack_key])
+	changed.emit()
+
+
 ## Returns dictionaries with "id", "quality", and "count", sorted for stable display.
 func entries() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []

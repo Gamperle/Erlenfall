@@ -33,6 +33,9 @@ const DODGE_SECONDS := 0.25
 const DODGE_COOLDOWN := 0.8
 const INTERACT_DISTANCE := 3.5
 const INTERACT_FACING := 0.3
+const WEAPON_THIRD_PERSON_POSITION := Vector3(0.45, -0.45, -0.6)
+const WEAPON_FIRST_PERSON_POSITION := Vector3(0.3, -0.42, -0.7)
+const WEAPON_FIRST_PERSON_SCALE := 0.4
 const WEAPON_REST_ANGLE := 0.0
 const WEAPON_SWING_ANGLE := -1.4
 const WEAPON_BLOCK_ANGLE := 1.3
@@ -155,8 +158,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("toggle_camera"):
 		first_person = not first_person
 		_apply_camera_mode()
-	elif event.is_action_pressed("ui_cancel"):
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	elif event.is_action_pressed("pause"):
+		get_tree().call_group(Bed.GAME_GROUP, "open_pause_menu")
 
 
 func _physics_process(delta: float) -> void:
@@ -262,3 +265,5 @@ func _apply_camera_mode() -> void:
 	_spring_arm.spring_length = 0.0 if first_person else THIRD_PERSON_DISTANCE
 	_spring_arm.position.x = 0.0 if first_person else SHOULDER_OFFSET
 	_body_mesh.visible = not first_person
+	_weapon.position = WEAPON_FIRST_PERSON_POSITION if first_person else WEAPON_THIRD_PERSON_POSITION
+	_weapon.scale = Vector3.ONE * (WEAPON_FIRST_PERSON_SCALE if first_person else 1.0)

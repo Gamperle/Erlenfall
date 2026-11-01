@@ -1,6 +1,6 @@
 keys,en,de
 UI_WELCOME,Welcome to Erlenfall,Willkommen in Erlenfall
-UI_CONTROLS,"WASD / left stick: walk   Mouse / right stick: look   Shift / LB: sprint   Space / A: jump   Left click / RT: attack   Right click / LT: block   C / B: dodge   E / X: use   I / Back: inventory   V / Y: switch camera   T / RB: speed up time   Esc: release mouse","WASD / linker Stick: gehen   Maus / rechter Stick: umsehen   Umschalt / LB: sprinten   Leertaste / A: springen   Linksklick / RT: angreifen   Rechtsklick / LT: blocken   C / B: ausweichen   E / X: benutzen   I / Back: Inventar   V / Y: Kamera wechseln   T / RB: Zeit vorspulen   Esc: Maus freigeben"
+UI_CONTROLS,"WASD / left stick: walk   Mouse / right stick: look   Shift / LB: sprint   Space / A: jump   Left click / RT: attack   Right click / LT: block   C / B: dodge   E / X: use   I / Back: inventory   V / Y: switch camera   T / RB: speed up time   Esc / Start: menu","WASD / linker Stick: gehen   Maus / rechter Stick: umsehen   Umschalt / LB: sprinten   Leertaste / A: springen   Linksklick / RT: angreifen   Rechtsklick / LT: blocken   C / B: ausweichen   E / X: benutzen   I / Back: Inventar   V / Y: Kamera wechseln   T / RB: Zeit vorspulen   Esc / Start: Menü"
 UI_INTERACT_PROMPT,E / X: %s,E / X: %s
 UI_INVENTORY,Inventory,Inventar
 UI_CARRYING,Carrying: %s,Dabei: %s
@@ -63,7 +63,7 @@ DLG_BERTRAM_CHOICE_SHOW,Give me a chance and I'll show you.,"Gib mir eine Chance
 DLG_BERTRAM_CHOICE_NEVER,"Never tried, but I'm willing to learn.","Noch nie versucht, aber ich lerne gern."
 DLG_BERTRAM_TASK,"The inn's roof leaks, and I'm out of nails. Take two lumps of iron ore and one of coal to my furnace for an ingot, then work that ingot alone on the anvil. It gives four nails. The ore is up the north road, at the landslide.","Das Dach des Gasthauses ist undicht, und mir sind die Nägel ausgegangen. Bring zwei Brocken Eisenerz und einen Brocken Kohle zu meinem Ofen für einen Barren, und bearbeite diesen Barren allein auf dem Amboss. Das ergibt vier Nägel. Das Erz liegt die Nordstraße hinauf, am Erdrutsch."
 DLG_BERTRAM_REMINDER,"No nails yet? Two ore and one coal in the furnace, then the ingot alone on the anvil. Strike when the iron is ready, not before.","Noch keine Nägel? Zwei Erz und eine Kohle in den Ofen, dann den Barren allein auf den Amboss. Schlag zu, wenn das Eisen bereit ist, nicht vorher."
-DLG_BERTRAM_THANKS,"Let me see. Honest work! Here, take two ingots as your pay. One more thing: Mayor Brandt doesn't like hearing about repairs secondhand. Better he hears it from you.","Zeig her. Ehrliche Arbeit! Hier, zwei Barren als Lohn. Noch etwas: Bürgermeister Brandt erfährt ungern aus zweiter Hand von Reparaturen. Besser, er hört es von dir."
+DLG_BERTRAM_THANKS,"Let me see. Honest work! Here, take two ingots as your pay. I'll leave the nails and a ladder at the inn for you. One thing first: Mayor Brandt doesn't like hearing about repairs secondhand. Better he hears it from you.","Zeig her. Ehrliche Arbeit! Hier, zwei Barren als Lohn. Die Nägel und eine Leiter lasse ich dir am Gasthaus. Aber zuerst: Bürgermeister Brandt erfährt ungern aus zweiter Hand von Reparaturen. Besser, er hört es von dir."
 DLG_BERTRAM_AFTER,It's good to hear a second hammer in this valley again.,"Es tut gut, wieder einen zweiten Hammer in diesem Tal zu hören."
 DLG_BERTRAM_IDLE,Mind the sparks.,Pass auf die Funken auf.
 DLG_MIRA_HINT,"Ore? Follow the north road to the landslide. Look for the rust-colored rocks; the black ones are coal. There's wood stacked by the anvil if you need any. And keep clear of the woods east of there: goblins have moved in since the slide.","Erz? Folge der Nordstraße bis zum Erdrutsch. Achte auf die rostfarbenen Felsen, die schwarzen sind Kohle. Neben dem Amboss ist Holz gestapelt, falls du welches brauchst. Und halte dich vom Wald östlich davon fern: Seit dem Erdrutsch haben sich dort Goblins eingenistet."
@@ -72,10 +72,25 @@ DLG_MIRA_IDLE,"You actually came! Grandma's been watching the road for days. You
 DLG_BRANDT_CONFRONT,"I hear you've been making nails for the inn's roof. Nobody asked me. In Erlenfall, repairs go through the mayor.","Ich höre, du machst Nägel für das Dach des Gasthauses. Mich hat niemand gefragt. In Erlenfall laufen Reparaturen über den Bürgermeister."
 DLG_BRANDT_CHOICE_SORRY,"You're right, I should have come to you first.","Sie haben recht, ich hätte zuerst zu Ihnen kommen sollen."
 DLG_BRANDT_CHOICE_LEAK,"The roof leaks. Someone had to do something.","Das Dach ist undicht. Jemand musste etwas tun."
-DLG_BRANDT_RESPECTED,"Hm. Manners, at least. Come to me before the next one, and we may get along.","Hm. Wenigstens Manieren. Komm vor dem nächsten Mal zu mir, dann kommen wir vielleicht miteinander aus."
+DLG_BRANDT_RESPECTED,"Hm. Manners, at least. Go on, then, mend the roof. Come to me before the next one, and we may get along.","Hm. Wenigstens Manieren. Dann flick das Dach. Komm vor dem nächsten Mal zu mir, dann kommen wir vielleicht miteinander aus."
 DLG_BRANDT_ANNOYED,"Someone. I have kept this village standing for eleven years, newcomer. Remember that when you're mending its roofs.","Jemand. Ich halte dieses Dorf seit elf Jahren am Leben, Neuankömmling. Denk daran, wenn du seine Dächer flickst."
-DLG_BRANDT_WARM,"You again. The inn's roof no longer drips on the guests, I'm told. Carry on, then.","Du schon wieder. Das Dach des Gasthauses tropft nicht mehr auf die Gäste, höre ich. Dann mach weiter."
+DLG_BRANDT_WARM,"You again. The inn will be dry soon enough, I'm told. Carry on, then.","Du schon wieder. Das Gasthaus wird bald trocken sein, höre ich. Dann mach weiter."
 DLG_BRANDT_COLD,I'm watching what you do in my village. That is all.,Ich beobachte, was du in meinem Dorf tust. Das ist alles.
 DLG_BRANDT_IDLE,"I am Mayor Brandt. Erlenfall has its own way of doing things, and you would do well to learn it.","Ich bin Bürgermeister Brandt. Erlenfall hat seine eigene Art, die Dinge zu regeln, und du tätest gut daran, sie zu lernen."
 ENEMY_GOBLIN,Goblin,Goblin
 UI_WOKE_UP,"You wake up in the village, sore and bruised. Some of the materials you carried are gone.","Du wachst im Dorf auf, wund und zerschlagen. Ein Teil deiner Materialien ist verloren."
+OBJ_REPAIR_ROOF,Use the ladder at the inn to nail the roof back together,"Benutze die Leiter am Gasthaus, um das Dach wieder zusammenzunageln"
+PROMPT_REPAIR_ROOF,Nail the roof back together,Das Dach zusammennageln
+PROMPT_SLEEP,Sleep and save,Schlafen und speichern
+NPC_GRETA,Greta the innkeeper,Wirtin Greta
+DLG_GRETA_IDLE,"Mind the buckets, dear. When it rains in here, the guests get wetter than they do outside. If I had any guests.","Pass auf die Eimer auf. Wenn es hier hereinregnet, werden die Gäste nasser als draußen. Wenn ich denn Gäste hätte."
+DLG_GRETA_GRATEFUL,"It was you who mended my roof, wasn't it? No more buckets, no more dripping on the guests. I'd stopped believing anyone would come back to this valley. Thank you. Truly.","Mein Dach hast du geflickt, nicht wahr? Keine Eimer mehr, kein Tropfen mehr auf die Gäste. Ich hatte aufgehört zu glauben, dass noch jemand in dieses Tal zurückkommt. Danke. Wirklich."
+UI_GAME_TITLE,Erlenfall,Erlenfall
+UI_CONTINUE_GAME,Continue,Fortsetzen
+UI_NEW_GAME,New game,Neues Spiel
+UI_QUIT,Quit,Beenden
+UI_PAUSED,Paused,Pause
+UI_RESUME,Resume,Weiterspielen
+UI_SAVE_AND_QUIT,Save and quit,Speichern und beenden
+UI_SLEPT,"You sleep until morning and wake up rested. Game saved.","Du schläfst bis zum Morgen und wachst erholt auf. Spiel gespeichert."
+UI_DEMO_END,"The inn has its roof back. You've reached the end of this first version, and you can keep crafting and exploring. Talk to the villagers to see what has changed.","Das Gasthaus hat sein Dach wieder. Du hast das Ende dieser ersten Version erreicht und kannst weiter schmieden und die Gegend erkunden. Sprich mit den Dorfbewohnern und sieh, was sich geändert hat."

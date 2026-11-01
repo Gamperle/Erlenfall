@@ -4,7 +4,7 @@
 		{ "id": "forge", "x": 15, "z": 14, "width": 9, "depth": 7, "height": 3.5, "rotation": -15, "color": "#5f5852" },
 		{ "id": "town_hall", "x": 0, "z": -28, "width": 14, "depth": 9, "height": 6, "rotation": 0, "color": "#7d7468" },
 		{ "id": "grandmother_house", "x": -24, "z": -6, "width": 7, "depth": 6, "height": 3.5, "rotation": 80, "color": "#90785c" },
-		{ "id": "inn", "x": 25, "z": -14, "width": 11, "depth": 8, "height": 5, "rotation": -80, "color": "#7f6548" },
+		{ "id": "inn", "x": 25, "z": -14, "width": 11, "depth": 8, "height": 5, "rotation": -80, "color": "#7f6548", "repaired_by_flag": "inn_roof_repaired" },
 		{ "id": "abandoned_house_1", "x": -36, "z": 28, "width": 7, "depth": 6, "height": 3, "rotation": 25, "color": "#5c5247", "ruined": true },
 		{ "id": "abandoned_house_2", "x": 38, "z": 26, "width": 8, "depth": 6, "height": 3, "rotation": -30, "color": "#5a5045", "ruined": true },
 		{ "id": "abandoned_house_3", "x": -40, "z": -30, "width": 6, "depth": 6, "height": 2.5, "rotation": 50, "color": "#584e44", "ruined": true },
@@ -21,12 +21,19 @@
 		{ "id": "hedda", "name": "NPC_HEDDA", "x": -18, "z": -2, "color": "#6d5a7a" },
 		{ "id": "bertram", "name": "NPC_BERTRAM", "x": 12.5, "z": 21, "color": "#4a3b30" },
 		{ "id": "mira", "name": "NPC_MIRA", "x": -9, "z": 30, "color": "#3f7a6a" },
+		{ "id": "greta", "name": "NPC_GRETA", "x": 17, "z": -8, "color": "#a0703a" },
 		{ "id": "brandt", "name": "NPC_BRANDT", "x": 4, "z": -19, "color": "#7a2e2e" }
 	],
 	"enemies": [
 		{ "type": "goblin", "x": 118, "z": -150 },
 		{ "type": "goblin", "x": 124, "z": -142 },
 		{ "type": "goblin", "x": 112, "z": -140 }
+	],
+	"repair_sites": [
+		{ "quest": "first_nails", "objective": "repair_roof", "flag": "inn_roof_repaired", "prompt": "PROMPT_REPAIR_ROOF", "x": 19, "z": -15, "width": 0.6, "depth": 0.3, "height": 5, "color": "#8a6a42" }
+	],
+	"beds": [
+		{ "prompt": "PROMPT_SLEEP", "x": -9, "z": 21, "width": 2, "depth": 1, "height": 0.5, "color": "#6f5a4a" }
 	],
 	"stations": [
 		{ "id": "furnace", "prompt": "UI_FURNACE", "x": 9, "z": 24, "width": 2, "depth": 2, "height": 2.2, "color": "#3f3a36" },

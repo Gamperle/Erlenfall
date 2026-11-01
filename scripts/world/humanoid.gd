@@ -8,6 +8,9 @@ const STRIDE_RATE := 2.6
 const MAX_STRIDE := 0.7
 const WALK_SPEED_FOR_FULL_STRIDE := 4.0
 
+## How far the left arm is raised to the front, for holding a torch. 0 lets it swing.
+var left_arm_raise := 0.0
+
 var _phase := 0.0
 var _left_leg: Node3D
 var _right_leg: Node3D
@@ -43,13 +46,17 @@ func right_hand() -> Node3D:
 	return _right_arm
 
 
+func left_hand() -> Node3D:
+	return _left_arm
+
+
 ## Swings the limbs to match a walking speed.
 func animate(speed: float, delta: float) -> void:
 	_phase += delta * STRIDE_RATE * speed
 	var stride := sin(_phase) * MAX_STRIDE * minf(speed / WALK_SPEED_FOR_FULL_STRIDE, 1.0)
 	_left_leg.rotation.x = stride
 	_right_leg.rotation.x = -stride
-	_left_arm.rotation.x = -stride * 0.7
+	_left_arm.rotation.x = left_arm_raise if left_arm_raise != 0.0 else -stride * 0.7
 	_right_arm.rotation.x = stride * 0.7
 
 

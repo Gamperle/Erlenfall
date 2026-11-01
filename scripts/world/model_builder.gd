@@ -17,6 +17,7 @@ const DOOR_SIZE := Vector2(1.1, 2.1)
 const WINDOW_SIZE := Vector2(0.9, 0.9)
 const ROOF_HEIGHT := 2.5
 const ROOF_OVERHANG := 1.0
+const TORCH_FLAME_HEIGHT := 0.62
 
 
 static func box(size: Vector3, pattern: Surfaces.Pattern, color: Color, at := Vector3.ZERO) -> MeshInstance3D:
@@ -127,6 +128,34 @@ static func wood_pile(size: float) -> Node3D:
 	return pile
 
 
+## A stick with a wrapped head and a flame. Its origin is where the hand grips it.
+static func torch() -> Node3D:
+	var model := Node3D.new()
+	model.add_child(box(Vector3(0.04, 0.6, 0.04), Surfaces.Pattern.WOOD, WOOD_COLOR, Vector3.UP * 0.2))
+	model.add_child(box(Vector3(0.08, 0.14, 0.08), Surfaces.Pattern.PLASTER, IRON_COLOR, Vector3.UP * 0.5))
+	var flame_mesh := SphereMesh.new()
+	flame_mesh.radius = 0.07
+	flame_mesh.height = 0.26
+	flame_mesh.radial_segments = 8
+	flame_mesh.rings = 4
+	flame_mesh.material = _fire_material(2.5)
+	var flame := MeshInstance3D.new()
+	flame.mesh = flame_mesh
+	flame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	flame.position = Vector3.UP * TORCH_FLAME_HEIGHT
+	model.add_child(flame)
+	return model
+
+
+static func _fire_material(energy: float) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = FIRE_COLOR
+	material.emission_enabled = true
+	material.emission = FIRE_COLOR
+	material.emission_energy_multiplier = energy
+	return material
+
+
 static func _window(at: Vector3) -> Node3D:
 	var window := Node3D.new()
 	window.position = at
@@ -140,14 +169,9 @@ static func _window(at: Vector3) -> Node3D:
 static func _furnace(size: Vector3) -> Node3D:
 	var furnace := Node3D.new()
 	furnace.add_child(box(size, Surfaces.Pattern.STONE, STONE_COLOR.darkened(0.15), Vector3.UP * size.y / 2.0))
-	var mouth_material := StandardMaterial3D.new()
-	mouth_material.albedo_color = FIRE_COLOR
-	mouth_material.emission_enabled = true
-	mouth_material.emission = FIRE_COLOR
-	mouth_material.emission_energy_multiplier = 0.9
 	var mouth_mesh := BoxMesh.new()
 	mouth_mesh.size = Vector3(size.x * 0.5, size.y * 0.25, 0.05)
-	mouth_mesh.material = mouth_material
+	mouth_mesh.material = _fire_material(0.9)
 	var mouth := MeshInstance3D.new()
 	mouth.mesh = mouth_mesh
 	mouth.position = Vector3(0.0, size.y * 0.3, size.z / 2.0 + 0.03)

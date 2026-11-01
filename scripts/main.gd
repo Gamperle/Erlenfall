@@ -46,6 +46,7 @@ func _ready() -> void:
 	_player.inventory.changed.connect(_update_quest_label)
 	_player.health.changed.connect(_update_health_bar)
 	_player.health.died.connect(_on_player_died)
+	_player.notice.connect(_show_message)
 
 	_menu.continue_chosen.connect(_continue_game)
 	_menu.new_game_chosen.connect(_start_new_game)
@@ -131,6 +132,7 @@ func _begin_playing() -> void:
 	_since_save = 0.0
 	_menu.close()
 	_player.set_busy(false)
+	_player.give_starting_items()
 	_on_quests_changed()
 	_update_health_bar()
 

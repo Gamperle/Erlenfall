@@ -17,6 +17,9 @@ static func write(path: String, player: Player, day_night: DayNight) -> void:
 		"health": player.health.current,
 		"inventory": player.inventory.to_data(),
 		"known_recipes": player.known_recipes.keys(),
+		"torch_given": player.torch_given,
+		"torch_lit": player.torch_lit,
+		"torch_burned_seconds": player.torch_burned_seconds,
 		"quests": player.quests.to_data(),
 		"hour": day_night.hour,
 	}
@@ -40,6 +43,11 @@ static func apply(path: String, player: Player, day_night: DayNight) -> bool:
 	player.known_recipes.clear()
 	for recipe_id: String in data["known_recipes"]:
 		player.known_recipes[recipe_id] = true
+	# Games saved before torches existed don't have these.
+	player.torch_given = data.get("torch_given", false)
+	player.torch_burned_seconds = data.get("torch_burned_seconds", 0.0)
+	var can_light: bool = FeatureFlags.enabled("torches") and player.inventory.count(Player.TORCH_ITEM) > 0
+	player.set_torch_lit(data.get("torch_lit", false) and can_light)
 	day_night.hour = data["hour"]
 	# Last, because quest changes trigger an autosave.
 	player.quests.load_data(data["quests"])

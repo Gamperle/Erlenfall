@@ -1,0 +1,14 @@
+{
+	"flags": {
+		"torches": true,
+		"torch_crafting_enabled": true,
+		"torch_starting_item_enabled": true,
+		"torch_burn_time_enabled": false,
+		"torch_recipe": { "all": ["torches", "torch_crafting_enabled"] },
+		"torch_at_start": { "all": ["torches", "torch_starting_item_enabled"] },
+		"torch_burns_out": { "all": ["torches", "torch_burn_time_enabled"] }
+	},
+	"values": {
+		"torch_burn_seconds": 600
+	}
+}

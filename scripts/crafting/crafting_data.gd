@@ -43,7 +43,7 @@ static func quality_for_score(score: float) -> String:
 static func recipes_for(station: String) -> Array[Dictionary]:
 	var recipes: Array[Dictionary] = []
 	for recipe: Dictionary in _get_data()["recipes"]:
-		if recipe["station"] == station:
+		if recipe["station"] == station and (not recipe.has("requires_flag") or FeatureFlags.enabled(recipe["requires_flag"])):
 			recipes.append(recipe)
 	return recipes
 

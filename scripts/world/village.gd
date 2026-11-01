@@ -23,6 +23,7 @@ const BOULDER_LUMPINESS := 0.35
 @export var terrain: Terrain
 
 var _road_samples: Array[PackedVector2Array] = []
+var _repairs: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -44,28 +45,42 @@ func _ready() -> void:
 		enemy.setup(enemy_data["type"], _ground_position(enemy_data["x"], enemy_data["z"]) + Vector3.UP * 0.2)
 		add_child(enemy)
 	for station: Dictionary in layout["stations"]:
-		_add_station(station)
+		var crafting_station := CraftingStation.new()
+		crafting_station.name = station["id"]
+		crafting_station.station_id = station["id"]
+		_add_box_interactable(crafting_station, station)
+	for site: Dictionary in layout["repair_sites"]:
+		var repair_site := RepairSite.new()
+		repair_site.setup(site)
+		_add_box_interactable(repair_site, site)
+	for bed_data: Dictionary in layout["beds"]:
+		_add_box_interactable(Bed.new(), bed_data)
 	for resource: Dictionary in layout["resources"]:
 		_add_resource(resource)
 
 
-func _add_station(data: Dictionary) -> void:
-	var station := CraftingStation.new()
-	station.name = data["id"]
-	station.station_id = data["id"]
-	station.prompt_key = data["prompt"]
-	station.position = _ground_position(data["x"], data["z"])
-	add_child(station)
+## Shows or hides repairs to match the story flags.
+func apply_flags(flags: Dictionary) -> void:
+	for repair in _repairs:
+		var repaired: bool = flags.has(repair["flag"])
+		repair["repaired"].visible = repaired
+		repair["damaged"].visible = not repaired
+
+
+func _add_box_interactable(node: Interactable, data: Dictionary) -> void:
+	node.prompt_key = data["prompt"]
+	node.position = _ground_position(data["x"], data["z"])
+	add_child(node)
 
 	var size := Vector3(data["width"], data["height"], data["depth"])
 	var center := Vector3.UP * (size.y / 2.0)
-	station.add_child(_mesh_instance(_box(size, Color(data["color"])), center))
+	node.add_child(_mesh_instance(_box(size, Color(data["color"])), center))
 	var shape := BoxShape3D.new()
 	shape.size = size
 	var collision := CollisionShape3D.new()
 	collision.shape = shape
 	collision.position = center
-	station.add_child(collision)
+	node.add_child(collision)
 
 
 func _add_resource(data: Dictionary) -> void:
@@ -212,7 +227,29 @@ func _add_building(data: Dictionary) -> void:
 		roof.size = Vector3(data["width"] + 1.0, ROOF_HEIGHT, data["depth"] + 1.0)
 		roof.material = _material(ROOF_COLOR)
 		var roof_position: Vector3 = Vector3.UP * (data["height"] + ROOF_HEIGHT / 2.0)
-		body.add_child(_mesh_instance(roof, roof_position))
+		var full_roof := _mesh_instance(roof, roof_position)
+		body.add_child(full_roof)
+		if data.has("repaired_by_flag"):
+			full_roof.name = "RepairedRoof"
+			var damaged := _damaged_roof(data["width"], data["depth"], data["height"])
+			body.add_child(damaged)
+			_repairs.append({ "flag": data["repaired_by_flag"], "repaired": full_roof, "damaged": damaged })
+
+
+## A few bare rafters and loose planks where the roof should be.
+func _damaged_roof(width: float, depth: float, wall_height: float) -> Node3D:
+	var damaged := Node3D.new()
+	damaged.name = "DamagedRoof"
+	for offset: float in [-0.4, -0.05, 0.3]:
+		var rafter_size := Vector3(width * 0.65, 0.2, 0.3)
+		var rafter := _mesh_instance(_box(rafter_size, ROOF_COLOR), Vector3(width * -0.2, wall_height + 1.0, depth * offset))
+		rafter.rotation.z = 0.4
+		damaged.add_child(rafter)
+	var plank_size := Vector3(width * 0.45, 0.1, depth * 0.4)
+	var plank := _mesh_instance(_box(plank_size, ROOF_COLOR), Vector3(width * 0.2, wall_height + 0.6, depth * 0.25))
+	plank.rotation.z = -0.35
+	damaged.add_child(plank)
+	return damaged
 
 
 func _add_field(data: Dictionary) -> void:

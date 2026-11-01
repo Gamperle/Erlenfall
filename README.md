@@ -2,7 +2,7 @@
 
 A free, open-source 3D fantasy RPG about crafting and rebuilding. A landslide cut a mountain village off from the world. You inherit your grandfather's house, and with forge, cauldron, and workbench you help turn the village into a small town.
 
-Erlenfall is a placeholder name. The game is in early development and is not playable yet.
+Erlenfall is a placeholder name. The game is in early development: a first playable version with placeholder art.
 
 - [Game design and milestones](docs/GAME_DESIGN.md)
 - [Contributing](CONTRIBUTING.md)
@@ -23,6 +23,8 @@ godot --path Erlenfall --import
 ```bash
 godot --path Erlenfall
 ```
+
+Save files are stored in Godot's user data folder.
 
 ## License
 

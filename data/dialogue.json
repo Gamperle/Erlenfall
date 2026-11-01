@@ -94,6 +94,17 @@
 			"nodes": { "idle": { "text": "DLG_MIRA_IDLE" } }
 		}
 	],
+	"greta": [
+		{
+			"when": { "flag": "inn_roof_repaired" },
+			"start": "grateful",
+			"nodes": { "grateful": { "text": "DLG_GRETA_GRATEFUL" } }
+		},
+		{
+			"start": "idle",
+			"nodes": { "idle": { "text": "DLG_GRETA_IDLE" } }
+		}
+	],
 	"brandt": [
 		{
 			"when": { "objective": ["first_nails", "tell_mayor"] },

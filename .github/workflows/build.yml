@@ -1,0 +1,79 @@
+name: Test and build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: 4.7.2
+  GODOT_URL: https://github.com/godotengine/godot/releases/download/4.7.2-stable
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install Godot and export templates
+        run: |
+          mkdir -p "$HOME/godot" "$HOME/.local/share/godot/export_templates/$GODOT_VERSION.stable"
+          cd "$HOME/godot"
+          curl -fsSLO "$GODOT_URL/Godot_v$GODOT_VERSION-stable_linux.x86_64.zip"
+          curl -fsSLO "$GODOT_URL/Godot_v$GODOT_VERSION-stable_export_templates.tpz"
+          curl -fsSLO "$GODOT_URL/SHA512-SUMS.txt"
+          grep -E " Godot_v$GODOT_VERSION-stable_(linux.x86_64.zip|export_templates.tpz)$" SHA512-SUMS.txt | sha512sum -c -
+          unzip -q "Godot_v$GODOT_VERSION-stable_linux.x86_64.zip"
+          mv "Godot_v$GODOT_VERSION-stable_linux.x86_64" godot
+          unzip -q -j "Godot_v$GODOT_VERSION-stable_export_templates.tpz" \
+            "templates/version.txt" "templates/linux_*x86_64*" "templates/windows_*x86_64*" \
+            -d "$HOME/.local/share/godot/export_templates/$GODOT_VERSION.stable"
+          echo "$HOME/godot" >> "$GITHUB_PATH"
+
+      - name: Import project
+        run: godot --headless --path . --import
+
+      - name: Run smoke test
+        run: godot --headless --path . --script res://tests/smoke_test.gd
+
+      - name: Export builds
+        run: |
+          mkdir -p build/linux build/windows
+          godot --headless --path . --export-release "Linux" build/linux/Erlenfall.x86_64
+          godot --headless --path . --export-release "Windows" build/windows/Erlenfall.exe
+          test -s build/linux/Erlenfall.x86_64
+          test -s build/windows/Erlenfall.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: erlenfall-linux
+          path: build/linux
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: erlenfall-windows
+          path: build/windows
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          (cd erlenfall-linux && zip -q ../erlenfall-linux.zip *)
+          (cd erlenfall-windows && zip -q ../erlenfall-windows.zip *)
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes \
+            erlenfall-linux.zip erlenfall-windows.zip

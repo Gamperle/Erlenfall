@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="5"]
 [ext_resource type="Script" path="res://scripts/ui/crafting_ui.gd" id="6"]
 [ext_resource type="Script" path="res://scripts/ui/dialogue_ui.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/ui/game_menu.gd" id="8"]
 
 [sub_resource type="ProceduralSkyMaterial" id="1"]
 sky_top_color = Color(0.34, 0.45, 0.58, 1)
@@ -157,3 +158,7 @@ script = ExtResource("6")
 [node name="DialogueUI" type="CanvasLayer" parent="."]
 layer = 2
 script = ExtResource("7")
+
+[node name="GameMenu" type="CanvasLayer" parent="."]
+layer = 3
+script = ExtResource("8")

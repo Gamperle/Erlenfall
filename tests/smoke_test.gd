@@ -1,6 +1,8 @@
 extends SceneTree
 ## Run with: godot --headless --path . --script res://tests/smoke_test.gd
 
+const TEST_SAVE := "user://smoke_test_save.json"
+
 var _failures := 0
 
 
@@ -9,7 +11,10 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	DirAccess.remove_absolute(TEST_SAVE)
 	var scene: Node = load("res://scenes/main.tscn").instantiate()
+	scene.show_menu = false
+	scene.save_path = TEST_SAVE
 	root.add_child(scene)
 	await _physics_frames(90)
 
@@ -61,6 +66,7 @@ func _run() -> void:
 	await _test_crafting(scene, player)
 	await _test_story(scene, player)
 	await _test_combat(scene, player)
+	await _test_save_and_menu(scene, player, day_night)
 	_test_translations()
 
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")
@@ -163,7 +169,21 @@ func _test_story(scene: Node, player: Player) -> void:
 	_check(quests.current_objective("first_nails") == "tell_mayor", "the smith sends the player to the mayor")
 
 	_talk(ui, "brandt", player, [1, 0])
-	_check(quests.is_done("first_nails"), "telling the mayor completes the quest")
+	_check(quests.current_objective("first_nails") == "repair_roof", "the mayor leads to the roof repair")
+	var site: RepairSite = null
+	for child in village.get_children():
+		if child is RepairSite:
+			site = child
+	var inn := village.get_node("inn")
+	var repaired_roof: Node3D = inn.get_node("RepairedRoof")
+	var damaged_roof: Node3D = inn.get_node("DamagedRoof")
+	_check(damaged_roof.visible and not repaired_roof.visible, "the inn starts with a damaged roof")
+	_check(site.is_available(), "the repair is available during its objective")
+	site.interact(player)
+	_check(quests.is_done("first_nails"), "repairing the roof completes the quest")
+	_check(repaired_roof.visible and not damaged_roof.visible, "the repair shows on the inn")
+	_check(not site.is_available(), "the repair can't be repeated")
+	_check(DialogueRunner.new("greta", player).text_key() == "DLG_GRETA_GRATEFUL", "the innkeeper thanks the player")
 	_check(quests.flags.has("mayor_annoyed"), "the player's choice is remembered")
 	var cold := DialogueRunner.new("brandt", player)
 	_check(cold.text_key() == "DLG_BRANDT_COLD", "the mayor reacts to the choice")
@@ -225,6 +245,59 @@ func _test_combat(scene: Node, player: Player) -> void:
 	_check(player.global_position.distance_to(Vector3(-12.0, player.global_position.y, 30.0)) < 2.0, "death returns the player to the village")
 	_check(player.inventory.count("coal") < coal, "death costs some materials")
 	_check(enemy.visible and enemy.state != Enemy.State.DEAD, "enemies return after the player dies")
+
+
+func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> void:
+	var menu: GameMenu = scene.get_node("GameMenu")
+	var village: Village = scene.get_node("Village")
+	var full_roof: Node3D = village.get_node("inn/RepairedRoof")
+
+	scene.save_game()
+	_check(SaveGame.exists(TEST_SAVE), "the game saves")
+	var saved_position := player.position
+	var saved_coal := player.inventory.count("coal")
+	var recipes := player.known_recipes.size()
+
+	# Quest changes autosave, which would overwrite the save this test wants to restore.
+	scene._playing = false
+	player.position += Vector3(5.0, 0.0, 5.0)
+	player.inventory.add("coal", 7)
+	player.known_recipes.clear()
+	player.health.current = 1.0
+	player.quests.load_data({ "stages": {}, "flags": [] })
+	_check(not full_roof.visible, "the roof depends on saved flags")
+	day_night.hour = 3.0
+
+	_check(SaveGame.apply(TEST_SAVE, player, day_night), "the game loads")
+	_check(player.position.is_equal_approx(saved_position), "position is restored")
+	_check(player.inventory.count("coal") == saved_coal, "inventory is restored")
+	_check(player.known_recipes.size() == recipes, "recipes are restored")
+	_check(player.health.current == 100.0, "health is restored")
+	_check(player.quests.is_done("first_nails") and player.quests.flags.has("mayor_annoyed"), "quests and choices are restored")
+	_check(full_roof.visible, "the repaired roof is restored")
+	_check(day_night.hour != 3.0, "the time of day is restored")
+	scene._playing = true
+
+	var damaged := FileAccess.open(TEST_SAVE, FileAccess.WRITE)
+	damaged.store_string("{ not json")
+	damaged.close()
+	_check(not SaveGame.exists(TEST_SAVE), "a damaged save is ignored")
+	_check(not SaveGame.apply(TEST_SAVE, player, day_night), "a damaged save doesn't load")
+
+	player.health.current = 50.0
+	day_night.hour = 22.0
+	scene.sleep()
+	_check(player.health.current == 100.0 and day_night.hour == 7.0, "sleeping heals and passes the night")
+	_check(SaveGame.exists(TEST_SAVE), "sleeping saves the game")
+
+	scene.open_pause_menu()
+	_check(menu.is_open() and player.is_busy() and paused, "the pause menu pauses the game")
+	scene.resume()
+	_check(not menu.is_open() and not player.is_busy() and not paused, "resuming unpauses the game")
+	menu.open_title(true)
+	_check(menu.is_open(), "the title menu opens")
+	menu.close()
+	DirAccess.remove_absolute(TEST_SAVE)
 
 
 func _talk(ui: DialogueUI, npc_id: String, player: Player, answers: Array) -> void:

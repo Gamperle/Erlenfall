@@ -144,6 +144,10 @@ func _ground_material() -> ShaderMaterial:
 	var material := ShaderMaterial.new()
 	material.shader = TERRAIN_SHADER
 	material.set_shader_parameter("detail_noise", Surfaces.noise_texture())
+	material.set_shader_parameter("grass_texture", preload("res://assets/textures/grass.jpg"))
+	material.set_shader_parameter("rock_texture", preload("res://assets/textures/rock.jpg"))
+	material.set_shader_parameter("snow_texture", preload("res://assets/textures/snow.jpg"))
+	material.set_shader_parameter("rubble_texture", preload("res://assets/textures/rubble.jpg"))
 	material.set_shader_parameter("rubble_color", RUBBLE_COLOR)
 	material.set_shader_parameter("rock_color", ROCK_COLOR)
 	material.set_shader_parameter("snow_color", SNOW_COLOR)

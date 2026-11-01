@@ -4,3 +4,12 @@ Every third-party or AI-generated asset is listed here. For AI-generated assets,
 
 | File | Source | Author | License | Notes |
 | --- | --- | --- | --- | --- |
+| `assets/textures/grass.jpg` | [Poly Haven: sparse_grass](https://polyhaven.com/a/sparse_grass) | Amal Kumar | CC0 | 1K diffuse map, unedited |
+| `assets/textures/rock.jpg` | [Poly Haven: rock_face](https://polyhaven.com/a/rock_face) | Greg Zaal, Dario Barresi | CC0 | 1K diffuse map, unedited |
+| `assets/textures/snow.jpg` | [Poly Haven: snow_02](https://polyhaven.com/a/snow_02) | Rob Tuytel | CC0 | 1K diffuse map, unedited |
+| `assets/textures/rubble.jpg` | [Poly Haven: rocks_ground_02](https://polyhaven.com/a/rocks_ground_02) | Rob Tuytel | CC0 | 1K diffuse map, unedited |
+| `assets/textures/road.jpg` | [Poly Haven: stony_dirt_path](https://polyhaven.com/a/stony_dirt_path) | eye-candy.xyz | CC0 | 1K diffuse map, unedited |
+| `assets/textures/plaster.jpg` | [Poly Haven: clay_plaster](https://polyhaven.com/a/clay_plaster) | Amal Kumar | CC0 | 1K diffuse map, unedited |
+| `assets/textures/wood.jpg` | [Poly Haven: brown_planks_05](https://polyhaven.com/a/brown_planks_05) | Rob Tuytel | CC0 | 1K diffuse map, unedited |
+| `assets/textures/shingles.jpg` | [Poly Haven: roof_planks](https://polyhaven.com/a/roof_planks) | Rob Tuytel | CC0 | 1K diffuse map, unedited |
+| `assets/textures/stone.jpg` | [Poly Haven: rustic_stone_wall](https://polyhaven.com/a/rustic_stone_wall) | Dimitrios Savva | CC0 | 1K diffuse map, unedited |

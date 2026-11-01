@@ -71,7 +71,7 @@ Each is sized to its entry in `data/village_layout.json`.
 
 ### Surfaces
 
-These are CC0 textures, with no model needed.
+These are done, using CC0 textures from Poly Haven listed in [ASSETS.md](../ASSETS.md).
 
 | Surface | Used for |
 | --- | --- |
@@ -116,9 +116,48 @@ These are grouped by need, and they can be refined when each milestone starts.
 | 9: Enemies | More non-human enemies, all rigged | CC0 |
 | 10: Beyond | Bows and arrows, magic effects, and tools and stations for cooking, tailoring, pottery, enchanting, and jewelry | Gen, CC0 |
 
+## Sources found for what can't be generated
+
+This covers parts 1 and 2 for assets that TripoSR can't make: anything rigged, thin plants and grass, and walls. Nothing here has been downloaded or tried in the game. Licenses are as stated on each pack's page, so check them again when downloading.
+
+| Need | Best candidate | License | What's known | Check before use |
+| --- | --- | --- | --- | --- |
+| Human bodies and hair | [Quaternius Universal Base Characters](https://quaternius.com/packs/universalbasecharacters.html) | CC0 | 6 bodies, 20 hairstyles, FBX and glTF, works with the animation library | About 13,000 triangles each, above the budget of 5,000. About 60-70% of the pack is free |
+| Clothes | [Quaternius Modular Character Outfits: Fantasy](https://quaternius.com/packs/modularcharacteroutfitsfantasy.html) | CC0 | 12 outfits from 62 parts, each with 3 texture variations, FBX and glTF | Whether the free part has enough plain village clothes |
+| Character animations | [Quaternius Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) | CC0 | 120+ animations on the same rig, including 8-direction movement, combat, and death | The page doesn't name idle, block, or dodge |
+| Goblin | [Quaternius Ultimate Monsters](https://quaternius.com/packs/ultimatemonsters.html) | CC0 | 50 animated monsters, including glTF | The page doesn't list a goblin. [A free animated monster pack's page](https://quaternius.itch.io/lowpoly-animated-monsters) offers its goblin only to Patreon supporters |
+| Goblin, alternative | [Low Poly Goblin (Rigged)](https://opengameart.org/content/low-poly-goblin-rigged) on OpenGameArt | CC0, per search results only | Rigged but not animated, Blend and FBX | The page couldn't be opened, so its license and quality need checking |
+| Goblin, fallback | The human body above, smaller, with green skin and ears | CC0 | Reuses the human animations | Whether it reads as a goblin |
+| Trees, plants, and rocks | [Quaternius Stylized Nature MegaKit](https://quaternius.com/packs/stylizednaturemegakit.html) | CC0 | 40 trees, 35 plants and flowers, 27 rocks, FBX, OBJ, and glTF | Face counts aren't listed, and it may look too stylized. Whether it has firs and alders |
+| Trees and rocks, alternative | [Kenney Nature Kit](https://kenney.nl/assets/nature-kit) | CC0 | 330 files, tagged tree, rock, and foliage | Formats aren't listed on the page, and it may look too simple |
+| Crops | [Quaternius Ultimate Crops](https://quaternius.com/packs/ultimatecrops.html) | CC0 | 100+ models with 5 growth stages, FBX, OBJ, and Blend | Which crops it has. It needs converting to glTF |
+| Walls and buildings, if built from parts | [Quaternius Medieval Village MegaKit](https://quaternius.com/packs/medievalvillagemegakit.html) | CC0 | 304 modular walls, floors, stairs, roofs, doors, and windows, FBX, OBJ, and glTF | Whether it can match the building sizes in the layout. About 60-70% of the pack is free |
+| Animals, for milestone 8 | [Quaternius Ultimate Animated Animals](https://quaternius.com/packs/ultimateanimatedanimals.html) | CC0 | 12 animals with 12+ animations each | Which animals it has |
+
+**[Poly Haven's models](https://polyhaven.com/models) don't fit as they are.** They have the right kinds of objects (`fir_tree_01`, `boulder_01`, `grass_medium_01`) and the most realistic look, but they are far too detailed. Its small `fir_sapling` has about 433,000 faces, and `grass_medium_01` about 1.6 million. They would need heavy reduction, while the [boulder](https://polyhaven.com/a/boulder_01), at about 124,000 faces, is the most realistic option to try reducing.
+
+### Test results
+
+A small set was tried in the game at 1280x720 on a Radeon 680M, in a temporary copy of the project. Nothing from it is in the repository yet.
+
+| Model | Faces | Result |
+| --- | --- | --- |
+| Pines, Stylized Nature MegaKit | 1,600 to 5,000 | Look much better than the current firs. 450 trees would add up to about 2 million faces, so they need lower detail versions at a distance |
+| Grass, flowers, and bushes, same kit | 300 to 900 | Too bright and cartoonish as they are, and the grass is up to 1.9 m tall. They need recoloring and scaling, and they are too heavy to use in the numbers grass needs |
+| Rock, same kit | 342 | Fits |
+| Plaster walls, Medieval Village MegaKit | 86 to 96 per 2 m section | Timber frames and stone fit the village well and are very cheap. Roofs and corners are untested |
+| Mannequin, Universal Animation Library | 13,744 | Plays its idle animation in Godot. It's a yellow test figure, so it needs a body and clothes |
+| Goblin, OpenGameArt | 1,198 | Reads clearly as a goblin but has no animations. Whether the human animations can be applied to it is untested |
+
+**Getting the packs.** OpenGameArt has CC0 copies of the [nature](https://opengameart.org/content/stylized-nature-megakit), [village](https://opengameart.org/content/medieval-village-megakit), and [animation](https://opengameart.org/content/universal-animation-library) packs, each with a CC0 `License` file inside. These contain only the free part of each pack. The base characters and fantasy outfits aren't there, and their itch.io pages couldn't be opened by a script ([#66](https://github.com/Gamperle/Erlenfall/issues/66)).
+
+**License warning.** Quaternius's pack pages say CC0, but the site also has a [Quaternius Asset License](https://quaternius.com/license.html), dated 2026-08-28, that forbids redistributing assets on their own, even modified. A public repository may count as that, so only use copies that include a CC0 license file, and record that file with each asset ([#66](https://github.com/Gamperle/Erlenfall/issues/66)).
+
+**Consistency.** These packs are stylized, while the game aims for a grounded look. Using one creator's packs for characters, plants, and buildings should keep them consistent, and the first download should be a test of a few models against the new surfaces.
+
 ## Order of work
 
-1. **Surfaces.** They improve everything on screen and carry no generation risk.
+1. **Surfaces.** Done.
 2. **Trees, grass, and rocks.** These take up most of the view.
 3. **Buildings.** These set the village's look.
 4. **Characters.** The rig must work before any of the held items can be fitted.

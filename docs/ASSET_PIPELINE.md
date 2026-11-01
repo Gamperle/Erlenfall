@@ -16,7 +16,7 @@ This pipeline makes draft 3D props from text. SDXL draws a picture, TripoSR turn
 | Choose pictures | A person or agent | | | `<batch>\input\` |
 | Make the model | TripoSR, `rembg` | GPU and CPU | About 2 minutes, including the preview and crash retries | `<batch>\models\<name>\0\mesh.obj`, `texture.png` |
 | Render previews | Blender | CPU | Included above | `<batch>\previews\<name>_front.png`, `_back.png` |
-| Clean up for the game | Blender | | Not built | [#55](https://github.com/Gamperle/Erlenfall/issues/55) |
+| Clean up for the game | Blender (`clean_models.ps1`, `cleanup_mesh.py`) | CPU | 10 to 35 s | `cleaned\<name>.glb` |
 
 Texture baking takes most of the model time, at 30 to 177 s, and it grows with mesh complexity. The GPU model step is a steady 12 s, so the card sits mostly idle during a batch. The batch uses about 3 of the CPU's 16 threads and 2.5 GB of RAM while baking, so the PC has spare capacity. Previews are not the bottleneck: one render takes 2.5 s on the CPU and 1.4 s on the GPU with Blender's HIP backend ([#62](https://github.com/Gamperle/Erlenfall/issues/62)).
 

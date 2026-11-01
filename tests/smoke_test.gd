@@ -60,6 +60,7 @@ func _run() -> void:
 
 	await _test_crafting(scene, player)
 	await _test_story(scene, player)
+	await _test_combat(scene, player)
 	_test_translations()
 
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")
@@ -169,6 +170,63 @@ func _test_story(scene: Node, player: Player) -> void:
 	_check(DialogueRunner.new("hedda", player).text_key() == "DLG_HEDDA_PROUD", "grandmother reacts to the finished quest")
 
 
+func _test_combat(scene: Node, player: Player) -> void:
+	var fresh := Inventory.new()
+	_check(fresh.best_weapon_damage() == 0.0, "no weapon means no weapon damage")
+	fresh.add("iron_sword", 1, "crude")
+	fresh.add("iron_dagger", 1, "masterwork")
+	_check(fresh.best_weapon_damage() == 16.0, "the strongest weapon and quality are used")
+	fresh.add("wood", 4)
+	fresh.lose_materials(0.25)
+	_check(fresh.count("wood") == 3 and fresh.count("iron_sword") == 1, "only materials are lost")
+
+	var enemy: Enemy = null
+	for node in root.get_tree().get_nodes_in_group(Enemy.GROUP):
+		enemy = node
+		break
+	_check(enemy != null and enemy.state == Enemy.State.IDLE, "goblins wait at their camp")
+
+	var pivot: Node3D = player.get_node("CameraPivot")
+	pivot.rotation = Vector3.ZERO
+	player.health.restore()
+	player.position = enemy.position + Vector3(0.0, 0.3, 1.5)
+	await _physics_frames(5)
+	_check(enemy.state != Enemy.State.IDLE, "goblins notice a nearby player")
+
+	# Hold block through the goblin's attack.
+	Input.action_press("block")
+	await _physics_frames(90)
+	Input.action_release("block")
+	_check(player.health.current == 100.0 - 12.0 * 0.2, "blocking reduces a goblin's hit")
+
+	player.health.restore()
+	player.dodge()
+	player.take_hit(50.0, enemy.global_position)
+	_check(player.is_dodging() and player.health.current == 100.0, "dodging avoids damage")
+	await _physics_frames(60)
+
+	player.health.restore()
+	player.position = enemy.position + Vector3(0.0, 0.3, 1.5)
+	pivot.rotation = Vector3.ZERO
+	var before := enemy.health.current
+	player.attack()
+	await _physics_frames(20)
+	_check(enemy.health.current < before, "an attack hurts the goblin")
+	while enemy.state != Enemy.State.DEAD:
+		enemy.take_hit(1000.0)
+	await _physics_frames(2)
+	_check(not enemy.visible, "a defeated goblin disappears")
+
+	player.inventory.add("coal", 4)
+	var coal := player.inventory.count("coal")
+	player.take_hit(1000.0, player.global_position)
+	await _physics_frames(2)
+	_check(player.health.current == 100.0, "death restores health")
+	_check(player.global_position.distance_to(Vector3(-12.0, player.global_position.y, 30.0)) < 2.0, "death returns the player to the village")
+	_check(player.inventory.count("coal") < coal, "death costs some materials")
+	_check(enemy.visible and enemy.state != Enemy.State.DEAD, "enemies return after the player dies")
+
+
 func _talk(ui: DialogueUI, npc_id: String, player: Player, answers: Array) -> void:
 	ui.open_conversation(npc_id, npc_id, player)
 	for answer: int in answers:
@@ -178,8 +236,8 @@ func _talk(ui: DialogueUI, npc_id: String, player: Player, answers: Array) -> vo
 ## Every story and item key must exist in both languages.
 func _test_translations() -> void:
 	var missing := PackedStringArray()
-	var text := FileAccess.get_file_as_string("res://data/dialogue.json") + FileAccess.get_file_as_string("res://data/quests.json") + FileAccess.get_file_as_string("res://data/crafting.json")
-	var pattern := RegEx.create_from_string("\"((?:DLG|OBJ|QUEST|ITEM)_[A-Z_]+)\"")
+	var text := FileAccess.get_file_as_string("res://data/dialogue.json") + FileAccess.get_file_as_string("res://data/quests.json") + FileAccess.get_file_as_string("res://data/crafting.json") + FileAccess.get_file_as_string("res://data/enemies.json")
+	var pattern := RegEx.create_from_string("\"((?:DLG|OBJ|QUEST|ITEM|ENEMY)_[A-Z_]+)\"")
 	for locale in ["en", "de"]:
 		TranslationServer.set_locale(locale)
 		for found in pattern.search_all(text):

@@ -39,6 +39,24 @@ func remove(item_id: String, amount: int = 1) -> bool:
 	return true
 
 
+## Returns the damage of the strongest carried weapon, or 0 if there is none.
+func best_weapon_damage() -> float:
+	var best := 0.0
+	for entry in entries():
+		best = maxf(best, CraftingData.weapon_damage(entry["id"], entry["quality"]))
+	return best
+
+
+## Loses this share of each stack of materials, rounded up.
+func lose_materials(share: float) -> void:
+	for entry in entries():
+		if CraftingData.is_material(entry["id"]):
+			_stacks[_key(entry["id"], entry["quality"])] -= ceili(int(entry["count"]) * share)
+			if _stacks[_key(entry["id"], entry["quality"])] <= 0:
+				_stacks.erase(_key(entry["id"], entry["quality"]))
+	changed.emit()
+
+
 ## Returns dictionaries with "id", "quality", and "count", sorted for stable display.
 func entries() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []

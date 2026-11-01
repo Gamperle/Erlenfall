@@ -58,8 +58,68 @@ func _run() -> void:
 			kinds[input.get_class()] = true
 		_check(kinds.size() >= 1 and _has_joypad(kinds), "%s has a controller binding" % action)
 
+	await _test_crafting(scene, player)
+
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")
 	quit(1 if _failures > 0 else 0)
+
+
+func _test_crafting(scene: Node, player: Player) -> void:
+	var ui: CraftingUI = scene.get_node("CraftingUI")
+	var village: Village = scene.get_node("Village")
+
+	var furnace: CraftingStation = village.get_node("furnace")
+	var pivot: Node3D = player.get_node("CameraPivot")
+	pivot.rotation = Vector3.ZERO
+	player.position = furnace.position + Vector3(0.0, 0.5, 2.5)
+	await _physics_frames(10)
+	_check(player.interact_target == furnace, "player can target a station")
+
+	var ore_node: ResourceNode = null
+	for child in village.get_children():
+		if child is ResourceNode and child.item_id == "iron_ore":
+			ore_node = child
+			break
+	for i in ore_node.uses:
+		ore_node.interact(player)
+	_check(player.inventory.count("iron_ore") == ore_node.uses, "gathering adds items")
+	_check(not ore_node.is_available(), "gathering spots run out")
+	player.inventory.add("coal", 2)
+	player.inventory.add("wood", 1)
+
+	player.interact()
+	_check(ui.is_open(), "furnace opens the crafting screen")
+	ui.add_material("wood")
+	ui.craft()
+	_check(player.inventory.count("wood") == 1, "a failed experiment costs nothing")
+	ui.clear_selection()
+	ui.add_material("iron_ore")
+	ui.add_material("iron_ore")
+	ui.add_material("coal")
+	ui.craft()
+	_check(player.inventory.count("iron_ingot") == 1, "smelting makes an ingot")
+	_check(player.known_recipes.has("smelt_iron"), "smelting is discovered")
+	ui.close()
+	_check(not ui.is_open(), "crafting screen closes")
+
+	ui.open_station("anvil", "Anvil", player)
+	ui.add_material("iron_ingot")
+	ui.add_material("wood")
+	ui.craft()
+	_check(ui.is_forging(), "forging starts the minigame")
+	while ui.is_forging():
+		ui._game.marker = ui._game.target
+		ui.strike()
+	var made := player.inventory.entries().filter(func(entry): return entry["id"] == "iron_dagger")
+	_check(made.size() == 1 and made[0]["quality"] == "masterwork", "perfect forging gives masterwork")
+	ui.close()
+
+	var clumsy := HammerGame.new(2, 1.0)
+	clumsy.marker = clamp(clumsy.target + 0.5, 0.0, 1.0) if clumsy.target < 0.5 else clumsy.target - 0.5
+	clumsy.strike()
+	_check(CraftingData.quality_for_score(clumsy.score()) == "crude", "bad forging gives crude quality")
+	_check(CraftingData.find_recipe("anvil", {"coal": 1}).is_empty(), "unknown combinations match nothing")
+	_check(CraftingData.item_name("iron_sword") != "ITEM_IRON_SWORD", "item names are translated")
 
 
 func _has_joypad(kinds: Dictionary) -> bool:

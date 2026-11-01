@@ -1,3 +1,41 @@
 keys,en,de
 UI_WELCOME,Welcome to Erlenfall,Willkommen in Erlenfall
-UI_CONTROLS,"WASD / left stick: walk   Mouse / right stick: look   Shift / LB: sprint   Space / A: jump   V / Y: switch camera   T / RB: speed up time   Esc: release mouse","WASD / linker Stick: gehen   Maus / rechter Stick: umsehen   Umschalt / LB: sprinten   Leertaste / A: springen   V / Y: Kamera wechseln   T / RB: Zeit vorspulen   Esc: Maus freigeben"
+UI_CONTROLS,"WASD / left stick: walk   Mouse / right stick: look   Shift / LB: sprint   Space / A: jump   E / X: use   I / Back: inventory   V / Y: switch camera   T / RB: speed up time   Esc: release mouse","WASD / linker Stick: gehen   Maus / rechter Stick: umsehen   Umschalt / LB: sprinten   Leertaste / A: springen   E / X: benutzen   I / Back: Inventar   V / Y: Kamera wechseln   T / RB: Zeit vorspulen   Esc: Maus freigeben"
+UI_INTERACT_PROMPT,E / X: %s,E / X: %s
+UI_INVENTORY,Inventory,Inventar
+UI_CARRYING,Carrying: %s,Dabei: %s
+UI_NOTHING,nothing,nichts
+UI_ADD_MATERIALS,Choose materials to combine:,Wähle Materialien zum Kombinieren:
+UI_SELECTED,Selected: %s,Ausgewählt: %s
+UI_CRAFT,Try it,Ausprobieren
+UI_CLEAR,Clear,Leeren
+UI_CLOSE,Close,Schließen
+UI_NO_RESULT,These materials don't make anything here. Try another combination.,Daraus entsteht hier nichts. Versuche eine andere Kombination.
+UI_NO_RECIPES,No recipes discovered yet.,Noch keine Rezepte entdeckt.
+UI_KNOWN_RECIPES,"Known recipes:
+%s","Bekannte Rezepte:
+%s"
+UI_FORGING,Forging %s: strike %d of %d,Schmieden: %s – Schlag %d von %d
+UI_FORGE_HINT,Press E / X when the white marker is over the orange target.,"Drücke E / X, wenn die weiße Markierung über dem orangen Ziel ist."
+UI_STRIKE_PERFECT,Perfect strike!,Perfekter Schlag!
+UI_STRIKE_GOOD,Good strike.,Guter Schlag.
+UI_STRIKE_POOR,Poor strike.,Schlechter Schlag.
+UI_MADE,You made: %s,Hergestellt: %s
+UI_MADE_NEW,New recipe! You made: %s,Neues Rezept! Hergestellt: %s
+UI_FURNACE,Furnace,Schmelzofen
+UI_ANVIL,Anvil,Amboss
+PROMPT_MINE_IRON,Mine iron ore,Eisenerz abbauen
+PROMPT_MINE_COAL,Mine coal,Kohle abbauen
+PROMPT_TAKE_WOOD,Take wood,Holz nehmen
+ITEM_IRON_ORE,Iron ore,Eisenerz
+ITEM_COAL,Coal,Kohle
+ITEM_WOOD,Wood,Holz
+ITEM_IRON_INGOT,Iron ingot,Eisenbarren
+ITEM_IRON_NAILS,Iron nails,Eisennägel
+ITEM_IRON_DAGGER,Iron dagger,Eisendolch
+ITEM_IRON_SWORD,Iron sword,Eisenschwert
+ITEM_IRON_AXE,Iron axe,Eisenaxt
+QUALITY_CRUDE,Crude,Grob
+QUALITY_COMMON,Common,Gewöhnlich
+QUALITY_FINE,Fine,Fein
+QUALITY_MASTERWORK,Masterwork,Meisterwerk

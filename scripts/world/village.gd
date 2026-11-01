@@ -34,6 +34,41 @@ func _ready() -> void:
 	_add_roads(layout["roads"])
 	_add_trees(layout["trees"], layout["fields"])
 	_add_boulders(layout["boulders"])
+	for station: Dictionary in layout["stations"]:
+		_add_station(station)
+	for resource: Dictionary in layout["resources"]:
+		_add_resource(resource)
+
+
+func _add_station(data: Dictionary) -> void:
+	var station := CraftingStation.new()
+	station.name = data["id"]
+	station.station_id = data["id"]
+	station.prompt_key = data["prompt"]
+	station.position = _ground_position(data["x"], data["z"])
+	add_child(station)
+
+	var size := Vector3(data["width"], data["height"], data["depth"])
+	var center := Vector3.UP * (size.y / 2.0)
+	station.add_child(_mesh_instance(_box(size, Color(data["color"])), center))
+	var shape := BoxShape3D.new()
+	shape.size = size
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	collision.position = center
+	station.add_child(collision)
+
+
+func _add_resource(data: Dictionary) -> void:
+	var node := ResourceNode.new()
+	node.position = _ground_position(data["x"], data["z"])
+	add_child(node)
+
+	var mesh := _boulder_mesh()
+	mesh.surface_set_material(0, _material(Color(data["color"])))
+	var visual := _mesh_instance(mesh, Vector3.UP * (data["size"] * 0.4))
+	visual.scale = Vector3.ONE * data["size"]
+	node.setup(data, visual)
 
 
 func _add_roads(roads: Array) -> void:

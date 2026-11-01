@@ -98,10 +98,16 @@ These answers pulled against each other. The decision below applies until you ch
 
 ## Open questions for you
 
-1. **Non-commercial.** You called this a non-commercial project, and also chose MIT and CC BY-SA, which allow anyone else to sell copies or derivatives. Current assumption: *you* will not charge, and others may. If nobody should be able to sell it, the licenses have to change, ideally before outside contributions arrive.
-2. **AI asset tool.** Claude cannot generate 3D models or textures in this environment, so a generator such as Meshy, Tripo, or Hunyuan3D has to be chosen, and you would run it. Until then, the game uses placeholder geometry built in Godot. AI assets need rigging and style checks, and their copyright status varies by country and tool, so each one is logged in [ASSETS.md](../ASSETS.md).
-3. **Time per week** (question 3) and **anything you do not want** (question 57) were left blank. Neither blocks work.
-4. **Story.** To discuss at a later point, as you asked. Claude drafts the first-playable dialogue for your review.
+1. **Time per week** (question 3) and **anything you do not want** (question 57) were left blank. Neither blocks work.
+2. **Story.** To discuss at a later point, as you asked. Claude drafts the first-playable dialogue for your review.
+
+## Licensing and AI assets
+
+**Commercial use.** The project itself is free and non-commercial. MIT and CC BY-SA allow others to sell copies or derivatives, and that is accepted.
+
+**AI asset tool.** The default for milestone 6 is [TRELLIS.2](https://github.com/microsoft/TRELLIS.2), whose code and model are MIT-licensed, though some of its dependencies have separate licenses that need checking. It needs an NVIDIA GPU with at least 24 GB of memory, so it has to run on a rented GPU rather than the development machine. Hunyuan3D is not an option: its license excludes the EU, the UK, and South Korea.
+
+Until then, the game uses placeholder geometry built in Godot. AI assets need rigging and style checks, and their copyright status varies by country and tool, so each one is logged in [ASSETS.md](../ASSETS.md).
 
 ## Milestones
 

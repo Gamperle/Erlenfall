@@ -176,6 +176,8 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 		_check(well_placed, "%s grow on the ground, clear of the river and buildings" % plants)
 	_check(village.get_node("LeafTrees").get_child_count() > 1 and village.get_node("Bushes").get_child_count() > 1, "leaf trees and bushes are planted in chunks")
 
+	_test_grass(terrain, village.get_node("Grass"), layout)
+
 	var low := INF
 	var high := -INF
 	for i in 64:
@@ -201,6 +203,40 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 		_check(crossed, "the player crosses the river at x=%.0f" % x)
 	player.position = saved_position
 	await _physics_frames(10)
+
+
+func _test_grass(terrain: Terrain, grass: GrassField, layout: Dictionary) -> void:
+	var species_seen: Dictionary = {}
+	var cells_with_grass := 0
+	var well_placed := true
+	# Lines of cells from the village out to the mountains.
+	var cells: Array[Vector2i] = []
+	for i in 12:
+		cells.append(Vector2i(i, i / 2))
+		cells.append(Vector2i(-i, i))
+		cells.append(Vector2i(i, -i))
+	for cell in cells:
+		var spots: Array = grass.grow_cell(cell)
+		var count := 0
+		for species in spots.size():
+			count += spots[species].size()
+			if not spots[species].is_empty():
+				species_seen[species] = true
+			for spot: Transform3D in spots[species]:
+				var at := spot.origin
+				well_placed = well_placed and terrain.river_clearance(at.x, at.z) > 0.0 and absf(at.y - terrain.height_at(at.x, at.z)) < 0.01
+		if count > 0:
+			cells_with_grass += 1
+	_check(well_placed, "grass grows on the ground, clear of the river")
+	_check(cells_with_grass > cells.size() / 2, "grass grows well beyond the village (%d of %d cells)" % [cells_with_grass, cells.size()])
+	_check(species_seen.size() == layout["grass"]["species"].size(), "every grass species grows somewhere (%d)" % species_seen.size())
+	_check(grass.grow_cell(Vector2i(3, 2)) == grass.grow_cell(Vector2i(3, 2)), "a cell always grows the same grass")
+	var highest := -INF
+	for x in range(-16, 16):
+		for spots: Array in grass.grow_cell(Vector2i(x, 15)):
+			for spot: Transform3D in spots:
+				highest = maxf(highest, spot.origin.y)
+	_check(highest < float(layout["grass"]["max_height"]), "grass stops below the high mountains")
 
 
 func _test_building_site(terrain: Terrain, site: Dictionary) -> void:

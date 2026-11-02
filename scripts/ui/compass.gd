@@ -46,6 +46,11 @@ func offset_of(bearing: float) -> float:
 	return wrapf(bearing - heading, -180.0, 180.0) / VISIBLE_DEGREES
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED:
+		queue_redraw()
+
+
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), BACKGROUND_COLOR)
 	var font := ThemeDB.fallback_font

@@ -255,7 +255,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		# Screen units, so the window's size and the interface scale don't change the sensitivity.
-		_look(event.screen_relative * MOUSE_SENSITIVITY)
+		_look(event.screen_relative * MOUSE_SENSITIVITY * Settings.look_speed)
 	elif event.is_action_pressed("attack"):
 		attack()
 	elif event.is_action_pressed("dodge"):
@@ -278,7 +278,7 @@ func _physics_process(delta: float) -> void:
 	_update_torch(delta)
 	if not _busy:
 		var stick := Input.get_vector("look_left", "look_right", "look_up", "look_down")
-		_look(stick * STICK_SENSITIVITY * delta)
+		_look(stick * STICK_SENSITIVITY * Settings.look_speed * delta)
 
 	if is_on_floor():
 		if not _busy and Input.is_action_just_pressed("jump"):

@@ -2,6 +2,7 @@ extends SceneTree
 ## Run with: godot --headless --path . --script res://tests/smoke_test.gd
 
 const TEST_SAVE := "user://smoke_test_save.json"
+const TEST_SETTINGS := "user://smoke_test_settings.json"
 const TEST_FLAGS_A := "user://smoke_test_flags_a.json"
 const TEST_FLAGS_B := "user://smoke_test_flags_b.json"
 
@@ -14,6 +15,8 @@ func _initialize() -> void:
 
 func _run() -> void:
 	DirAccess.remove_absolute(TEST_SAVE)
+	DirAccess.remove_absolute(TEST_SETTINGS)
+	Settings.path = TEST_SETTINGS
 	var scene: Node = load("res://scenes/main.tscn").instantiate()
 	scene.show_menu = false
 	scene.save_path = TEST_SAVE
@@ -94,6 +97,7 @@ func _run() -> void:
 	await _test_combat(scene, player)
 	await _test_gathering_collision(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
+	await _test_settings(scene, player)
 	_test_translations()
 
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")
@@ -705,6 +709,47 @@ func _talk(ui: DialogueUI, npc_id: String, player: Player, answers: Array) -> vo
 	ui.open_conversation(npc_id, npc_id, player)
 	for answer: int in answers:
 		ui.choose(answer)
+
+
+func _test_settings(scene: Node, player: Player) -> void:
+	var menu: GameMenu = scene.get_node("GameMenu")
+	var hedda: Npc = scene.get_node("Village/hedda")
+	TranslationServer.set_locale("en")
+	menu.open_pause()
+	menu._buttons.get_child(1).pressed.emit()
+	_check(menu._settings_open and menu._buttons.get_child_count() == 4, "the pause menu opens the settings")
+
+	menu._choose_language(2)
+	await process_frame
+	await process_frame
+	_check(TranslationServer.get_locale() == "de" and menu._title.text == "Einstellungen", "choosing a language changes the menu")
+	_check(scene.get_node("UI/ControlsLabel").text == tr("UI_CONTROLS") and hedda._label.text == tr(hedda.prompt_key), "choosing a language changes text already on screen")
+
+	menu._choose_graphics(0)
+	var sun: DirectionalLight3D = scene.get_node("Sun")
+	_check(not sun.shadow_enabled and is_equal_approx(root.scaling_3d_scale, Settings.render_scale()), "low graphics take effect at once")
+	menu._choose_graphics(2)
+	_check(sun.shadow_enabled and root.scaling_3d_scale == 1.0, "high graphics take effect at once")
+
+	menu._choose_look_speed(2.0)
+	menu._close_settings()
+	_check(menu.is_open() and menu._title.text == tr("UI_PAUSED"), "leaving the settings returns to the pause menu")
+	Settings.look_speed = 1.0
+	Settings.language = ""
+	Settings.graphics = "low"
+	Settings.load_saved()
+	_check(Settings.language == "de" and Settings.look_speed == 2.0 and Settings.graphics == "high", "settings are remembered")
+	menu.close()
+	player.set_busy(false)
+
+	var damaged := FileAccess.open(TEST_SETTINGS, FileAccess.WRITE)
+	damaged.store_string("not json")
+	damaged.close()
+	Settings.load_saved()
+	_check(Settings.language == "" and Settings.look_speed == 1.0 and Settings.graphics == "high", "damaged settings fall back to defaults")
+	Settings.path = Settings.DEFAULT_PATH
+	DirAccess.remove_absolute(TEST_SETTINGS)
+	TranslationServer.set_locale("en")
 
 
 ## Every story and item key must exist in both languages.

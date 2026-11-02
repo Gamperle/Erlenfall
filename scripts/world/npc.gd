@@ -8,6 +8,8 @@ const BODY_HEIGHT := 1.75
 
 var npc_id := ""
 
+var _label: Label3D
+
 
 func setup(data: Dictionary) -> void:
 	npc_id = data["id"]
@@ -32,12 +34,18 @@ func setup(data: Dictionary) -> void:
 	add_child(collision)
 
 	var label := Label3D.new()
+	_label = label
 	label.text = tr(prompt_key)
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.position.y = BODY_HEIGHT + 0.15
 	label.pixel_size = 0.006
 	label.outline_size = 8
 	add_child(label)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and _label != null:
+		_label.text = tr(prompt_key)
 
 
 func prompt() -> String:

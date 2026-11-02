@@ -23,7 +23,11 @@ const AREA_SOFTNESS: Dictionary = { Pattern.ROAD: 0.35 }
 ## How often the photos change per meter. Rocks are small, so each one needs its own mix.
 const AREA_FREQUENCY: Dictionary = { Pattern.IRON_ORE: 0.3, Pattern.COAL: 0.3, Pattern.BOULDER: 0.15 }
 
+## The default size of a NoiseTexture2D.
+const NOISE_SIZE := 512
+
 static var _noise_texture: NoiseTexture2D
+static var _noise_values := PackedByteArray()
 static var _cache: Dictionary = {}
 
 
@@ -51,12 +55,46 @@ static func get_material(pattern: Pattern, color: Color) -> ShaderMaterial:
 ## A seamless noise texture shared by the world's shaders.
 static func noise_texture() -> NoiseTexture2D:
 	if _noise_texture == null:
-		var noise := FastNoiseLite.new()
-		noise.seed = 6
-		noise.frequency = 0.02
-		noise.fractal_octaves = 4
 		_noise_texture = NoiseTexture2D.new()
-		_noise_texture.noise = noise
+		_noise_texture.noise = _detail_noise()
 		_noise_texture.seamless = true
 		_noise_texture.generate_mipmaps = true
 	return _noise_texture
+
+
+## Makes the values that ground_dryness reads. Call this before using it on worker threads.
+static func prepare_ground_dryness() -> void:
+	if _noise_values.is_empty():
+		var image := _detail_noise().get_seamless_image(NOISE_SIZE, NOISE_SIZE)
+		image.convert(Image.FORMAT_L8)
+		_noise_values = image.get_data()
+
+
+## How dry the ground looks from 0 to 1. Works the same as `dryness` in shaders/terrain.gdshader.
+static func ground_dryness(x: float, z: float) -> float:
+	var meadow := _noise_at(x * 0.0043, z * 0.0043)
+	var patches := _noise_at(x * 0.019, z * 0.019)
+	return smoothstep(0.38, 0.62, meadow * 0.6 + patches * 0.4)
+
+
+## Reads the noise texture as a shader does, blending the nearest pixels.
+static func _noise_at(u: float, v: float) -> float:
+	var x := fposmod(u, 1.0) * NOISE_SIZE - 0.5
+	var y := fposmod(v, 1.0) * NOISE_SIZE - 0.5
+	var left := floori(x)
+	var top := floori(y)
+	var upper := lerpf(_noise_pixel(left, top), _noise_pixel(left + 1, top), x - left)
+	var lower := lerpf(_noise_pixel(left, top + 1), _noise_pixel(left + 1, top + 1), x - left)
+	return lerpf(upper, lower, y - top) / 255.0
+
+
+static func _noise_pixel(x: int, y: int) -> float:
+	return _noise_values[posmod(y, NOISE_SIZE) * NOISE_SIZE + posmod(x, NOISE_SIZE)]
+
+
+static func _detail_noise() -> FastNoiseLite:
+	var noise := FastNoiseLite.new()
+	noise.seed = 6
+	noise.frequency = 0.02
+	noise.fractal_octaves = 4
+	return noise

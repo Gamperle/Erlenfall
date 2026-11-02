@@ -16,6 +16,7 @@
 	},
 	"values": {
 		"torch_burn_seconds": 600,
-		"interface_min_scale": 0.9
+		"interface_min_scale": 0.9,
+		"controls_hint_seconds": 30
 	}
 }

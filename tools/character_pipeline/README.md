@@ -19,6 +19,16 @@ blender --background --python build_character.py -- villagers.json hedda /path/t
 
 The packs argument can list several folders, separated by commas.
 
+## Checking from all sides
+
+`turntable.gd` shows each character in a folder in turn and saves 8 views, 45 degrees apart, plus one sheet per character with all 8. Run it from a Godot project that has imported the characters:
+
+```bash
+godot --path . --script res://tools/character_pipeline/turntable.gd -- res://path/to/characters /path/to/output res://path/to/animations.glb
+```
+
+The animation library is optional. With one, characters stand in the first frame of its `Idle` animation, and they need the import settings below.
+
 ## Recipes
 
 | Key | Meaning |

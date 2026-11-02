@@ -39,9 +39,13 @@ func left_hand() -> Node3D:
 
 
 ## Plays an animation once, then returns to moving or standing.
-func play_action(animation_name: StringName) -> void:
-	_player.play(animation_name, BLEND_SECONDS)
-	_action_left = _player.current_animation_length
+## A duration fits it to that time, and a start skips that share of its beginning.
+func play_action(animation_name: StringName, duration := 0.0, start := 0.0) -> void:
+	var length := _player.get_animation(animation_name).length
+	var seconds := duration if duration > 0.0 else length
+	_player.play(animation_name, BLEND_SECONDS, length * (1.0 - start) / seconds)
+	_player.seek(length * start)
+	_action_left = seconds
 
 
 func animate(speed: float, delta: float) -> void:

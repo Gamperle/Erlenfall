@@ -24,7 +24,7 @@ func load_model(path: String) -> void:
 	animate(0.0, 0.0)
 
 
-func play_action(_animation_name: StringName) -> void:
+func play_action(_animation_name: StringName, _duration := 0.0, _start := 0.0) -> void:
 	_punch_left = PUNCH_SECONDS
 
 

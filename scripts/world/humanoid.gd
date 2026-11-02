@@ -51,7 +51,7 @@ func left_hand() -> Node3D:
 
 
 ## Plays a one-off animation, on figures that have them.
-func play_action(_animation_name: StringName) -> void:
+func play_action(_animation_name: StringName, _duration := 0.0, _start := 0.0) -> void:
 	pass
 
 

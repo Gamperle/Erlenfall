@@ -52,10 +52,16 @@ const WEAPON_BLOCK_ANGLE := 1.3
 const MODEL_PATH := "res://assets/characters/player.glb"
 const ATTACK_ANIMATION := &"Sword_Attack"
 const DODGE_ANIMATION := &"Roll"
+const DODGE_ANIMATION_SECONDS := 0.5
+## The roll starts with a high dive, which this skips.
+const DODGE_ANIMATION_START := 0.38
+const BACKSTEP_ANIMATION := &"Crouch_Idle"
+const BACKSTEP_ANIMATION_SECONDS := 0.4
 const BLOCK_ANIMATION := &"Sword_Idle"
 const TORCH_ANIMATION := &"Idle_Torch"
 const WEAPON_GRIP_POSITION := Vector3(0.0, 0.08, 0.02)
-const WEAPON_GRIP_ROTATION := Vector3(-PI / 2.0, 0.0, 0.0)
+## Points the blade up and ahead in the blocking pose.
+const WEAPON_GRIP_ROTATION := Vector3(-0.005935, 0.008892, -1.964538)
 const TORCH_GRIP_POSITION := Vector3(0.0, 0.08, 0.02)
 const TORCH_GRIP_SCALE := 0.75
 const TORCH_ITEM := "torch"
@@ -194,12 +200,20 @@ func dodge() -> void:
 	if _dodge_cooldown > 0.0 or not is_on_floor():
 		return
 	var move := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-	if move == Vector2.ZERO:
+	var backstep := move == Vector2.ZERO
+	if backstep:
 		move = Vector2.DOWN
 	_dodge_direction = Vector3(move.x, 0.0, move.y).normalized().rotated(Vector3.UP, _pivot.rotation.y)
+	if backstep:
+		# Standing still, the player ducks back while still facing ahead.
+		_body_mesh.rotation.y = _pivot.rotation.y
+		_body_mesh.play_action(BACKSTEP_ANIMATION, BACKSTEP_ANIMATION_SECONDS)
+	else:
+		# The roll animation goes forward, so the body faces where it's going.
+		_body_mesh.rotation.y = atan2(-_dodge_direction.x, -_dodge_direction.z)
+		_body_mesh.play_action(DODGE_ANIMATION, DODGE_ANIMATION_SECONDS, DODGE_ANIMATION_START)
 	_dodge_time = DODGE_SECONDS
 	_dodge_cooldown = DODGE_COOLDOWN
-	_body_mesh.play_action(DODGE_ANIMATION)
 
 
 ## Takes damage from an attack that came from the given position.

@@ -197,8 +197,9 @@ func _move_toward_point(point: Vector3) -> void:
 	var offset := point - global_position
 	offset.y = 0.0
 	var direction := _steer_around_obstacles(offset.normalized(), point)
-	velocity.x = direction.x * float(_stats["speed"])
-	velocity.z = direction.z * float(_stats["speed"])
+	var speed := float(_stats["speed"]) * (get_tree().get_first_node_in_group(Terrain.GROUP) as Terrain).wading_factor(global_position)
+	velocity.x = direction.x * speed
+	velocity.z = direction.z * speed
 	rotation.y = atan2(-direction.x, -direction.z)
 
 

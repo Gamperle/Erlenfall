@@ -255,7 +255,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		# Screen units, so the window's size and the interface scale don't change the sensitivity.
-		_look(event.screen_relative * MOUSE_SENSITIVITY)
+		_look(event.screen_relative * MOUSE_SENSITIVITY * Settings.look_speed)
 	elif event.is_action_pressed("attack"):
 		attack()
 	elif event.is_action_pressed("dodge"):
@@ -278,7 +278,7 @@ func _physics_process(delta: float) -> void:
 	_update_torch(delta)
 	if not _busy:
 		var stick := Input.get_vector("look_left", "look_right", "look_up", "look_down")
-		_look(stick * STICK_SENSITIVITY * delta)
+		_look(stick * STICK_SENSITIVITY * Settings.look_speed * delta)
 
 	if is_on_floor():
 		if not _busy and Input.is_action_just_pressed("jump"):
@@ -293,6 +293,9 @@ func _physics_process(delta: float) -> void:
 	var speed := SPRINT_SPEED if Input.is_action_pressed("sprint") else WALK_SPEED
 	if is_blocking():
 		speed = WALK_SPEED * BLOCK_SPEED_FACTOR
+	var terrain := get_tree().get_first_node_in_group(Terrain.GROUP) as Terrain
+	if terrain != null:
+		speed *= terrain.wading_factor(global_position)
 	var acceleration := ACCELERATION if is_on_floor() else AIR_ACCELERATION
 	var target := direction * speed
 	velocity.x = move_toward(velocity.x, target.x, acceleration * delta)

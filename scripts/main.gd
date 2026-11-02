@@ -40,9 +40,11 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
+	Settings.load_saved()
+	_apply_graphics()
+	_menu.graphics_changed.connect(_apply_graphics)
 	_welcome_label.modulate.a = 0.0
-	_welcome_label.text = tr("UI_WELCOME")
-	_controls_label.text = tr("UI_CONTROLS")
+	_set_translated_text()
 	_compass.visible = FeatureFlags.enabled("compass")
 	_performance_overlay.visible = FeatureFlags.enabled("performance_overlay")
 	_performance_overlay.set_process(_performance_overlay.visible)
@@ -85,7 +87,7 @@ func _objective_bearings() -> PackedFloat32Array:
 	var bearings := PackedFloat32Array()
 	if FeatureFlags.enabled("compass_objectives"):
 		for marker in _player.quests.objective_markers(_player.inventory):
-			bearings.append(Compass.bearing_between(Vector2(_player.position.x, _player.position.z), marker))
+			bearings.append(Compass.bearing_between(Vector2(_player.position.x, _player.position.z), _village.marker_position(marker)))
 	return bearings
 
 
@@ -99,6 +101,19 @@ func _update_prompt() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST and _playing:
 		save_game()
+	elif what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
+		_set_translated_text()
+		_update_quest_label()
+
+
+func _set_translated_text() -> void:
+	_welcome_label.text = tr("UI_WELCOME")
+	_controls_label.text = tr("UI_CONTROLS")
+
+
+func _apply_graphics() -> void:
+	get_viewport().scaling_3d_scale = Settings.render_scale()
+	($Sun as DirectionalLight3D).shadow_enabled = Settings.shadows()
 
 
 func save_game() -> void:

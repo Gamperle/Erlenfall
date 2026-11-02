@@ -32,6 +32,8 @@ void fragment() {
 
 	if (pattern == CROPS) {
 		float rows = smoothstep(0.25, 0.55, abs(fract(world_position.x * 0.8) - 0.5) * 2.0);
+		// Rows narrower than a pixel or two would blur into wavy bands, so fade to their average.
+		rows = mix(rows, 0.6, smoothstep(0.1, 0.45, fwidth(world_position.x * 0.8)));
 		ALBEDO = base_color * (0.8 + noise * 0.25 + fine * 0.15) * (0.55 + 0.45 * rows + fine * 0.2);
 	} else {
 		// The photo adds detail, and dividing by its average keeps base_color as the overall color.

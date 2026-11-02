@@ -106,6 +106,14 @@ UI_GAME_TITLE,Erlenfall,Erlenfall
 UI_CONTINUE_GAME,Continue,Fortsetzen
 UI_NEW_GAME,New game,Neues Spiel
 UI_QUIT,Quit,Beenden
+UI_SETTINGS,Settings,Einstellungen
+UI_LANGUAGE,Language,Sprache
+UI_LANGUAGE_SYSTEM,System language,Systemsprache
+UI_LOOK_SPEED,Look speed,Blickgeschwindigkeit
+UI_GRAPHICS,Graphics,Grafik
+UI_GRAPHICS_LOW,Low,Niedrig
+UI_GRAPHICS_MEDIUM,Medium,Mittel
+UI_GRAPHICS_HIGH,High,Hoch
 UI_GOT_DROP,You picked up %d x %s.,Du hast %d x %s aufgehoben.
 ITEM_IRON_SCRAP,Iron scrap,Eisenschrott
 UI_NEW_GAME_WARNING,Starting a new game overwrites your saved game.,Ein neues Spiel überschreibt deinen Spielstand.

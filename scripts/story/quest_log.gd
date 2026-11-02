@@ -52,17 +52,18 @@ func tracker_lines(inventory: Inventory) -> PackedStringArray:
 	return lines
 
 
-## Returns where the current objectives are, as x and z, for those that have a place.
-func objective_markers(inventory: Inventory) -> Array[Vector2]:
-	var markers: Array[Vector2] = []
+## Returns the current objectives' places, for those that have one: a named place in the
+## village, or x and z. Village.marker_position turns either into a position.
+func objective_markers(inventory: Inventory) -> Array:
+	var markers := []
 	for quest_id: String in _stages:
 		var objective := _current(quest_id)
-		var marker: Array = objective.get("marker", [])
+		var marker: Variant = objective.get("marker")
 		var alternative: Dictionary = objective.get("marker_when_carrying", {})
 		if not alternative.is_empty() and inventory.count(alternative["item"]) > 0:
 			marker = alternative["marker"]
-		if not marker.is_empty():
-			markers.append(Vector2(marker[0], marker[1]))
+		if marker != null:
+			markers.append(marker)
 	return markers
 
 

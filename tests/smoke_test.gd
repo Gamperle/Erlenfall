@@ -2,6 +2,7 @@ extends SceneTree
 ## Run with: godot --headless --path . --script res://tests/smoke_test.gd
 
 const TEST_SAVE := "user://smoke_test_save.json"
+const TEST_SETTINGS := "user://smoke_test_settings.json"
 const TEST_FLAGS_A := "user://smoke_test_flags_a.json"
 const TEST_FLAGS_B := "user://smoke_test_flags_b.json"
 
@@ -14,6 +15,8 @@ func _initialize() -> void:
 
 func _run() -> void:
 	DirAccess.remove_absolute(TEST_SAVE)
+	DirAccess.remove_absolute(TEST_SETTINGS)
+	Settings.path = TEST_SETTINGS
 	var scene: Node = load("res://scenes/main.tscn").instantiate()
 	scene.show_menu = false
 	scene.save_path = TEST_SAVE
@@ -28,6 +31,16 @@ func _run() -> void:
 	_check(absf(terrain.height_at(0.0, -28.0)) < 2.0, "village site stays low")
 	_check(terrain.height_at(0.0, 600.0) > 60.0, "mountains surround the valley")
 	_check(player.is_on_floor(), "player lands on terrain")
+	var slowed_on_land := 0
+	for z in range(-500, 500, 10):
+		for x in range(-500, 500, 10):
+			if terrain.river_clearance(x, z) >= 0.0 and terrain.wading_factor(Vector3(x, terrain.height_at(x, z), z)) < 1.0:
+				slowed_on_land += 1
+	_check(slowed_on_land == 0, "dry land doesn't slow anyone")
+	var in_river := terrain.river.positions[terrain.river.positions.size() / 2]
+	var river_floor := Vector3(in_river.x, terrain.height_at(in_river.x, in_river.y), in_river.y)
+	_check(terrain.wading_factor(river_floor) == Terrain.WADING_SPEED_FACTOR, "wading through the river slows people down")
+	_check(terrain.wading_factor(river_floor + Vector3.UP * 5.0) == 1.0, "a bridge over the river doesn't slow anyone")
 	_check(absf(player.position.y - terrain.height_at(player.position.x, player.position.z)) < 1.0, "collision matches terrain")
 	_check(village.get_node_or_null("forge") != null, "buildings load from data")
 	_check(village.get_node("Roads").get_child_count() == 2, "roads load from data")
@@ -89,6 +102,7 @@ func _run() -> void:
 	await _test_combat(scene, player)
 	await _test_gathering_collision(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
+	await _test_settings(scene, player)
 	_test_translations()
 
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")
@@ -138,7 +152,7 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 			for building: Dictionary in layout["buildings"]:
 				well_placed = well_placed and Vector2(at.x, at.z).distance_to(Vector2(building["x"], building["z"])) > 5.0
 		_check(well_placed, "%s grow on the ground, clear of the river and buildings" % plants)
-	_check(village.get_node("LeafTrees").multimesh.instance_count > 0 and village.get_node("Bushes").multimesh.instance_count > 0, "leaf trees and bushes are planted")
+	_check(village.get_node("LeafTrees").get_child_count() > 1 and village.get_node("Bushes").get_child_count() > 1, "leaf trees and bushes are planted in chunks")
 
 	var low := INF
 	var high := -INF
@@ -210,9 +224,19 @@ func _test_hud(scene: Node, player: Player) -> void:
 	var carried := Inventory.new()
 	quests.start("first_nails")
 	var markers := quests.objective_markers(carried)
-	_check(markers.size() == 1 and markers[0] == Vector2(40.0, -175.0), "the compass points to the ore for the nails")
+	var village: Village = scene.get_node("Village")
+	_check(markers.size() == 1 and village.marker_position(markers[0]) == Vector2(40.0, -175.0), "the compass points to the ore for the nails")
 	carried.add("iron_ingot")
-	_check(quests.objective_markers(carried)[0] == Vector2(16.0, 25.0), "the compass points to the anvil once there is iron")
+	var anvil: Node3D = village.get_node("anvil")
+	_check(village.marker_position(quests.objective_markers(carried)[0]) == Vector2(anvil.position.x, anvil.position.z), "the compass points to the anvil once there is iron")
+	var all_quests: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(QuestLog.DATA_PATH))
+	var unknown := PackedStringArray()
+	for quest: Dictionary in all_quests.values():
+		for objective: Dictionary in quest["objectives"]:
+			for marker: Variant in [objective.get("marker"), objective.get("marker_when_carrying", {}).get("marker")]:
+				if marker is String and village.get_node_or_null(marker) == null:
+					unknown.append(marker)
+	_check(unknown.is_empty(), "every quest marker names a real place %s" % ", ".join(unknown))
 	compass.heading = 0.0
 	compass.objective_bearings = PackedFloat32Array([90.0])
 	compass.queue_redraw()
@@ -690,6 +714,47 @@ func _talk(ui: DialogueUI, npc_id: String, player: Player, answers: Array) -> vo
 	ui.open_conversation(npc_id, npc_id, player)
 	for answer: int in answers:
 		ui.choose(answer)
+
+
+func _test_settings(scene: Node, player: Player) -> void:
+	var menu: GameMenu = scene.get_node("GameMenu")
+	var hedda: Npc = scene.get_node("Village/hedda")
+	TranslationServer.set_locale("en")
+	menu.open_pause()
+	menu._buttons.get_child(1).pressed.emit()
+	_check(menu._settings_open and menu._buttons.get_child_count() == 4, "the pause menu opens the settings")
+
+	menu._choose_language(2)
+	await process_frame
+	await process_frame
+	_check(TranslationServer.get_locale() == "de" and menu._title.text == "Einstellungen", "choosing a language changes the menu")
+	_check(scene.get_node("UI/ControlsLabel").text == tr("UI_CONTROLS") and hedda._label.text == tr(hedda.prompt_key), "choosing a language changes text already on screen")
+
+	menu._choose_graphics(0)
+	var sun: DirectionalLight3D = scene.get_node("Sun")
+	_check(not sun.shadow_enabled and is_equal_approx(root.scaling_3d_scale, Settings.render_scale()), "low graphics take effect at once")
+	menu._choose_graphics(2)
+	_check(sun.shadow_enabled and root.scaling_3d_scale == 1.0, "high graphics take effect at once")
+
+	menu._choose_look_speed(2.0)
+	menu._close_settings()
+	_check(menu.is_open() and menu._title.text == tr("UI_PAUSED"), "leaving the settings returns to the pause menu")
+	Settings.look_speed = 1.0
+	Settings.language = ""
+	Settings.graphics = "low"
+	Settings.load_saved()
+	_check(Settings.language == "de" and Settings.look_speed == 2.0 and Settings.graphics == "high", "settings are remembered")
+	menu.close()
+	player.set_busy(false)
+
+	var damaged := FileAccess.open(TEST_SETTINGS, FileAccess.WRITE)
+	damaged.store_string("not json")
+	damaged.close()
+	Settings.load_saved()
+	_check(Settings.language == "" and Settings.look_speed == 1.0 and Settings.graphics == "high", "damaged settings fall back to defaults")
+	Settings.path = Settings.DEFAULT_PATH
+	DirAccess.remove_absolute(TEST_SETTINGS)
+	TranslationServer.set_locale("en")
 
 
 ## Every story and item key must exist in both languages.

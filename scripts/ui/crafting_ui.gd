@@ -295,7 +295,8 @@ func _build() -> void:
 
 	_inventory_label = _wrapped_label(column)
 	_materials_label = _wrapped_label(column)
-	_materials_label.text = tr("UI_ADD_MATERIALS")
+	# Set as keys, so that these follow a change of language on their own.
+	_materials_label.text = "UI_ADD_MATERIALS"
 
 	_materials = HFlowContainer.new()
 	column.add_child(_materials)
@@ -331,7 +332,7 @@ func _build() -> void:
 
 func _action_button(text_key: String, action: Callable) -> Button:
 	var button := Button.new()
-	button.text = tr(text_key)
+	button.text = text_key
 	button.pressed.connect(action)
 	_actions.add_child(button)
 	return button

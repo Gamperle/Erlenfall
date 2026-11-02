@@ -5,6 +5,7 @@ extends Interactable
 const UI_GROUP := "dialogue_ui"
 const BODY_RADIUS := 0.35
 const BODY_HEIGHT := 1.75
+const IDLE_ANIMATION := &"Idle"
 
 var npc_id := ""
 
@@ -14,9 +15,12 @@ func setup(data: Dictionary) -> void:
 	prompt_key = data["name"]
 	name = npc_id
 
-	var figure := Humanoid.new()
-	figure.setup(Color(data["color"]), Humanoid.DEFAULT_SKIN, Color(data.get("hair", Humanoid.DEFAULT_HAIR.to_html())))
-	add_child(figure)
+	if data.has("model") and FeatureFlags.enabled("realistic_villagers"):
+		_add_model(data["model"])
+	else:
+		var figure := Humanoid.new()
+		figure.setup(Color(data["color"]), Humanoid.DEFAULT_SKIN, Color(data.get("hair", Humanoid.DEFAULT_HAIR.to_html())))
+		add_child(figure)
 
 	var shape := CapsuleShape3D.new()
 	shape.radius = BODY_RADIUS
@@ -35,9 +39,21 @@ func setup(data: Dictionary) -> void:
 	add_child(label)
 
 
+func _add_model(path: String) -> void:
+	var model: Node3D = (load(path) as PackedScene).instantiate()
+	model.name = "Model"
+	# Models face +Z, and the simple figures they replace face -Z.
+	model.rotation.y = PI
+	add_child(model)
+	CharacterAnimations.play(model, IDLE_ANIMATION)
+
+
 func prompt() -> String:
 	return tr("PROMPT_TALK") % tr(prompt_key)
 
 
 func interact(player: Player) -> void:
+	# Villagers face -Z, so turn that side toward whoever is talking to them.
+	var offset := player.global_position - global_position
+	rotation.y = atan2(-offset.x, -offset.z)
 	get_tree().call_group(UI_GROUP, "open_conversation", npc_id, tr(prompt_key), player)

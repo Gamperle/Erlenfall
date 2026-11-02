@@ -1,6 +1,6 @@
 # Asset generation pipeline
 
-This pipeline makes draft 3D props from text. SDXL draws a picture, TripoSR turns it into a textured mesh, and Blender renders previews for review. It runs on a Windows PC with an AMD Radeon RX 7900 XT, controlled over SSH.
+This pipeline makes draft 3D props from text. FLUX.2 klein 4B draws a picture, TripoSR turns it into a textured mesh, and Blender renders previews for review. It runs on a Windows PC with an AMD Radeon RX 7900 XT, controlled over SSH.
 
 **Status: experimental. No generated asset is in the game yet.** Before one can be added:
 
@@ -12,11 +12,12 @@ This pipeline makes draft 3D props from text. SDXL draws a picture, TripoSR turn
 
 | Step | Tool | Runs on | Time per item | Output |
 | --- | --- | --- | --- | --- |
-| Draw candidates | SDXL base 1.0 | GPU | About 8 s | `<batch>\candidates\<object>_<n>.png` |
+| Draw candidates | FLUX.2 klein 4B (`draw_klein.py`) | GPU | About 9 s, 7.9 GB | `<batch>\candidates\<object>_<n>.png` |
 | Choose pictures | A person or agent | | | `<batch>\input\` |
 | Make the model | TripoSR, `rembg` | GPU and CPU | About 2 minutes, including the preview and crash retries | `<batch>\models\<name>\0\mesh.obj`, `texture.png` |
 | Render previews | Blender | CPU | Included above | `<batch>\previews\<name>_front.png`, `_back.png` |
 | Clean up for the game | Blender (`clean_models.ps1`, `cleanup_mesh.py`) | CPU | 10 to 35 s | `cleaned\<name>.glb` |
+| Reshape and set real size | Blender (`adjust_glb.py`, `size_glb.py`, `size_models.ps1`) | CPU | Seconds | `props\<name>.glb` |
 
 Texture baking takes most of the model time, at 30 to 177 s, and it grows with mesh complexity. The GPU model step is a steady 12 s, so the card sits mostly idle during a batch. The batch uses about 3 of the CPU's 16 threads and 2.5 GB of RAM while baking, so the PC has spare capacity. Previews are not the bottleneck: one render takes 2.5 s on the CPU and 1.4 s on the GPU with Blender's HIP backend ([#62](https://github.com/Gamperle/Erlenfall/issues/62)).
 
@@ -76,6 +77,10 @@ Both environments should report that the GPU is available. The first runs also d
    ```
 
 4. Copy the previews back with `scp` and check them against the picture. Use `check_mesh.py`'s output to spot failed models. The failed stone wall in the first batch had just 222 faces.
+
+## Choosing the image model
+
+FLUX.2 klein 4B is the default, under Apache 2.0, with no account needed. In testing it got objects right far more often than SDXL, with cleaner backgrounds. It needs `enable_model_cpu_offload`, because keeping every part on the GPU exceeds its memory. It needs its own environment with current `diffusers`, not `setup_pc.ps1`'s `venv-images`. Z-Image Turbo also works, at 18 s and 12.1 GB. TRELLIS.2 has not produced a model on this PC ([#70](https://github.com/Gamperle/Erlenfall/issues/70)), and two TripoSR processes at once make the startup crash much worse ([#59](https://github.com/Gamperle/Erlenfall/issues/59)).
 
 ## Getting good pictures
 

@@ -15,6 +15,7 @@
 		"torch_burns_out": { "all": ["torches", "torch_burn_time_enabled"] }
 	},
 	"values": {
-		"torch_burn_seconds": 600
+		"torch_burn_seconds": 600,
+		"interface_min_scale": 0.9
 	}
 }

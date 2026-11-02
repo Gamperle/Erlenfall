@@ -8,7 +8,7 @@ const BOTTOM_MARGIN := 90.0
 var _player: Player
 var _runner: DialogueRunner
 
-var _panel: PanelContainer
+var _panel: FittedPanel
 var _speaker: Label
 var _text: Label
 var _choices: VBoxContainer
@@ -77,30 +77,30 @@ func _add_choice(text: String, index: int) -> void:
 
 
 func _build() -> void:
-	_panel = PanelContainer.new()
+	_panel = FittedPanel.new(PANEL_WIDTH, BOTTOM_MARGIN)
 	_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_panel.custom_minimum_size.x = PANEL_WIDTH
 	_panel.offset_bottom = -BOTTOM_MARGIN
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	add_child(_panel)
 
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 16)
-	_panel.add_child(margin)
-
-	var column := VBoxContainer.new()
+	var column := _panel.content
 	column.add_theme_constant_override("separation", 10)
-	margin.add_child(column)
 
 	_speaker = Label.new()
-	_speaker.add_theme_font_size_override("font_size", 22)
+	_speaker.theme_type_variation = &"TitleLabel"
+	_speaker.add_theme_font_size_override("font_size", 24)
 	column.add_child(_speaker)
 
+	var page := PanelContainer.new()
+	page.theme_type_variation = &"ParchmentPanel"
+	column.add_child(page)
+
 	_text = Label.new()
+	_text.theme_type_variation = &"InkLabel"
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(_text)
+	page.add_child(_text)
 
 	_choices = VBoxContainer.new()
+	_choices.add_theme_constant_override("separation", 6)
 	column.add_child(_choices)

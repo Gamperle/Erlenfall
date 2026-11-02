@@ -138,7 +138,7 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 			for building: Dictionary in layout["buildings"]:
 				well_placed = well_placed and Vector2(at.x, at.z).distance_to(Vector2(building["x"], building["z"])) > 5.0
 		_check(well_placed, "%s grow on the ground, clear of the river and buildings" % plants)
-	_check(village.get_node("LeafTrees").multimesh.instance_count > 0 and village.get_node("Bushes").multimesh.instance_count > 0, "leaf trees and bushes are planted")
+	_check(village.get_node("LeafTrees").get_child_count() > 1 and village.get_node("Bushes").get_child_count() > 1, "leaf trees and bushes are planted in chunks")
 
 	var low := INF
 	var high := -INF

@@ -43,6 +43,9 @@ const BRIDGE_RISE := 0.9
 const BRIDGE_LIFT := 0.06
 const BOULDER_COLOR := Color(0.36, 0.33, 0.3)
 const BOULDER_LUMPINESS := 0.35
+const PLANT_CHUNK_SIZE := 64.0
+const BUSH_DRAW_DISTANCE := 450.0
+const GRASS_DRAW_DISTANCE := 260.0
 const WOOD_PILE_SHAPE := Vector3(1.0, 0.9, 1.5)
 
 @export var terrain: Terrain
@@ -70,7 +73,7 @@ func _ready() -> void:
 	_add_tree_collision(leaf_trees)
 	var bushes := _add_multimesh(_bush_mesh(), _scatter(layout["bushes"], layout["fields"]), 0.0, _tint_random(layout["bushes"]))
 	bushes.name = "Bushes"
-	bushes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_set_small_plants(bushes, BUSH_DRAW_DISTANCE)
 	_add_grass(layout["grass"], layout["fields"])
 	_add_boulders(layout["boulders"])
 	for npc_data: Dictionary in layout["npcs"]:
@@ -472,8 +475,9 @@ func _add_grass(data: Dictionary, fields: Array) -> void:
 		var basis := Basis(Vector3.UP, random.randf() * TAU).scaled(Vector3.ONE * scale_factor)
 		transforms.append(Transform3D(basis, _ground_position(point.x, point.y)))
 
-	var instance := _add_multimesh(_grass_tuft_mesh(), transforms, 0.0, random)
-	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var grass := _add_multimesh(_grass_tuft_mesh(), transforms, 0.0, random)
+	grass.name = "Grass"
+	_set_small_plants(grass, GRASS_DRAW_DISTANCE)
 
 
 func _is_clear_ground(point: Vector2, fields: Array) -> bool:
@@ -533,29 +537,49 @@ func _is_tree_allowed(point: Vector2, data: Dictionary, fields: Array) -> bool:
 	return true
 
 
-func _add_multimesh(mesh: Mesh, transforms: Array[Transform3D], height_offset: float, tint_random: RandomNumberGenerator = null) -> MultiMeshInstance3D:
-	var multimesh := MultiMesh.new()
-	multimesh.transform_format = MultiMesh.TRANSFORM_3D
-	multimesh.use_colors = tint_random != null
-	multimesh.mesh = mesh
-	multimesh.instance_count = transforms.size()
-	for i in transforms.size():
-		var offset := transforms[i].basis * (Vector3.UP * height_offset)
-		multimesh.set_instance_transform(i, transforms[i].translated(offset))
-		if tint_random != null:
-			var brightness := tint_random.randf_range(0.8, 1.15)
-			multimesh.set_instance_color(i, Color(brightness, brightness, brightness * 0.95))
-	var instance := MultiMeshInstance3D.new()
-	instance.multimesh = multimesh
+## Splits the instances into chunks by area, so that Godot can skip the ones out of view.
+func _add_multimesh(mesh: Mesh, transforms: Array[Transform3D], height_offset: float, tint_random: RandomNumberGenerator = null) -> Node3D:
+	var chunks: Dictionary = {}
+	for transform in transforms:
+		var key := Vector2i((transform.origin / PLANT_CHUNK_SIZE).floor().x, (transform.origin / PLANT_CHUNK_SIZE).floor().z)
+		if not chunks.has(key):
+			chunks[key] = []
+		chunks[key].append(transform)
+
+	var material: StandardMaterial3D = null
 	if tint_random != null:
-		var material := StandardMaterial3D.new()
+		material = StandardMaterial3D.new()
 		material.vertex_color_use_as_albedo = true
 		material.vertex_color_is_srgb = true
 		material.roughness = 1.0
 		material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var group := Node3D.new()
+	add_child(group)
+	for chunk: Array in chunks.values():
+		var multimesh := MultiMesh.new()
+		multimesh.transform_format = MultiMesh.TRANSFORM_3D
+		multimesh.use_colors = tint_random != null
+		multimesh.mesh = mesh
+		multimesh.instance_count = chunk.size()
+		for i in chunk.size():
+			var transform: Transform3D = chunk[i]
+			var offset := transform.basis * (Vector3.UP * height_offset)
+			multimesh.set_instance_transform(i, transform.translated(offset))
+			if tint_random != null:
+				var brightness := tint_random.randf_range(0.8, 1.15)
+				multimesh.set_instance_color(i, Color(brightness, brightness, brightness * 0.95))
+		var instance := MultiMeshInstance3D.new()
+		instance.multimesh = multimesh
 		instance.material_override = material
-	add_child(instance)
-	return instance
+		group.add_child(instance)
+	return group
+
+
+## Small plants don't cast shadows, and stop being drawn at this distance, where they are specks.
+func _set_small_plants(group: Node3D, draw_distance: float) -> void:
+	for instance: MultiMeshInstance3D in group.get_children():
+		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		instance.visibility_range_end = draw_distance
 
 
 func _add_tree_collision(transforms: Array[Transform3D]) -> void:

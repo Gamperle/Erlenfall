@@ -53,6 +53,8 @@ Set these on the model's `Skeleton3D` in the import settings, for both the chara
 - **Bone map:** use `SkeletonProfileHumanoid`. On characters, leave the finger bones out, because the animations' finger poses turn the hands into claws. They then keep their relaxed rest pose.
 - **Silhouette fix:** turn it on, with a threshold of 3 degrees, since the bodies rest in an A-pose.
 
+- **Back correction:** transferred animations lean these bodies about 5 to 6 degrees further forward than the animations' own figure. Rotate the `Spine` and `Chest` rotation tracks back by 8 degrees each, as `_straightened` in `turntable.gd` does. The game will need the same when characters go in.
+
 ## Things that went wrong
 
 To tell whether a flaw comes from the assets or this script, add `full` to the end of the build command. It skips removing hidden parts and all reduction.

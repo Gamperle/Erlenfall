@@ -11,6 +11,8 @@ const CAMERA_DISTANCE := 3.1
 const CAMERA_HEIGHT := 0.95
 const CAMERA_FOV := 40.0
 const SETTLE_FRAMES := 5
+## Applied to both the Spine and Chest bones.
+const BACK_CORRECTION_DEGREES := 8.0
 const ANGLE_NAMES: Array[String] = ["front", "front_left", "left", "back_left", "back", "back_right", "right", "front_right"]
 const BACKGROUND := Color(0.5, 0.56, 0.6)
 const FLOOR_COLOR := Color(0.35, 0.36, 0.35)
@@ -88,9 +90,24 @@ func _pose(person: Node3D, library: AnimationLibrary) -> void:
 func _load_animations(path: String) -> AnimationLibrary:
 	var source: Node = (load(path) as PackedScene).instantiate()
 	var player: AnimationPlayer = source.find_child("AnimationPlayer", true, false)
-	var library := player.get_animation_library("")
+	var library := _straightened(player.get_animation_library(""))
 	source.free()
 	return library
+
+
+## Tilts the back in every animation, because transferred animations lean these bodies too far forward.
+func _straightened(library: AnimationLibrary) -> AnimationLibrary:
+	var result := AnimationLibrary.new()
+	var correction := Quaternion(Vector3.RIGHT, deg_to_rad(-BACK_CORRECTION_DEGREES))
+	for animation_name in library.get_animation_list():
+		var animation: Animation = library.get_animation(animation_name).duplicate(true)
+		for track in animation.get_track_count():
+			var path := String(animation.track_get_path(track))
+			if animation.track_get_type(track) == Animation.TYPE_ROTATION_3D and (path.ends_with(":Spine") or path.ends_with(":Chest")):
+				for key in animation.track_get_key_count(track):
+					animation.track_set_key_value(track, key, correction * animation.track_get_key_value(track, key))
+		result.add_animation(animation_name, animation)
+	return result
 
 
 func _build_stage() -> Node3D:

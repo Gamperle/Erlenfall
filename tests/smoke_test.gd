@@ -278,8 +278,15 @@ func _test_story(scene: Node, player: Player) -> void:
 	player.position = hedda.position + Vector3(0.0, 0.5, 2.0)
 	await _physics_frames(10)
 	_check(player.interact_target == hedda, "player can target a villager")
+	var was_first_person := player.first_person
+	player.first_person = false
+	player._apply_camera_mode()
 	player.interact()
+	await _physics_frames(2)
 	_check(ui.is_open() and player.is_busy(), "talking opens the dialogue screen")
+	_check(_framing_test(player, hedda), "the villager and the camera face each other, with the player aside")
+	player.first_person = was_first_person
+	player._apply_camera_mode()
 	ui.choose(1)
 	ui.choose(0)
 	_check(quests.current_objective("arrival") == "see_smith", "grandmother sends the player to the smith")
@@ -569,6 +576,18 @@ func _first_of(parent: Node, type: Variant) -> Node:
 		if is_instance_of(child, type):
 			return child
 	return null
+
+
+## The villager faces the player, and on screen they don't overlap.
+func _framing_test(player: Player, npc: Npc) -> bool:
+	var to_player := (player.global_position - npc.global_position) * Vector3(1.0, 0.0, 1.0)
+	to_player = to_player.normalized()
+	var faces: bool = (-npc.global_basis.z).dot(to_player) > 0.99
+	var camera: Camera3D = player.get_node("CameraPivot/SpringArm/Camera")
+	var view := camera.global_transform.affine_inverse()
+	var npc_view: Vector3 = view * (npc.global_position + Vector3.UP)
+	var player_view: Vector3 = view * (player.global_position + Vector3.UP)
+	return faces and npc_view.x / -npc_view.z > player_view.x / -player_view.z + 0.1
 
 
 func _has_joypad(kinds: Dictionary) -> bool:

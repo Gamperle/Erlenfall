@@ -19,6 +19,8 @@ const MIN_PITCH := -1.3
 const MAX_PITCH := 1.3
 const THIRD_PERSON_DISTANCE := 3.5
 const SHOULDER_OFFSET := 0.8
+## How far the third-person camera swings aside in a conversation, to show both people.
+const CONVERSATION_SWING := 0.45
 
 const GROUP := "player"
 const PLAYER_CLOTH_COLOR := Color(0.45, 0.3, 0.2)
@@ -64,6 +66,7 @@ var torch_burned_seconds := 0.0
 var health := Health.new(MAX_HEALTH)
 
 var _busy := false
+var _look_before_conversation: Variant = null
 var _attack_cooldown := 0.0
 var _attack_windup := 0.0
 var _dodge_time := 0.0
@@ -86,6 +89,8 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	_body_mesh.setup(PLAYER_CLOTH_COLOR)
 	_spring_arm.add_excluded_object(get_rid())
+	# Conversations pause the world, and the arm still has to keep the camera out of walls.
+	_spring_arm.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(_torch)
 	_apply_camera_mode()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -98,6 +103,22 @@ func set_busy(busy: bool) -> void:
 	get_tree().paused = busy
 	busy_changed.emit()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if busy else Input.MOUSE_MODE_CAPTURED
+
+
+## Turns the player and camera toward a person, so the player's body doesn't hide them.
+func frame_conversation(point: Vector3) -> void:
+	_look_before_conversation = _pivot.rotation
+	var offset := point - global_position
+	var yaw := atan2(-offset.x, -offset.z)
+	_body_mesh.rotation.y = yaw
+	_pivot.rotation = Vector3(0.0, yaw + (0.0 if first_person else CONVERSATION_SWING), 0.0)
+
+
+## Gives the camera back to the player, looking where it did before the conversation.
+func end_conversation() -> void:
+	if _look_before_conversation != null:
+		_pivot.rotation = _look_before_conversation
+		_look_before_conversation = null
 
 
 func is_busy() -> bool:

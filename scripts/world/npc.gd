@@ -40,4 +40,7 @@ func prompt() -> String:
 
 
 func interact(player: Player) -> void:
+	var offset := player.global_position - global_position
+	rotation.y = atan2(-offset.x, -offset.z)
+	player.frame_conversation(global_position)
 	get_tree().call_group(UI_GROUP, "open_conversation", npc_id, tr(prompt_key), player)

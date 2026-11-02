@@ -40,6 +40,7 @@ func choose(index: int) -> void:
 	if _runner.is_finished():
 		_panel.visible = false
 		_player.set_busy(false)
+		_player.end_conversation()
 	else:
 		_show_line()
 

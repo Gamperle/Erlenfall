@@ -5,6 +5,7 @@ blender --background --python build_character.py -- <recipes.json> <id> <asset f
 """
 import json
 import os
+import struct
 import sys
 
 import addon_utils
@@ -12,8 +13,9 @@ import bpy
 
 MPFB = "bl_ext.blender_org.mpfb"
 TEXTURE_SIZE = 512
+ALPHA_CUTOFF = 0.25
 # Triangle budgets per kind of part.
-PART_BUDGETS = {"clothes": 2200, "hair": 700, "beard": 300, "brows": 60, "eyes": 180}
+PART_BUDGETS = {"clothes": 2200, "hair": 700, "beard": 300, "brows": 400, "eyes": 180}
 BODY_BUDGET = 2800
 
 
@@ -31,6 +33,10 @@ def find_skin(folders, name):
             if name + ".mhmat" in files:
                 return os.path.join(root, name + ".mhmat")
     raise FileNotFoundError(name)
+
+
+def as_list(names):
+    return names if isinstance(names, list) else [names]
 
 
 def triangles(mesh_object):
@@ -106,6 +112,29 @@ def tint_material(mesh_object, color):
         nodes.links.new(mix.outputs["Result"], base)
 
 
+def fix_transparency(path, cutout_names):
+    """Makes solid parts opaque and hair cut out, since blended layers sort wrongly in Godot."""
+    with open(path, "rb") as file:
+        data = file.read()
+    json_length = struct.unpack_from("<I", data, 12)[0]
+    document = json.loads(data[20:20 + json_length])
+    for material in document.get("materials", []):
+        material.pop("alphaCutoff", None)
+        if any(name in material["name"] for name in cutout_names):
+            material["alphaMode"] = "MASK"
+            material["alphaCutoff"] = ALPHA_CUTOFF
+        else:
+            material["alphaMode"] = "OPAQUE"
+    chunk = json.dumps(document, separators=(",", ":")).encode()
+    chunk += b" " * (-len(chunk) % 4)
+    rest = data[20 + json_length:]
+    with open(path, "wb") as file:
+        file.write(struct.pack("<III", 0x46546C67, 2, 20 + len(chunk) + len(rest)))
+        file.write(struct.pack("<II", len(chunk), 0x4E4F534A))
+        file.write(chunk)
+        file.write(rest)
+
+
 def build(recipe, folders, output):
     from bl_ext.blender_org.mpfb.entities.objectproperties import HumanObjectProperties
     from bl_ext.blender_org.mpfb.services.humanservice import HumanService
@@ -120,8 +149,7 @@ def build(recipe, folders, output):
 
     meshes = {}
     for kind, asset_type in (("clothes", "Clothes"), ("hair", "Hair"), ("beard", "Clothes"), ("brows", "Eyebrows"), ("eyes", "Eyes")):
-        names = recipe.get(kind, [])
-        for name in names if isinstance(names, list) else [names]:
+        for name in as_list(recipe.get(kind, [])):
             asset = HumanService.add_mhclo_asset(find_asset(folders, name), body, asset_type=asset_type, subdiv_levels=0, material_type="MAKESKIN")
             meshes[asset.name] = (asset, kind, name)
     HumanService.set_character_skin(find_skin(folders, recipe["skin"]), body, skin_type="MAKESKIN")
@@ -157,6 +185,8 @@ def build(recipe, folders, output):
         mesh_object.select_set(True)
     bpy.context.view_layer.objects.active = rig
     bpy.ops.export_scene.gltf(filepath=output, use_selection=True, export_animations=False, export_morph=False, export_image_format="JPEG", export_jpeg_quality=85)
+    cutouts = [name for kind in ("hair", "beard", "brows") for name in as_list(recipe.get(kind, []))]
+    fix_transparency(output, cutouts)
     print("PARTS", {mesh_object.name: triangles(mesh_object) for mesh_object in all_meshes})
     print("BUILT", recipe["id"], sum(triangles(mesh_object) for mesh_object in all_meshes), "triangles", os.path.getsize(output) // 1024, "KB")
 

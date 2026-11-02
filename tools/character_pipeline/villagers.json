@@ -1,0 +1,78 @@
+[
+	{
+		"id": "hedda",
+		"shape": {
+			"gender": 0.0,
+			"age": 0.95,
+			"muscle": 0.3,
+			"weight": 0.55,
+			"cupsize": 0.62,
+			"firmness": 0.35
+		},
+		"skin": "old_caucasian_female",
+		"clothes": ["toigo_long_full_skirt", "toigo_fisherman_sweater", "shoes03"],
+		"footwear": ["shoes03"],
+		"colors": {
+			"toigo_long_full_skirt": [0.45, 0.35, 0.28],
+			"toigo_fisherman_sweater": [0.75, 0.68, 0.55]
+		},
+		"hair": "braid01",
+		"brows": "eyebrow005",
+		"eyes": "low-poly",
+		"tucked": {
+			"toigo_fisherman_sweater": "toigo_long_full_skirt"
+		},
+		"hair_color": [0.72, 0.7, 0.68]
+	},
+	{
+		"id": "greta",
+		"shape": {
+			"gender": 0.0,
+			"age": 0.6,
+			"muscle": 0.4,
+			"weight": 0.6,
+			"cupsize": 0.66,
+			"firmness": 0.5
+		},
+		"skin": "middleage_caucasian_female",
+		"clothes": ["toigo_long_full_skirt", "toigo_fisherman_sweater", "shoes03"],
+		"footwear": ["shoes03"],
+		"colors": {
+			"toigo_long_full_skirt": [0.5, 0.38, 0.2],
+			"toigo_fisherman_sweater": [0.55, 0.3, 0.22]
+		},
+		"hair": "ponytail01",
+		"brows": "eyebrow005",
+		"eyes": "low-poly",
+		"tucked": {
+			"toigo_fisherman_sweater": "toigo_long_full_skirt"
+		}
+	},
+	{
+		"id": "mira",
+		"shape": {
+			"gender": 0.0,
+			"age": 0.5,
+			"muscle": 0.5,
+			"weight": 0.4,
+			"cupsize": 0.62,
+			"firmness": 0.55
+		},
+		"skin": "young_caucasian_female",
+		"clothes": ["toigo_wool_pants", "toigo_fisherman_sweater", "shoes03"],
+		"footwear": ["shoes03"],
+		"colors": {
+			"toigo_wool_pants": [0.4, 0.33, 0.25],
+			"toigo_fisherman_sweater": [0.4, 0.5, 0.42]
+		},
+		"hair": "short04",
+		"brows": "eyebrow005",
+		"eyes": "low-poly",
+		"under_hem": {
+			"toigo_wool_pants": "toigo_fisherman_sweater"
+		},
+		"trim_above": {
+			"shoes03": 0.11
+		}
+	}
+]

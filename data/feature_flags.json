@@ -2,6 +2,7 @@
 	"flags": {
 		"compass": true,
 		"compass_objectives": true,
+		"realistic_villagers": true,
 		"performance_overlay": true,
 		"torches": true,
 		"torch_crafting_enabled": true,

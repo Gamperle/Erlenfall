@@ -2,6 +2,8 @@ extends SceneTree
 ## Run with: godot --headless --path . --script res://tests/smoke_test.gd
 
 const TEST_SAVE := "user://smoke_test_save.json"
+const TEST_SLOT_2 := "user://smoke_test_save_2.json"
+const TEST_SLOT_3 := "user://smoke_test_save_3.json"
 const TEST_SETTINGS := "user://smoke_test_settings.json"
 const TEST_FLAGS_A := "user://smoke_test_flags_a.json"
 const TEST_FLAGS_B := "user://smoke_test_flags_b.json"
@@ -687,26 +689,68 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	_check(menu.is_open() and player.is_busy() and paused, "the pause menu pauses the game")
 	scene.resume()
 	_check(not menu.is_open() and not player.is_busy() and not paused, "resuming unpauses the game")
-	menu.open_title(true)
+	menu.slot_paths = [TEST_SAVE, TEST_SLOT_2, TEST_SLOT_3]
+	DirAccess.remove_absolute(TEST_SLOT_2)
+	DirAccess.remove_absolute(TEST_SLOT_3)
+	scene.save_game()
+	menu.open_title()
 	_check(menu._asset_note.is_visible_in_tree(), "the title menu notes AI-generated assets")
 	_check(menu.is_open(), "the title menu opens")
-	var chosen := [false]
-	var on_new_game := func() -> void: chosen[0] = true
+	var started := [""]
+	var loaded := [""]
+	var on_new_game := func(path: String) -> void: started[0] = path
+	var on_continue := func(path: String) -> void: loaded[0] = path
 	menu.new_game_chosen.connect(on_new_game)
-	menu._buttons.get_child(1).pressed.emit()
-	_check(not chosen[0] and menu._confirming, "new game asks before overwriting a save")
+	menu.continue_chosen.connect(on_continue)
+	var scene_new: Callable = scene._on_new_game_chosen
+	var scene_continue: Callable = scene._on_continue_chosen
+	menu.new_game_chosen.disconnect(scene_new)
+	menu.continue_chosen.disconnect(scene_continue)
+
 	menu._buttons.get_child(0).pressed.emit()
-	_check(not chosen[0] and not menu._confirming, "going back keeps the save")
-	menu._buttons.get_child(1).pressed.emit()
-	menu._buttons.get_child(1).pressed.emit()
-	_check(chosen[0], "confirming starts a new game")
-	menu.new_game_chosen.disconnect(on_new_game)
-	menu.open_title(false)
-	menu.new_game_chosen.connect(on_new_game)
-	chosen[0] = false
+	_check(loaded[0] == TEST_SAVE, "continue loads the latest save")
+	menu._buttons.get_child(2).pressed.emit()
+	_check(menu._slot_screen and menu._buttons.get_child_count() == SaveGame.SLOTS + 1, "new game offers the save slots")
 	menu._buttons.get_child(0).pressed.emit()
-	_check(chosen[0], "with no save, new game starts at once")
+	_check(started[0] == "" and menu._confirming, "a used slot asks before being overwritten")
+	menu._buttons.get_child(0).pressed.emit()
+	_check(started[0] == "" and menu._slot_screen, "going back keeps the save")
+	menu._buttons.get_child(0).pressed.emit()
+	menu._buttons.get_child(1).pressed.emit()
+	_check(started[0] == TEST_SAVE, "confirming starts a new game in that slot")
+	started[0] = ""
+	menu.open_title()
+	menu._buttons.get_child(2).pressed.emit()
+	menu._buttons.get_child(1).pressed.emit()
+	_check(started[0] == TEST_SLOT_2, "an empty slot starts at once")
+
+	menu.open_title()
+	menu._buttons.get_child(1).pressed.emit()
+	var empty_slot: Button = menu._buttons.get_child(1)
+	_check(empty_slot.disabled and not menu._buttons.get_child(0).disabled, "only used slots can be loaded")
+	loaded[0] = ""
+	menu._buttons.get_child(0).pressed.emit()
+	_check(loaded[0] == TEST_SAVE, "loading uses the chosen slot")
+
+	scene.save_path = TEST_SLOT_2
+	scene.save_game()
+	var older := FileAccess.get_modified_time(TEST_SAVE)
+	if FileAccess.get_modified_time(TEST_SLOT_2) == older:
+		OS.delay_msec(1100)
+		scene.save_game()
+	_check(SaveGame.latest(menu.slot_paths) == TEST_SLOT_2 and SaveGame.exists(TEST_SAVE), "saving goes to the current slot and leaves the others")
+	scene.save_path = TEST_SAVE
+	DirAccess.remove_absolute(TEST_SAVE)
+	DirAccess.remove_absolute(TEST_SLOT_2)
+	menu.open_title()
+	_check(not menu._asset_note.get_parent() == null and menu._buttons.get_child_count() == 3, "with no saves, the title offers new game, settings, and quit")
+	started[0] = ""
+	menu._buttons.get_child(0).pressed.emit()
+	_check(started[0] == TEST_SAVE, "with no save, new game starts at once")
 	menu.new_game_chosen.disconnect(on_new_game)
+	menu.continue_chosen.disconnect(on_continue)
+	menu.new_game_chosen.connect(scene_new)
+	menu.continue_chosen.connect(scene_continue)
 	menu.close()
 	DirAccess.remove_absolute(TEST_SAVE)
 

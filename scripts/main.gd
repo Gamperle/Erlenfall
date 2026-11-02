@@ -14,6 +14,7 @@ const WAKE_UP_HOUR := 7.0
 ## Tests turn the menu off and use their own save file.
 var show_menu := true
 var save_path := SaveGame.DEFAULT_PATH
+var slot_paths := SaveGame.slot_paths()
 
 var _playing := false
 var _since_save := 0.0
@@ -58,8 +59,9 @@ func _ready() -> void:
 	_player.notice.connect(_show_message)
 	_player.busy_changed.connect(_update_prompt)
 
-	_menu.continue_chosen.connect(_continue_game)
-	_menu.new_game_chosen.connect(_start_new_game)
+	_menu.slot_paths = slot_paths
+	_menu.continue_chosen.connect(_on_continue_chosen)
+	_menu.new_game_chosen.connect(_on_new_game_chosen)
 	_menu.resume_chosen.connect(resume)
 	_menu.quit_chosen.connect(_save_and_quit)
 
@@ -68,7 +70,7 @@ func _ready() -> void:
 	_ui.visible = false
 	_player.visible = false
 	if show_menu:
-		_menu.open_title(SaveGame.exists(save_path))
+		_menu.open_title()
 	else:
 		_start_new_game()
 
@@ -142,6 +144,16 @@ func sleep() -> void:
 
 func _spawn_position() -> Vector3:
 	return Vector3(SPAWN.x, _terrain.height_at(SPAWN.x, SPAWN.y) + 1.0, SPAWN.y)
+
+
+func _on_new_game_chosen(path: String) -> void:
+	save_path = path
+	_start_new_game()
+
+
+func _on_continue_chosen(path: String) -> void:
+	save_path = path
+	_continue_game()
 
 
 func _start_new_game() -> void:

@@ -19,6 +19,10 @@ blender --background --python build_character.py -- villagers.json hedda /path/t
 
 The packs argument can list several folders, separated by commas.
 
+## Budget
+
+Each character is about 15,000 triangles with 1024-pixel textures. A test with 50 animated characters on a Radeon 680M at 1280x720 ran at about 130 FPS. Results are in [#76](https://github.com/Gamperle/Erlenfall/issues/76).
+
 ## Checking from all sides
 
 `turntable.gd` shows each character in a folder in turn and saves 8 views, 45 degrees apart, plus one sheet per character with all 8. Run it from a Godot project that has imported the characters:

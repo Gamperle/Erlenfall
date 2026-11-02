@@ -20,14 +20,14 @@ import mathutils.kdtree
 import numpy
 
 MPFB = "bl_ext.blender_org.mpfb"
-TEXTURE_SIZE = 512
+TEXTURE_SIZE = 1024
 ALPHA_CUTOFF = 0.25
 COVERED_DISTANCE = 0.035
 EDGE_MARGIN = 0.03
 EDGE_SINK = 0.012
 # Triangle budgets per kind of part.
-PART_BUDGETS = {"clothes": 2400, "hair": 700, "beard": 300, "brows": 400, "eyes": 180}
-BODY_BUDGETS = {"rest": 700, "hands": 1400, "head": 900}
+PART_BUDGETS = {"clothes": 5000, "hair": 1800, "beard": 800, "brows": 400, "eyes": 180}
+BODY_BUDGETS = {"rest": 2000, "hands": 2500, "head": 3500}
 HAND_GROUPS = ("hand_", "index_", "middle_", "ring_", "pinky_", "thumb_")
 HEAD_GROUPS = ("head", "neck_")
 REGION_GROUPS = HAND_GROUPS + HEAD_GROUPS

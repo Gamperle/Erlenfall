@@ -331,6 +331,13 @@ func _fine_cells(count: int) -> PackedByteArray:
 func _add_fine_cells(cells: PackedByteArray, heights: PackedFloat32Array, count: int, vertices: PackedVector3Array, normals: PackedVector3Array, colors: PackedColorArray, indices: PackedInt32Array) -> void:
 	var size := STEP / FINE_CELLS
 	var row := count - 1
+	# Neighboring vertices and cells ask for the same points, and working out a height is slow.
+	var known_heights: Dictionary = {}
+	var fine_height := func(fine_x: int, fine_z: int) -> float:
+		var key := fine_z * 65536 + fine_x
+		if not known_heights.has(key):
+			known_heights[key] = height_at(fine_x * size - SIZE / 2.0, fine_z * size - SIZE / 2.0)
+		return known_heights[key]
 	var is_fine := func(i: int, j: int) -> bool:
 		return i >= 0 and j >= 0 and i < row and j < row and cells[j * row + i] == 1
 	for j in row:
@@ -352,7 +359,9 @@ func _add_fine_cells(cells: PackedByteArray, heights: PackedFloat32Array, count:
 					var z := j * STEP - SIZE / 2.0 + sub_z * size
 					var across := float(sub_x) / FINE_CELLS
 					var down := float(sub_z) / FINE_CELLS
-					var height := height_at(x, z)
+					var fine_x := i * FINE_CELLS + sub_x
+					var fine_z := j * FINE_CELLS + sub_z
+					var height: float = fine_height.call(fine_x, fine_z)
 					if sub_z == 0 and not near_north:
 						height = lerpf(corner_nw, corner_ne, across)
 					elif sub_z == FINE_CELLS and not near_south:
@@ -362,7 +371,7 @@ func _add_fine_cells(cells: PackedByteArray, heights: PackedFloat32Array, count:
 					elif sub_x == FINE_CELLS and not near_east:
 						height = lerpf(corner_ne, corner_se, down)
 					vertices.append(Vector3(x, height, z))
-					normals.append(Vector3(height_at(x - size, z) - height_at(x + size, z), 2.0 * size, height_at(x, z - size) - height_at(x, z + size)).normalized())
+					normals.append(Vector3(fine_height.call(fine_x - 1, fine_z) - fine_height.call(fine_x + 1, fine_z), 2.0 * size, fine_height.call(fine_x, fine_z - 1) - fine_height.call(fine_x, fine_z + 1)).normalized())
 					colors.append(_color_at(x, z))
 			for sub_z in FINE_CELLS:
 				for sub_x in FINE_CELLS:

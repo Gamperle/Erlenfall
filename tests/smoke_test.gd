@@ -100,6 +100,24 @@ func _run() -> void:
 	_test_character_models(player)
 	_test_feature_flags()
 	await _test_torch(player)
+	var torch: Torch = player._torch
+	day_night.hour = 12.0
+	var noon_share := torch.light_share()
+	day_night.hour = 1.0
+	_check(torch.light_share() == 1.0 and noon_share < 0.5, "a torch's light is weak in daylight")
+	player.inventory.add(Player.TORCH_ITEM)
+	player.set_torch_lit(true)
+	await process_frame
+	await process_frame
+	var flame: Node3D = torch.get_node("Flame") if torch.has_node("Flame") else torch.find_child("Flame", true, false)
+	var flame_height := flame.scale.y
+	for i in 5:
+		await process_frame
+	_check(torch._sparks.emitting and torch._smoke.emitting and flame.scale.y != flame_height, "a lit torch moves and gives off sparks and smoke")
+	player.set_torch_lit(false)
+	_check(not torch._sparks.emitting, "an unlit torch stops giving off sparks")
+	player.inventory.remove(Player.TORCH_ITEM)
+	day_night.hour = 9.0
 	await _test_crafting(scene, player)
 	await _test_story(scene, player)
 	await _test_combat(scene, player)

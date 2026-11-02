@@ -193,6 +193,7 @@ static func torch() -> Node3D:
 	var flame := MeshInstance3D.new()
 	flame.mesh = flame_mesh
 	flame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	flame.name = "Flame"
 	flame.position = Vector3.UP * TORCH_FLAME_HEIGHT
 	model.add_child(flame)
 	return model

@@ -2,6 +2,7 @@ class_name SaveGame
 extends RefCounted
 ## Writes and reads progress as JSON. A missing or damaged file counts as no save.
 
+const BELOW_GROUND_MARGIN := 1.5
 const DEFAULT_PATH := "user://save.json"
 const VERSION := 1
 
@@ -38,6 +39,10 @@ static func apply(path: String, player: Player, day_night: DayNight, village: Vi
 		return false
 	var saved_position: Array = data["position"]
 	player.position = Vector3(saved_position[0], saved_position[1], saved_position[2])
+	# Saves can come from before the land changed shape.
+	var ground: float = village.terrain.height_at(player.position.x, player.position.z)
+	if player.position.y < ground - BELOW_GROUND_MARGIN:
+		player.position.y = ground
 	player.health.current = data["health"]
 	player.health.changed.emit()
 	player.inventory.load_data(data["inventory"])

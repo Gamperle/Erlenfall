@@ -25,7 +25,7 @@ func _run() -> void:
 	var day_night: DayNight = scene.get_node("DayNight")
 	var village: Village = scene.get_node("Village")
 
-	_check(absf(terrain.height_at(0.0, 0.0)) < 1.0, "village site is flat")
+	_check(absf(terrain.height_at(0.0, -28.0)) < 2.0, "village site stays low")
 	_check(terrain.height_at(0.0, 600.0) > 60.0, "mountains surround the valley")
 	_check(player.is_on_floor(), "player lands on terrain")
 	_check(absf(player.position.y - terrain.height_at(player.position.x, player.position.z)) < 1.0, "collision matches terrain")
@@ -79,6 +79,7 @@ func _run() -> void:
 			kinds[input.get_class()] = true
 		_check(kinds.size() >= 1 and _has_joypad(kinds), "%s has a controller binding" % action)
 
+	await _test_land_and_river(scene, player)
 	_test_hud(scene, player)
 	_test_feature_flags()
 	await _test_torch(player)
@@ -91,6 +92,85 @@ func _run() -> void:
 
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")
 	quit(1 if _failures > 0 else 0)
+
+
+func _test_land_and_river(scene: Node, player: Player) -> void:
+	var terrain: Terrain = scene.get_node("Terrain")
+	var village: Village = scene.get_node("Village")
+	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Village.LAYOUT_PATH))
+
+	_check(terrain.get_node("Water").mesh.get_surface_count() == 1, "the river has water")
+	_check(terrain.river_clearance(0.0, 5.0) < 0.0, "the river runs through the village")
+	_check(terrain.height_at(0.0, 5.0) < terrain.water_height(0.0, 5.0), "the river bed lies under the water")
+	var downhill := true
+	for i in range(1, terrain.river.heights.size()):
+		downhill = downhill and terrain.river.heights[i] <= terrain.river.heights[i - 1]
+	_check(downhill, "the river only flows downhill")
+
+	var misplaced := PackedStringArray()
+	for list in ["buildings", "fields", "npcs", "enemies", "repair_sites", "beds", "stations", "resources"]:
+		for spot: Dictionary in layout[list]:
+			if terrain.river_clearance(spot["x"], spot["z"]) < 2.0 or _slope_degrees(terrain, spot["x"], spot["z"]) > 12.0:
+				misplaced.append("%s (%s, %s)" % [list, spot["x"], spot["z"]])
+	_check(misplaced.is_empty(), "everything stands clear of the river on level ground %s" % ", ".join(misplaced))
+	var steepest_road := 0.0
+	for road in terrain.roads:
+		for at in road.positions:
+			if terrain.river_clearance(at.x, at.y) > 0.0:
+				steepest_road = maxf(steepest_road, _slope_degrees(terrain, at.x, at.y))
+	_check(steepest_road < 20.0, "roads stay gentle (steepest %.1f degrees)" % steepest_road)
+
+	var site: Dictionary = terrain.building_sites[0]
+	var center := Vector2(site["x"], site["z"])
+	var site_height := terrain.height_at(center.x, center.y)
+	var top_low := INF
+	var top_high := -INF
+	for i in 16:
+		for radius: float in [site["radius"] / 2.0, site["radius"]]:
+			var at := center + Vector2.from_angle(TAU * i / 16.0) * radius
+			top_low = minf(top_low, terrain.height_at(at.x, at.y))
+			top_high = maxf(top_high, terrain.height_at(at.x, at.y))
+	_check(top_high - top_low < 0.5, "the hill for the assembly building has a flat top")
+	_check(site_height > terrain.height_at(0.0, -28.0) + 5.0, "the hill rises above the village")
+	_check(center.length() - site["radius"] - site["blend"] < Terrain.VILLAGE_RADIUS * 0.75, "the hill's foot reaches into the village")
+	var steepest_hill := 0.0
+	for i in 16:
+		for radius in range(int(site["radius"]), int(site["radius"] + site["blend"])):
+			var at := center + Vector2.from_angle(TAU * i / 16.0) * radius
+			steepest_hill = maxf(steepest_hill, _slope_degrees(terrain, at.x, at.y))
+	_check(steepest_hill < 40.0, "the hill can be climbed (steepest %.1f degrees)" % steepest_hill)
+
+	var low := INF
+	var high := -INF
+	for i in 64:
+		var at := Vector2.from_angle(TAU * i / 64.0) * 160.0
+		low = minf(low, terrain.height_at(at.x, at.y))
+		high = maxf(high, terrain.height_at(at.x, at.y))
+	_check(high - low > 10.0, "the valley floor is hilly (%.1f m between low and high)" % (high - low))
+
+	var bridge: Node3D = village.get_node("Bridge")
+	_check(terrain.river_clearance(bridge.position.x, bridge.position.z) < 0.0, "a bridge stands where the road meets the river")
+	var saved_position := player.position
+	var pivot: Node3D = player.get_node("CameraPivot")
+	pivot.rotation = Vector3.ZERO
+	# The bridge on the road, then wading through the water beside the village.
+	for x: float in [0.0, -32.0]:
+		var south := 18.0
+		player.position = Vector3(x, terrain.height_at(x, south) + 0.5, south)
+		await _physics_frames(10)
+		Input.action_press("move_forward")
+		await _physics_frames(420)
+		Input.action_release("move_forward")
+		var crossed := player.position.z < south - 15.0 and terrain.river_clearance(player.position.x, player.position.z) > 0.0
+		_check(crossed, "the player crosses the river at x=%.0f" % x)
+	player.position = saved_position
+	await _physics_frames(10)
+
+
+func _slope_degrees(terrain: Terrain, x: float, z: float) -> float:
+	var across := terrain.height_at(x + 1.0, z) - terrain.height_at(x - 1.0, z)
+	var along := terrain.height_at(x, z + 1.0) - terrain.height_at(x, z - 1.0)
+	return rad_to_deg(atan(Vector2(across, along).length() / 2.0))
 
 
 func _test_hud(scene: Node, player: Player) -> void:
@@ -502,6 +582,13 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 
 	_check(SaveGame.apply(TEST_SAVE, player, day_night, village), "the game loads")
 	_check(player.position.is_equal_approx(saved_position), "position is restored")
+	var below_ground := JSON.parse_string(FileAccess.get_file_as_string(TEST_SAVE)) as Dictionary
+	below_ground["position"][1] = -500.0
+	FileAccess.open(TEST_SAVE, FileAccess.WRITE).store_string(JSON.stringify(below_ground))
+	SaveGame.apply(TEST_SAVE, player, day_night, village)
+	_check(player.position.y > -100.0, "a save from below today's ground comes back above it")
+	player.position = saved_position
+	scene.save_game()
 	_check(player.inventory.count("coal") == saved_coal, "inventory is restored")
 	_check(player.known_recipes.size() == recipes, "recipes are restored")
 	_check(player.health.current == 100.0, "health is restored")

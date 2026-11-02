@@ -29,7 +29,8 @@ You walk into a small village with a few outlying farms, surrounded by high, mis
 ## World
 
 - About 1 km x 1 km, walkable end to end in about 5 minutes. Expand only once this area is full.
-- The village at the center, outlying farms, forest, the buried mine, and the landslide site, ringed by mountains.
+- The village at the center, outlying farms, forest, the buried mine, and the landslide site, ringed by mountains. The valley floor is hilly, and a river runs through the village under the road bridge.
+- A hill at the village's northeast edge is kept free for the assembly building. Its site is `building_sites` in `data/village_layout.json`.
 - Day/night cycle and simple weather. No seasons at first.
 
 ## Crafting

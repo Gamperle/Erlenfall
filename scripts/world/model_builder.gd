@@ -18,6 +18,11 @@ const WINDOW_SIZE := Vector2(0.9, 0.9)
 const ROOF_HEIGHT := 2.5
 const ROOF_OVERHANG := 1.0
 const TORCH_FLAME_HEIGHT := 0.62
+const BRIDGE_SEGMENTS := 8
+const BRIDGE_DECK_THICKNESS := 0.25
+const BRIDGE_RAIL_HEIGHT := 1.0
+const BRIDGE_RAIL_THICKNESS := 0.12
+const BRIDGE_PIER_DEPTH := 3.0
 
 
 static func box(size: Vector3, pattern: Surfaces.Pattern, color: Color, at := Vector3.ZERO) -> MeshInstance3D:
@@ -105,6 +110,52 @@ static func prop(model: String, size: Vector3) -> Node3D:
 		"bed":
 			return _bed(size)
 	return box(size, Surfaces.Pattern.WOOD, WOOD_COLOR, Vector3.UP * size.y / 2.0)
+
+
+## A low wooden arch along its local z axis, with railings, resting on stone piers.
+static func bridge(length: float, width: float, rise: float) -> StaticBody3D:
+	var body := StaticBody3D.new()
+	for i in BRIDGE_SEGMENTS:
+		var from := _arch_point(float(i) / BRIDGE_SEGMENTS, length, rise)
+		var to := _arch_point(float(i + 1) / BRIDGE_SEGMENTS, length, rise)
+		var segment := Node3D.new()
+		segment.position = (from + to) / 2.0
+		segment.rotation.x = atan2(from.y - to.y, to.z - from.z)
+		body.add_child(segment)
+		var run := from.distance_to(to) + 0.02
+		_add_bridge_part(body, segment, Vector3(width, BRIDGE_DECK_THICKNESS, run), Vector3.DOWN * BRIDGE_DECK_THICKNESS / 2.0, TIMBER_COLOR.lightened(0.15))
+		for side: float in [-1.0, 1.0]:
+			var rail_at := Vector3(side * (width - BRIDGE_RAIL_THICKNESS) / 2.0, BRIDGE_RAIL_HEIGHT, 0.0)
+			_add_bridge_part(body, segment, Vector3(BRIDGE_RAIL_THICKNESS, BRIDGE_RAIL_THICKNESS, run), rail_at, TIMBER_COLOR)
+			var post := box(Vector3(BRIDGE_RAIL_THICKNESS, BRIDGE_RAIL_HEIGHT, BRIDGE_RAIL_THICKNESS), Surfaces.Pattern.WOOD, TIMBER_COLOR, rail_at + Vector3.DOWN * BRIDGE_RAIL_HEIGHT / 2.0)
+			segment.add_child(post)
+			var guard := CollisionShape3D.new()
+			var guard_shape := BoxShape3D.new()
+			guard_shape.size = Vector3(BRIDGE_RAIL_THICKNESS, BRIDGE_RAIL_HEIGHT, run)
+			guard.shape = guard_shape
+			guard.transform = segment.transform * Transform3D(Basis.IDENTITY, Vector3(rail_at.x, BRIDGE_RAIL_HEIGHT / 2.0, 0.0))
+			body.add_child(guard)
+	for progress: float in [0.3, 0.7]:
+		var at := _arch_point(progress, length, rise)
+		var pier_height := at.y + BRIDGE_PIER_DEPTH - BRIDGE_DECK_THICKNESS
+		body.add_child(box(Vector3(width, pier_height, 0.8), Surfaces.Pattern.STONE, STONE_COLOR, Vector3(0.0, at.y - BRIDGE_DECK_THICKNESS - pier_height / 2.0, at.z)))
+	return body
+
+
+## The top of the deck, from one end at 0 to the other at 1. Both ends are at height 0.
+static func _arch_point(progress: float, length: float, rise: float) -> Vector3:
+	var across := progress * 2.0 - 1.0
+	return Vector3(0.0, rise * (1.0 - across * across), across * length / 2.0)
+
+
+static func _add_bridge_part(body: StaticBody3D, segment: Node3D, size: Vector3, at: Vector3, color: Color) -> void:
+	segment.add_child(box(size, Surfaces.Pattern.WOOD, color, at))
+	var shape := BoxShape3D.new()
+	shape.size = size
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	collision.transform = segment.transform * Transform3D(Basis.IDENTITY, at)
+	body.add_child(collision)
 
 
 ## A stack of logs for the wood gathering spots.

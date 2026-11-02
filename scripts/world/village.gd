@@ -21,7 +21,13 @@ const MAX_TREE_HEIGHT := 90.0
 const MAX_PLACEMENT_ATTEMPTS := 10
 const ROAD_COLOR := Color(0.4, 0.32, 0.22)
 const ROAD_LIFT := 0.12
-const ROAD_SAMPLE_SPACING := 2.0
+const RIVER_TREE_CLEARANCE := 4.0
+const RIVER_GRASS_CLEARANCE := 0.5
+const SITE_TREE_CLEARANCE := 4.0
+const BRIDGE_OVERHANG := 1.5
+const BRIDGE_WIDTH_MARGIN := 0.8
+const BRIDGE_RISE := 0.9
+const BRIDGE_LIFT := 0.06
 const BOULDER_COLOR := Color(0.36, 0.33, 0.3)
 const BOULDER_LUMPINESS := 0.35
 const WOOD_PILE_SHAPE := Vector3(1.0, 0.9, 1.5)
@@ -86,6 +92,9 @@ func load_data(data: Dictionary) -> void:
 	for child in get_children():
 		if child is Enemy and not enemies.is_empty():
 			child.load_data(enemies.pop_front())
+			var ground := terrain.height_at(child.position.x, child.position.z)
+			if child.position.y < ground - SaveGame.BELOW_GROUND_MARGIN:
+				child.position.y = ground
 		elif child is ResourceNode and not resources.is_empty():
 			child.load_data(resources.pop_front())
 
@@ -135,26 +144,35 @@ func _add_roads(roads: Array) -> void:
 	var root := Node3D.new()
 	root.name = "Roads"
 	add_child(root)
-	for road: Dictionary in roads:
-		var samples := _sample_road(road["points"])
+	for i in roads.size():
+		var samples := terrain.roads[i].positions
 		_road_samples.append(samples)
-		root.add_child(_road_mesh(samples, road["width"]))
+		root.add_child(_road_mesh(samples, roads[i]["width"]))
+		_add_bridges(samples, roads[i]["width"])
 
 
-func _sample_road(points: Array) -> PackedVector2Array:
-	var path := PackedVector2Array()
-	for point: Array in points:
-		path.append(Vector2(point[0], point[1]))
-
-	var samples := PackedVector2Array()
-	for i in path.size() - 1:
-		var before := path[maxi(i - 1, 0)]
-		var after := path[mini(i + 2, path.size() - 1)]
-		var steps := ceili(path[i].distance_to(path[i + 1]) / ROAD_SAMPLE_SPACING)
-		for step in steps:
-			samples.append(path[i].cubic_interpolate(path[i + 1], before, after, float(step) / steps))
-	samples.append(path[path.size() - 1])
-	return samples
+## Spans each stretch of road that crosses the river.
+func _add_bridges(samples: PackedVector2Array, road_width: float) -> void:
+	var i := 0
+	while i < samples.size():
+		if terrain.river_clearance(samples[i].x, samples[i].y) >= 0.0:
+			i += 1
+			continue
+		var first := i
+		while i < samples.size() and terrain.river_clearance(samples[i].x, samples[i].y) < 0.0:
+			i += 1
+		var start := samples[maxi(first - 1, 0)]
+		var end := samples[mini(i, samples.size() - 1)]
+		var along := (end - start).normalized()
+		start -= along * BRIDGE_OVERHANG
+		end += along * BRIDGE_OVERHANG
+		var height := (terrain.height_at(start.x, start.y) + terrain.height_at(end.x, end.y)) / 2.0
+		var middle := (start + end) / 2.0
+		var bridge := ModelBuilder.bridge(start.distance_to(end), road_width + BRIDGE_WIDTH_MARGIN, BRIDGE_RISE)
+		bridge.name = "Bridge"
+		bridge.position = Vector3(middle.x, height + BRIDGE_LIFT, middle.y)
+		bridge.rotation.y = atan2(along.x, along.y)
+		add_child(bridge, true)
 
 
 func _road_mesh(samples: PackedVector2Array, width: float) -> MeshInstance3D:
@@ -162,16 +180,20 @@ func _road_mesh(samples: PackedVector2Array, width: float) -> MeshInstance3D:
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	surface.set_normal(Vector3.UP)
 	surface.set_color(ROAD_COLOR)
+	var was_over_river := false
 	for i in samples.size():
 		var tangent := (samples[mini(i + 1, samples.size() - 1)] - samples[maxi(i - 1, 0)]).normalized()
 		var side := Vector2(-tangent.y, tangent.x)
 		var half_width := width / 2.0 * (1.0 + sin(i * 0.37) * 0.1 + sin(i * 0.11) * 0.1)
 		for edge: Vector2 in [samples[i] + side * half_width, samples[i] - side * half_width]:
 			surface.add_vertex(Vector3(edge.x, terrain.height_at(edge.x, edge.y) + ROAD_LIFT, edge.y))
-		if i > 0:
+		# The road stops at the river, and a bridge carries it over.
+		var over_river := terrain.river_clearance(samples[i].x, samples[i].y) < 0.0
+		if i > 0 and not over_river and not was_over_river:
 			var left := (i - 1) * 2
 			for index in [left, left + 1, left + 2, left + 1, left + 3, left + 2]:
 				surface.add_index(index)
+		was_over_river = over_river
 
 	var material := Surfaces.get_material(Surfaces.Pattern.ROAD, ROAD_COLOR)
 	var instance := MeshInstance3D.new()
@@ -361,7 +383,7 @@ func _add_grass(data: Dictionary, fields: Array) -> void:
 
 
 func _is_clear_ground(point: Vector2, fields: Array) -> bool:
-	if terrain.is_on_landslide(point.x, point.y):
+	if terrain.is_on_landslide(point.x, point.y) or terrain.river_clearance(point.x, point.y) < RIVER_GRASS_CLEARANCE:
 		return false
 	for samples in _road_samples:
 		for i in range(0, samples.size(), 4):
@@ -400,8 +422,11 @@ func _is_tree_allowed(point: Vector2, data: Dictionary, fields: Array) -> bool:
 				return false
 	if terrain.height_at(point.x, point.y) > MAX_TREE_HEIGHT:
 		return false
-	if terrain.is_on_landslide(point.x, point.y):
+	if terrain.is_on_landslide(point.x, point.y) or terrain.river_clearance(point.x, point.y) < RIVER_TREE_CLEARANCE:
 		return false
+	for site: Dictionary in terrain.building_sites:
+		if point.distance_to(Vector2(site["x"], site["z"])) < float(site["radius"]) + SITE_TREE_CLEARANCE:
+			return false
 	for field: Dictionary in fields:
 		if point.distance_to(Vector2(field["x"], field["z"])) < data["field_clearance"]:
 			return false

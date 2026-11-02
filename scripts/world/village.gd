@@ -425,7 +425,7 @@ func _is_tree_allowed(point: Vector2, data: Dictionary, fields: Array) -> bool:
 	if terrain.is_on_landslide(point.x, point.y) or terrain.river_clearance(point.x, point.y) < RIVER_TREE_CLEARANCE:
 		return false
 	for site: Dictionary in terrain.building_sites:
-		if point.distance_to(Vector2(site["x"], site["z"])) < float(site["radius"]) + SITE_TREE_CLEARANCE:
+		if point.distance_to(Vector2(site["x"], site["z"])) < float(site["radius"]) + float(site["blend"]) + SITE_TREE_CLEARANCE:
 			return false
 	for field: Dictionary in fields:
 		if point.distance_to(Vector2(field["x"], field["z"])) < data["field_clearance"]:

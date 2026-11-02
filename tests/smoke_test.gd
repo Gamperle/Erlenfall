@@ -239,6 +239,11 @@ func _test_story(scene: Node, player: Player) -> void:
 	_check(quests.tracker_lines(player.inventory).size() == 1, "the tracker shows the active quest")
 
 	var hedda: Npc = village.get_node("hedda")
+	var hedda_model: Node3D = hedda.get_node("Model")
+	var hedda_player: AnimationPlayer = hedda_model.get_node("Animations")
+	_check(hedda_player.is_playing() and hedda_player.current_animation == "Idle", "a villager with a model plays its idle animation")
+	_check(hedda_model.find_child("GeneralSkeleton", true, false) != null, "the model's skeleton is set up for shared animations")
+	_check(village.get_node("bertram").get_node_or_null("Model") == null, "a villager without a model keeps the simple figure")
 	var pivot: Node3D = player.get_node("CameraPivot")
 	pivot.rotation = Vector3.ZERO
 	player.position = hedda.position + Vector3(0.0, 0.5, 2.0)
@@ -246,6 +251,8 @@ func _test_story(scene: Node, player: Player) -> void:
 	_check(player.interact_target == hedda, "player can target a villager")
 	player.interact()
 	_check(ui.is_open() and player.is_busy(), "talking opens the dialogue screen")
+	var toward_player := (player.global_position - hedda.global_position).normalized()
+	_check((-hedda.global_basis.z).dot(toward_player) > 0.9, "a villager turns to face the player when talked to")
 	ui.choose(1)
 	ui.choose(0)
 	_check(quests.current_objective("arrival") == "see_smith", "grandmother sends the player to the smith")

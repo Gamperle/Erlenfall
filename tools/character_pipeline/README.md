@@ -2,7 +2,7 @@
 
 Builds rigged villagers from short recipes. Everything used is CC0, so the results can be stored in this repository under [ASSETS.md](../../ASSETS.md).
 
-**Status: experimental.** No character is in the game yet. See [#76](https://github.com/Gamperle/Erlenfall/issues/76).
+**Status: experimental.** Hedda, Greta, and Mira are in the game, behind the `realistic_villagers` flag. See [#76](https://github.com/Gamperle/Erlenfall/issues/76).
 
 ## Setup
 
@@ -53,7 +53,7 @@ Set these on the model's `Skeleton3D` in the import settings, for both the chara
 - **Bone map:** use `SkeletonProfileHumanoid`. On characters, leave the finger bones out, because the animations' finger poses turn the hands into claws. They then keep their relaxed rest pose.
 - **Silhouette fix:** turn it on, with a threshold of 3 degrees, since the bodies rest in an A-pose.
 
-- **Back correction:** transferred animations lean these bodies about 5 to 6 degrees further forward than the animations' own figure. Rotate the `Spine` and `Chest` rotation tracks back by 8 degrees each, as `_straightened` in `turntable.gd` does. The game will need the same when characters go in.
+- **Back correction:** transferred animations lean these bodies about 5 to 6 degrees further forward than the animations' own figure. Rotate the `Spine` and `Chest` rotation tracks back by 8 degrees each, as `_straightened` in `turntable.gd` and `scripts/world/character_animations.gd` do.
 
 ## Things that went wrong
 

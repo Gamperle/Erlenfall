@@ -1,5 +1,6 @@
 {
 	"items": {
+		"iron_scrap": { "name": "ITEM_IRON_SCRAP", "material": true },
 		"iron_ore": { "name": "ITEM_IRON_ORE", "material": true },
 		"coal": { "name": "ITEM_COAL", "material": true },
 		"wood": { "name": "ITEM_WOOD", "material": true },
@@ -18,6 +19,13 @@
 	],
 	"recipes": [
 		{ "id": "smelt_iron", "station": "furnace", "inputs": { "iron_ore": 2, "coal": 1 }, "result": "iron_ingot", "count": 1 },
+		{
+			"id": "smelt_scrap",
+			"station": "furnace",
+			"inputs": { "iron_scrap": 3, "coal": 1 },
+			"result": "iron_ingot",
+			"count": 1
+		},
 		{ "id": "make_torch", "station": "furnace", "requires_flag": "torch_recipe", "inputs": { "wood": 1, "coal": 1 }, "result": "torch", "count": 1 },
 		{ "id": "forge_nails", "station": "anvil", "inputs": { "iron_ingot": 1 }, "result": "iron_nails", "count": 4, "strikes": 3, "speed": 0.8 },
 		{ "id": "forge_dagger", "station": "anvil", "inputs": { "iron_ingot": 1, "wood": 1 }, "result": "iron_dagger", "count": 1, "strikes": 4, "speed": 1.0 },

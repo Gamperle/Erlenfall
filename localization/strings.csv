@@ -106,6 +106,8 @@ UI_GAME_TITLE,Erlenfall,Erlenfall
 UI_CONTINUE_GAME,Continue,Fortsetzen
 UI_NEW_GAME,New game,Neues Spiel
 UI_QUIT,Quit,Beenden
+UI_GOT_DROP,You picked up %d x %s.,Du hast %d x %s aufgehoben.
+ITEM_IRON_SCRAP,Iron scrap,Eisenschrott
 UI_NEW_GAME_WARNING,Starting a new game overwrites your saved game.,Ein neues Spiel überschreibt deinen Spielstand.
 UI_OVERWRITE_SAVE,Start and overwrite,Starten und überschreiben
 UI_BACK,Back,Zurück

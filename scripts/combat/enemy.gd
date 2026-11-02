@@ -153,9 +153,17 @@ func _process_windup(player: Player, delta: float) -> void:
 
 func _die() -> void:
 	state = State.DEAD
+	_give_drops()
 	_timer = _stats["respawn_seconds"]
 	visible = false
 	_collision.set_deferred("disabled", true)
+
+
+func _give_drops() -> void:
+	var player := get_tree().get_first_node_in_group(Player.GROUP) as Player
+	for drop: Dictionary in _stats.get("drops", []):
+		if randf() < float(drop["chance"]):
+			player.receive_drop(drop["item"], randi_range(int(drop["min"]), int(drop["max"])))
 
 
 ## Enemies ignore a player who is dead.

@@ -358,6 +358,15 @@ func _test_combat(scene: Node, player: Player) -> void:
 		enemy.take_hit(1000.0)
 	await _physics_frames(2)
 	_check(not enemy.visible, "a defeated goblin disappears")
+	var scrap_before := player.inventory.count("iron_scrap")
+	var always_drop: Dictionary = enemy._stats["drops"][0].duplicate()
+	var real_drops: Array = enemy._stats["drops"]
+	always_drop["chance"] = 1.0
+	enemy._stats["drops"] = [always_drop]
+	enemy._give_drops()
+	enemy._stats["drops"] = real_drops
+	_check(player.inventory.count("iron_scrap") > scrap_before, "defeated enemies drop materials")
+	_check(not CraftingData.find_recipe("furnace", {"iron_scrap": 3, "coal": 1}).is_empty(), "dropped scrap can be smelted")
 
 	player.inventory.add("coal", 4)
 	var coal := player.inventory.count("coal")

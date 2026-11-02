@@ -176,6 +176,11 @@ func take_hit(amount: float, from_position: Vector3) -> void:
 	health.damage(amount)
 
 
+func receive_drop(item_id: String, amount: int) -> void:
+	inventory.add(item_id, amount)
+	notice.emit(tr("UI_GOT_DROP") % [amount, CraftingData.item_name(item_id)])
+
+
 ## Returns the player to life at the given place.
 func revive_at(place: Vector3) -> void:
 	position = place

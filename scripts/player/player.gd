@@ -4,6 +4,7 @@ extends CharacterBody3D
 
 ## Asks the game to show the player a short message.
 signal notice(text_key: String)
+signal busy_changed
 
 const WALK_SPEED := 3.5
 const SPRINT_SPEED := 6.5
@@ -18,6 +19,8 @@ const MIN_PITCH := -1.3
 const MAX_PITCH := 1.3
 const THIRD_PERSON_DISTANCE := 3.5
 const SHOULDER_OFFSET := 0.8
+## How far the third-person camera swings aside in a conversation, to show both people.
+const CONVERSATION_SWING := 0.45
 
 const GROUP := "player"
 const PLAYER_CLOTH_COLOR := Color(0.45, 0.3, 0.2)
@@ -40,8 +43,11 @@ const INTERACT_FACING := 0.3
 const WEAPON_HAND_POSITION := Vector3(0.0, -0.58, -0.05)
 const WEAPON_FIRST_PERSON_POSITION := Vector3(0.3, -0.42, -0.7)
 const WEAPON_FIRST_PERSON_SCALE := 0.4
-const WEAPON_REST_ANGLE := 0.0
-const WEAPON_SWING_ANGLE := -1.4
+## Held forward and up from the hand, since the arm hangs down.
+const WEAPON_REST_ANGLE := -1.0
+const WEAPON_SWING_ANGLE := -2.2
+const WEAPON_FIRST_PERSON_REST_ANGLE := -0.35
+const WEAPON_FIRST_PERSON_SWING_ANGLE := -1.4
 const WEAPON_BLOCK_ANGLE := 1.3
 const TORCH_ITEM := "torch"
 const TORCH_ARM_RAISE := 1.2
@@ -63,6 +69,7 @@ var torch_burned_seconds := 0.0
 var health := Health.new(MAX_HEALTH)
 
 var _busy := false
+var _look_before_conversation: Variant = null
 var _attack_cooldown := 0.0
 var _attack_windup := 0.0
 var _dodge_time := 0.0
@@ -85,15 +92,36 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	_body_mesh.setup(PLAYER_CLOTH_COLOR)
 	_spring_arm.add_excluded_object(get_rid())
+	# Conversations pause the world, and the arm still has to keep the camera out of walls.
+	_spring_arm.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(_torch)
 	_apply_camera_mode()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
-## While busy, for example in a menu, the player stands still and the mouse is free.
+## While busy, in a menu or conversation, the world is paused and the mouse is free.
+## Enemies stay where they are, so a menu can't be used to escape a fight.
 func set_busy(busy: bool) -> void:
 	_busy = busy
+	get_tree().paused = busy
+	busy_changed.emit()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if busy else Input.MOUSE_MODE_CAPTURED
+
+
+## Turns the player and camera toward a person, so the player's body doesn't hide them.
+func frame_conversation(point: Vector3) -> void:
+	_look_before_conversation = _pivot.rotation
+	var offset := point - global_position
+	var yaw := atan2(-offset.x, -offset.z)
+	_body_mesh.rotation.y = yaw
+	_pivot.rotation = Vector3(0.0, yaw + (0.0 if first_person else CONVERSATION_SWING), 0.0)
+
+
+## Gives the camera back to the player, looking where it did before the conversation.
+func end_conversation() -> void:
+	if _look_before_conversation != null:
+		_pivot.rotation = _look_before_conversation
+		_look_before_conversation = null
 
 
 func is_busy() -> bool:
@@ -172,6 +200,11 @@ func take_hit(amount: float, from_position: Vector3) -> void:
 	health.damage(amount)
 
 
+func receive_drop(item_id: String, amount: int) -> void:
+	inventory.add(item_id, amount)
+	notice.emit(tr("UI_GOT_DROP") % [amount, CraftingData.item_name(item_id)])
+
+
 ## Returns the player to life at the given place.
 func revive_at(place: Vector3) -> void:
 	position = place
@@ -190,7 +223,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		_look(event.relative * MOUSE_SENSITIVITY)
+		# Screen units, so the window's size and the interface scale don't change the sensitivity.
+		_look(event.screen_relative * MOUSE_SENSITIVITY)
 	elif event.is_action_pressed("attack"):
 		attack()
 	elif event.is_action_pressed("dodge"):
@@ -260,7 +294,9 @@ func _update_combat(delta: float) -> void:
 
 	# Swing the placeholder weapon while the cooldown runs, and raise it to block.
 	var swing := _attack_cooldown / ATTACK_COOLDOWN
-	_weapon.rotation.x = lerpf(WEAPON_REST_ANGLE, WEAPON_SWING_ANGLE, swing)
+	var rest_angle := WEAPON_FIRST_PERSON_REST_ANGLE if first_person else WEAPON_REST_ANGLE
+	var swing_angle := WEAPON_FIRST_PERSON_SWING_ANGLE if first_person else WEAPON_SWING_ANGLE
+	_weapon.rotation.x = lerpf(rest_angle, swing_angle, swing)
 	if is_blocking():
 		_weapon.rotation = Vector3(0.0, 0.0, WEAPON_BLOCK_ANGLE)
 	else:

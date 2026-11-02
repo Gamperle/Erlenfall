@@ -101,10 +101,27 @@ func strike() -> void:
 		_update_strike_text()
 
 
+## Stops forging. Half of the materials, rounded down, can be saved, so retrying for quality has a cost.
+func abandon_forging() -> void:
+	for item_id: String in _recipe["inputs"]:
+		var saved := int(_recipe["inputs"][item_id]) / 2
+		if saved > 0:
+			_player.inventory.add(item_id, saved)
+	_game = null
+	_bar.visible = false
+	_message.text = tr("UI_FORGE_ABANDONED")
+	_title.text = tr("UI_" + _station.to_upper())
+	_refresh()
+
+
 func _input(event: InputEvent) -> void:
 	if not is_open():
 		return
 	if is_forging():
+		if event.is_action_pressed("ui_cancel"):
+			abandon_forging()
+			get_viewport().set_input_as_handled()
+			return
 		if event.is_action_pressed("interact") or event.is_action_pressed("ui_accept"):
 			strike()
 			get_viewport().set_input_as_handled()

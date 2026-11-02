@@ -18,6 +18,7 @@ func _ready() -> void:
 	add_to_group(Npc.UI_GROUP)
 	_build()
 	_panel.visible = false
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
 func is_open() -> bool:
@@ -39,6 +40,7 @@ func choose(index: int) -> void:
 	if _runner.is_finished():
 		_panel.visible = false
 		_player.set_busy(false)
+		_player.end_conversation()
 	else:
 		_show_line()
 

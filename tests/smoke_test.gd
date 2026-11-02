@@ -32,6 +32,7 @@ func _run() -> void:
 	_check(village.get_node_or_null("forge") != null, "buildings load from data")
 	_check(village.get_node("Roads").get_child_count() == 2, "roads load from data")
 	_check(village.get_node("Boulders").get_child_count() > 0, "boulders have collision")
+	_check(village.get_node("Boulders").get_child(0).shape is ConvexPolygonShape3D, "boulders collide with their real shape")
 	_check(terrain.is_on_landslide(40.0, -300.0) and not terrain.is_on_landslide(0.0, 0.0), "landslide stays out of the village")
 
 	var start := player.position
@@ -84,6 +85,7 @@ func _run() -> void:
 	await _test_crafting(scene, player)
 	await _test_story(scene, player)
 	await _test_combat(scene, player)
+	await _test_gathering_collision(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
 	_test_translations()
 
@@ -104,7 +106,25 @@ func _test_hud(scene: Node, player: Player) -> void:
 	_check(compass.offset_of(0.0) == -1.0 and compass.offset_of(180.0) == 1.0, "north is to the left when facing east")
 	compass.heading = 350.0
 	_check(is_equal_approx(compass.offset_of(10.0), 20.0 / Compass.VISIBLE_DEGREES), "the compass wraps around north")
+	_check(is_equal_approx(Compass.bearing_between(Vector2.ZERO, Vector2(10.0, 0.0)), 90.0), "a place to the east has a bearing of 90 degrees")
+	var quests := QuestLog.new()
+	var carried := Inventory.new()
+	quests.start("first_nails")
+	var markers := quests.objective_markers(carried)
+	_check(markers.size() == 1 and markers[0] == Vector2(40.0, -175.0), "the compass points to the ore for the nails")
+	carried.add("iron_ingot")
+	_check(quests.objective_markers(carried)[0] == Vector2(16.0, 25.0), "the compass points to the anvil once there is iron")
+	compass.heading = 0.0
+	compass.objective_bearings = PackedFloat32Array([90.0])
+	compass.queue_redraw()
 	pivot.rotation = Vector3.ZERO
+
+	# Below the base width of 1152 the interface shrinks, so the top row never overlaps.
+	_check(ProjectSettings.get_setting("display/window/stretch/mode") == "canvas_items", "the interface scales with the window")
+	var health_bar: Control = scene.get_node("UI/HealthBar")
+	var middle := 1152.0 / 2.0
+	_check(health_bar.offset_right < middle + compass.offset_left, "the compass clears the health bar at the base width")
+	_check(middle + compass.offset_right < 1152.0 + overlay.offset_left, "the compass clears the performance overlay at the base width")
 
 	overlay.refresh()
 	_check(overlay.visible and overlay.text.contains("FPS"), "the performance overlay shows measurements")
@@ -222,6 +242,20 @@ func _test_crafting(scene: Node, player: Player) -> void:
 	_check(made.size() == 1 and made[0]["quality"] == "masterwork", "perfect forging gives masterwork")
 	ui.close()
 
+	player.inventory.add("iron_ingot", 2)
+	player.inventory.add("wood", 1)
+	var ingots := player.inventory.count("iron_ingot")
+	var wood := player.inventory.count("wood")
+	ui.open_station("anvil", "Anvil", player)
+	ui.add_material("iron_ingot")
+	ui.add_material("iron_ingot")
+	ui.add_material("wood")
+	ui.craft()
+	ui.abandon_forging()
+	_check(not ui.is_forging() and ui.is_open(), "forging can be abandoned")
+	_check(player.inventory.count("iron_ingot") == ingots - 1 and player.inventory.count("wood") == wood - 1, "abandoning saves half the materials")
+	ui.close()
+
 	var clumsy := HammerGame.new(2, 1.0)
 	clumsy.marker = clamp(clumsy.target + 0.5, 0.0, 1.0) if clumsy.target < 0.5 else clumsy.target - 0.5
 	clumsy.strike()
@@ -249,10 +283,17 @@ func _test_story(scene: Node, player: Player) -> void:
 	player.position = hedda.position + Vector3(0.0, 0.5, 2.0)
 	await _physics_frames(10)
 	_check(player.interact_target == hedda, "player can target a villager")
+	var was_first_person := player.first_person
+	player.first_person = false
+	player._apply_camera_mode()
 	player.interact()
+	await _physics_frames(2)
 	_check(ui.is_open() and player.is_busy(), "talking opens the dialogue screen")
 	var toward_player := (player.global_position - hedda.global_position).normalized()
 	_check((-hedda.global_basis.z).dot(toward_player) > 0.9, "a villager turns to face the player when talked to")
+	_check(_framing_test(player, hedda), "the villager and the camera face each other, with the player aside")
+	player.first_person = was_first_person
+	player._apply_camera_mode()
 	ui.choose(1)
 	ui.choose(0)
 	_check(quests.current_objective("arrival") == "see_smith", "grandmother sends the player to the smith")
@@ -342,6 +383,15 @@ func _test_combat(scene: Node, player: Player) -> void:
 		enemy.take_hit(1000.0)
 	await _physics_frames(2)
 	_check(not enemy.visible, "a defeated goblin disappears")
+	var scrap_before := player.inventory.count("iron_scrap")
+	var always_drop: Dictionary = enemy._stats["drops"][0].duplicate()
+	var real_drops: Array = enemy._stats["drops"]
+	always_drop["chance"] = 1.0
+	enemy._stats["drops"] = [always_drop]
+	enemy._give_drops()
+	enemy._stats["drops"] = real_drops
+	_check(player.inventory.count("iron_scrap") > scrap_before, "defeated enemies drop materials")
+	_check(not CraftingData.find_recipe("furnace", {"iron_scrap": 3, "coal": 1}).is_empty(), "dropped scrap can be smelted")
 
 	player.inventory.add("coal", 4)
 	var coal := player.inventory.count("coal")
@@ -351,6 +401,75 @@ func _test_combat(scene: Node, player: Player) -> void:
 	_check(player.global_position.distance_to(Vector3(-12.0, player.global_position.y, 30.0)) < 2.0, "death returns the player to the village")
 	_check(player.inventory.count("coal") < coal, "death costs some materials")
 	_check(enemy.visible and enemy.state != Enemy.State.DEAD, "enemies return after the player dies")
+
+	player.health.restore()
+	player.position = enemy.position + Vector3(0.0, 0.3, 4.0)
+	await _physics_frames(5)
+	var chasing := enemy.state
+	var screen: CraftingUI = scene.get_node("CraftingUI")
+	screen.open_inventory(player)
+	_check(root.get_tree().paused, "menus pause the world")
+	await _physics_frames(30)
+	_check(chasing != Enemy.State.IDLE and enemy.state == chasing, "enemies don't lose the player during a menu")
+	screen.close()
+	_check(not root.get_tree().paused, "closing a menu resumes the world")
+	enemy.revive()
+
+	var home := enemy._home
+	var wall := StaticBody3D.new()
+	var wall_shape := CollisionShape3D.new()
+	var wall_box := BoxShape3D.new()
+	wall_box.size = Vector3(10.0, 6.0, 1.0)
+	wall_shape.shape = wall_box
+	wall.add_child(wall_shape)
+	root.add_child(wall)
+	wall.global_position = enemy.global_position + Vector3(0.0, 2.0, 4.0)
+	player.health.restore()
+	player.position = enemy.position + Vector3(0.0, 0.5, 8.0)
+	for i in 480:
+		await physics_frame
+		player.health.restore()
+		if enemy.state == Enemy.State.WINDUP:
+			break
+	_check(enemy.state == Enemy.State.WINDUP, "enemies find their way around a wall")
+	wall.queue_free()
+	var inn: Node3D = scene.get_node("Village/inn")
+	enemy.revive()
+	enemy._home = inn.position + Vector3(-9.0, 0.5, 0.0)
+	enemy.position = enemy._home
+	player.position = inn.position + Vector3(9.0, 0.5, 0.0)
+	enemy.state = Enemy.State.CHASE
+	for i in 900:
+		await physics_frame
+		player.health.restore()
+		if enemy.state == Enemy.State.WINDUP:
+			break
+	_check(enemy.state == Enemy.State.WINDUP, "enemies find their way around a building")
+	enemy._home = home
+	enemy.revive()
+	await _physics_frames(1)
+
+
+func _test_gathering_collision(scene: Node, player: Player) -> void:
+	var spot: ResourceNode = null
+	for node in scene.get_node("Village").get_children():
+		if node is ResourceNode and node.item_id == "wood":
+			spot = node
+			break
+	var saved_position := player.position
+	var toward_spot := Vector3(0.0, 0.0, 1.0)
+	player.position = spot.position - toward_spot * 2.0 + Vector3.UP * 0.2
+	await _physics_frames(1)
+	_check(player.test_move(player.global_transform, toward_spot * 2.0), "a gathering spot blocks the player")
+	for i in spot.uses:
+		spot.interact(player)
+	await _physics_frames(2)
+	_check(not player.test_move(player.global_transform, toward_spot * 2.0), "a used-up gathering spot doesn't block the player")
+	spot._respawn()
+	await _physics_frames(2)
+	_check(player.test_move(player.global_transform, toward_spot * 2.0), "a regrown gathering spot blocks the player again")
+	player.position = saved_position
+	await _physics_frames(1)
 
 
 func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> void:
@@ -380,7 +499,7 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	_check(not full_roof.visible, "the roof depends on saved flags")
 	day_night.hour = 3.0
 
-	_check(SaveGame.apply(TEST_SAVE, player, day_night), "the game loads")
+	_check(SaveGame.apply(TEST_SAVE, player, day_night, village), "the game loads")
 	_check(player.position.is_equal_approx(saved_position), "position is restored")
 	_check(player.inventory.count("coal") == saved_coal, "inventory is restored")
 	_check(player.known_recipes.size() == recipes, "recipes are restored")
@@ -390,13 +509,36 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	_check(player.quests.is_done("first_nails") and player.quests.flags.has("mayor_annoyed"), "quests and choices are restored")
 	_check(full_roof.visible, "the repaired roof is restored")
 	_check(day_night.hour != 3.0, "the time of day is restored")
+	var enemy := _first_of(village, Enemy) as Enemy
+	var spot := _first_of(village, ResourceNode) as ResourceNode
+	for i in spot.uses:
+		spot.interact(player)
+	while enemy.state != Enemy.State.DEAD:
+		enemy.take_hit(1000.0)
+	scene.save_game()
+	var saved_scrap := player.inventory.count("iron_scrap")
+	enemy.revive()
+	spot._respawn()
+
+	_check(SaveGame.apply(TEST_SAVE, player, day_night, village), "the world loads")
+	_check(player.inventory.count("iron_scrap") == saved_scrap, "loading doesn't repeat an enemy's drops")
+	_check(enemy.state == Enemy.State.DEAD and not enemy.visible, "a defeated enemy stays defeated after loading")
+	_check(enemy._timer > 0.0, "a defeated enemy still returns later")
+	_check(not spot.is_available() and spot._respawn_left > 0.0, "an emptied gathering spot stays empty after loading")
+	enemy.revive()
+	spot._respawn()
+	var old_save: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(TEST_SAVE))
+	old_save.erase("world")
+	FileAccess.open(TEST_SAVE, FileAccess.WRITE).store_string(JSON.stringify(old_save))
+	_check(SaveGame.apply(TEST_SAVE, player, day_night, village), "saves without world data still load")
+	_check(enemy.state != Enemy.State.DEAD, "older saves leave enemies alone")
 	scene._playing = true
 
 	var damaged := FileAccess.open(TEST_SAVE, FileAccess.WRITE)
 	damaged.store_string("{ not json")
 	damaged.close()
 	_check(not SaveGame.exists(TEST_SAVE), "a damaged save is ignored")
-	_check(not SaveGame.apply(TEST_SAVE, player, day_night), "a damaged save doesn't load")
+	_check(not SaveGame.apply(TEST_SAVE, player, day_night, village), "a damaged save doesn't load")
 
 	player.health.current = 50.0
 	day_night.hour = 22.0
@@ -411,6 +553,23 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	menu.open_title(true)
 	_check(menu._asset_note.is_visible_in_tree(), "the title menu notes AI-generated assets")
 	_check(menu.is_open(), "the title menu opens")
+	var chosen := [false]
+	var on_new_game := func() -> void: chosen[0] = true
+	menu.new_game_chosen.connect(on_new_game)
+	menu._buttons.get_child(1).pressed.emit()
+	_check(not chosen[0] and menu._confirming, "new game asks before overwriting a save")
+	menu._buttons.get_child(0).pressed.emit()
+	_check(not chosen[0] and not menu._confirming, "going back keeps the save")
+	menu._buttons.get_child(1).pressed.emit()
+	menu._buttons.get_child(1).pressed.emit()
+	_check(chosen[0], "confirming starts a new game")
+	menu.new_game_chosen.disconnect(on_new_game)
+	menu.open_title(false)
+	menu.new_game_chosen.connect(on_new_game)
+	chosen[0] = false
+	menu._buttons.get_child(0).pressed.emit()
+	_check(chosen[0], "with no save, new game starts at once")
+	menu.new_game_chosen.disconnect(on_new_game)
 	menu.close()
 	DirAccess.remove_absolute(TEST_SAVE)
 
@@ -433,6 +592,25 @@ func _test_translations() -> void:
 				missing.append("%s:%s" % [locale, found.get_string(1)])
 	TranslationServer.set_locale("en")
 	_check(missing.is_empty(), "all text is translated %s" % ", ".join(missing))
+
+
+func _first_of(parent: Node, type: Variant) -> Node:
+	for child in parent.get_children():
+		if is_instance_of(child, type):
+			return child
+	return null
+
+
+## The villager faces the player, and on screen they don't overlap.
+func _framing_test(player: Player, npc: Npc) -> bool:
+	var to_player := (player.global_position - npc.global_position) * Vector3(1.0, 0.0, 1.0)
+	to_player = to_player.normalized()
+	var faces: bool = (-npc.global_basis.z).dot(to_player) > 0.99
+	var camera: Camera3D = player.get_node("CameraPivot/SpringArm/Camera")
+	var view := camera.global_transform.affine_inverse()
+	var npc_view: Vector3 = view * (npc.global_position + Vector3.UP)
+	var player_view: Vector3 = view * (player.global_position + Vector3.UP)
+	return faces and npc_view.x / -npc_view.z > player_view.x / -player_view.z + 0.1
 
 
 func _has_joypad(kinds: Dictionary) -> bool:

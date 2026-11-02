@@ -12,6 +12,8 @@ const BACKGROUND_COLOR := Color(0.1, 0.08, 0.08, 0.55)
 const TICK_COLOR := Color(0.9, 0.87, 0.8)
 const NORTH_COLOR := Color(0.95, 0.55, 0.15)
 const CENTER_MARK_SIZE := 6.0
+const OBJECTIVE_COLOR := Color(1.0, 0.85, 0.3)
+const OBJECTIVE_SIZE := 7.0
 const POINTS: Dictionary = {
 	0: "UI_COMPASS_N", 45: "UI_COMPASS_NE", 90: "UI_COMPASS_E", 135: "UI_COMPASS_SE",
 	180: "UI_COMPASS_S", 225: "UI_COMPASS_SW", 270: "UI_COMPASS_W", 315: "UI_COMPASS_NW",
@@ -23,6 +25,20 @@ var heading := 0.0:
 		if new_heading != heading:
 			heading = new_heading
 			queue_redraw()
+
+
+## The directions of the current objectives, in degrees clockwise from north.
+var objective_bearings := PackedFloat32Array():
+	set(new_bearings):
+		if new_bearings != objective_bearings:
+			objective_bearings = new_bearings
+			queue_redraw()
+
+
+## Returns the direction from one place to another, each given as x and z.
+static func bearing_between(from: Vector2, to: Vector2) -> float:
+	var offset := to - from
+	return fposmod(rad_to_deg(atan2(offset.x, -offset.y)), 360.0)
 
 
 ## Returns where a direction appears, from -1 at the left edge to 1 at the right.
@@ -52,6 +68,15 @@ func _draw() -> void:
 			var tick := TICK_COLOR
 			tick.a = fade * 0.7
 			draw_line(Vector2(x, size.y * 0.35), Vector2(x, size.y * 0.65), tick, 1.0)
+	# An objective outside the strip stays at the nearest edge, to show which way to turn.
+	for bearing in objective_bearings:
+		var x := (clampf(offset_of(bearing), -1.0, 1.0) + 1.0) * size.x / 2.0
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(x, size.y / 2.0 - OBJECTIVE_SIZE),
+			Vector2(x + OBJECTIVE_SIZE, size.y / 2.0),
+			Vector2(x, size.y / 2.0 + OBJECTIVE_SIZE),
+			Vector2(x - OBJECTIVE_SIZE, size.y / 2.0),
+		]), OBJECTIVE_COLOR)
 	var middle := size.x / 2.0
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(middle - CENTER_MARK_SIZE, size.y + CENTER_MARK_SIZE),

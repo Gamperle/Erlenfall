@@ -10,7 +10,7 @@ static func exists(path: String) -> bool:
 	return not _read(path).is_empty()
 
 
-static func write(path: String, player: Player, day_night: DayNight) -> void:
+static func write(path: String, player: Player, day_night: DayNight, village: Village) -> void:
 	var data := {
 		"version": VERSION,
 		"position": [player.position.x, player.position.y, player.position.z],
@@ -22,6 +22,7 @@ static func write(path: String, player: Player, day_night: DayNight) -> void:
 		"torch_burned_seconds": player.torch_burned_seconds,
 		"quests": player.quests.to_data(),
 		"hour": day_night.hour,
+		"world": village.to_data(),
 	}
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
@@ -31,7 +32,7 @@ static func write(path: String, player: Player, day_night: DayNight) -> void:
 
 
 ## Applies a saved game and reports whether there was one to apply.
-static func apply(path: String, player: Player, day_night: DayNight) -> bool:
+static func apply(path: String, player: Player, day_night: DayNight, village: Village) -> bool:
 	var data := _read(path)
 	if data.is_empty():
 		return false
@@ -49,6 +50,9 @@ static func apply(path: String, player: Player, day_night: DayNight) -> bool:
 	var can_light: bool = FeatureFlags.enabled("torches") and player.inventory.count(Player.TORCH_ITEM) > 0
 	player.set_torch_lit(data.get("torch_lit", false) and can_light)
 	day_night.hour = data["hour"]
+	# Games saved before enemies and gathering spots were saved don't have this.
+	if data.has("world"):
+		village.load_data(data["world"])
 	# Last, because quest changes trigger an autosave.
 	player.quests.load_data(data["quests"])
 	return true

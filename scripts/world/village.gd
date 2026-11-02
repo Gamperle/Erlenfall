@@ -24,6 +24,7 @@ const ROAD_LIFT := 0.12
 const ROAD_SAMPLE_SPACING := 2.0
 const BOULDER_COLOR := Color(0.36, 0.33, 0.3)
 const BOULDER_LUMPINESS := 0.35
+const WOOD_PILE_SHAPE := Vector3(1.0, 0.9, 1.5)
 
 @export var terrain: Terrain
 
@@ -67,6 +68,28 @@ func _ready() -> void:
 		_add_resource(resource)
 
 
+## Returns what changes during play in the world, in the same order as the layout file.
+func to_data() -> Dictionary:
+	var enemies := []
+	var resources := []
+	for child in get_children():
+		if child is Enemy:
+			enemies.append(child.to_data())
+		elif child is ResourceNode:
+			resources.append(child.to_data())
+	return { "enemies": enemies, "resources": resources }
+
+
+func load_data(data: Dictionary) -> void:
+	var enemies: Array = data["enemies"]
+	var resources: Array = data["resources"]
+	for child in get_children():
+		if child is Enemy and not enemies.is_empty():
+			child.load_data(enemies.pop_front())
+		elif child is ResourceNode and not resources.is_empty():
+			child.load_data(resources.pop_front())
+
+
 ## Shows or hides repairs to match the story flags.
 func apply_flags(flags: Dictionary) -> void:
 	for repair in _repairs:
@@ -97,13 +120,15 @@ func _add_resource(data: Dictionary) -> void:
 	add_child(node)
 
 	if data["item"] == "wood":
-		node.setup(data, ModelBuilder.wood_pile(data["size"]))
+		var pile := BoxShape3D.new()
+		pile.size = WOOD_PILE_SHAPE * data["size"]
+		node.setup(data, ModelBuilder.wood_pile(data["size"]), pile, Vector3.UP * (pile.size.y / 2.0))
 		return
 	var mesh := _boulder_mesh()
 	mesh.surface_set_material(0, _material(Color(data["color"])))
 	var visual := _mesh_instance(mesh, Vector3.UP * (data["size"] * 0.4))
 	visual.scale = Vector3.ONE * data["size"]
-	node.setup(data, visual)
+	node.setup(data, visual, _rock_shape(mesh, Basis.IDENTITY.scaled(visual.scale)), visual.position)
 
 
 func _add_roads(roads: Array) -> void:
@@ -163,6 +188,7 @@ func _add_boulders(data: Dictionary) -> void:
 	body.name = "Boulders"
 	add_child(body)
 
+	var mesh := _boulder_mesh()
 	var transforms: Array[Transform3D] = []
 	for i in int(data["count"]):
 		var angle := random.randf() * TAU
@@ -176,16 +202,20 @@ func _add_boulders(data: Dictionary) -> void:
 		transforms.append(Transform3D(basis, at))
 
 		if size >= data["solid_size"]:
-			var shape := SphereShape3D.new()
-			shape.radius = size * 0.8
 			var collision := CollisionShape3D.new()
-			collision.shape = shape
+			collision.shape = _rock_shape(mesh, basis)
 			collision.position = at
 			body.add_child(collision)
 
-	var mesh := _boulder_mesh()
 	mesh.surface_set_material(0, _material(BOULDER_COLOR))
 	_add_multimesh(mesh, transforms, 0.0)
+
+
+## A convex shape that fits the mesh. The basis is built in, because collision shapes can't be stretched.
+func _rock_shape(mesh: ArrayMesh, basis: Basis) -> ConvexPolygonShape3D:
+	var shape := mesh.create_convex_shape()
+	shape.points = Transform3D(basis, Vector3.ZERO) * shape.points
+	return shape
 
 
 ## A sphere with lumps pushed in and out, flat-shaded so it reads as broken rock.

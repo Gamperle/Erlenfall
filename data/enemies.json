@@ -13,6 +13,9 @@
 		"attack_range": 1.7,
 		"windup_seconds": 0.7,
 		"recover_seconds": 1.0,
-		"respawn_seconds": 90
+		"respawn_seconds": 90,
+		"drops": [
+			{ "item": "iron_scrap", "chance": 0.75, "min": 1, "max": 2 }
+		]
 	}
 }

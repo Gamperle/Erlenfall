@@ -74,5 +74,40 @@
 		"trim_above": {
 			"shoes03": 0.11
 		}
+	},
+	{
+		"id": "bertram",
+		"shape": {
+			"gender": 1.0,
+			"age": 0.65,
+			"muscle": 0.8,
+			"weight": 0.6
+		},
+		"skin": "middleage_caucasian_male",
+		"clothes": ["rehmanpolanski_viking_tunic", "rehmanpolanski_viking_pants", "rehmanpolanski_viking_boots"],
+		"footwear": ["rehmanpolanski_viking_boots"],
+		"hair": "short02",
+		"beard": "rehmanpolanski_beard_viking",
+		"brows": "eyebrow005",
+		"eyes": "low-poly"
+	},
+	{
+		"id": "brandt",
+		"shape": {
+			"gender": 1.0,
+			"age": 0.85,
+			"muscle": 0.4,
+			"weight": 0.6
+		},
+		"skin": "old_caucasian_male",
+		"clothes": ["donitz_monk_robe", "shoes03"],
+		"footwear": ["shoes03"],
+		"colors": {
+			"donitz_monk_robe": [0.45, 0.18, 0.18]
+		},
+		"hair": "short01",
+		"hair_color": [0.68, 0.66, 0.63],
+		"brows": "eyebrow005",
+		"eyes": "low-poly"
 	}
 ]

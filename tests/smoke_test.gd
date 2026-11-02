@@ -277,7 +277,8 @@ func _test_story(scene: Node, player: Player) -> void:
 	var hedda_player: AnimationPlayer = hedda_model.get_node("Animations")
 	_check(hedda_player.is_playing() and hedda_player.current_animation == "Idle", "a villager with a model plays its idle animation")
 	_check(hedda_model.find_child("GeneralSkeleton", true, false) != null, "the model's skeleton is set up for shared animations")
-	_check(village.get_node("bertram").get_node_or_null("Model") == null, "a villager without a model keeps the simple figure")
+	for villager: String in ["bertram", "mira", "greta", "brandt"]:
+		_check(village.get_node(villager).get_node_or_null("Model") != null, "%s has a model" % villager)
 	var pivot: Node3D = player.get_node("CameraPivot")
 	pivot.rotation = Vector3.ZERO
 	player.position = hedda.position + Vector3(0.0, 0.5, 2.0)

@@ -2,12 +2,12 @@
 
 Builds rigged villagers from short recipes. Everything used is CC0, so the results can be stored in this repository under [ASSETS.md](../../ASSETS.md).
 
-**Status: experimental.** Hedda, Greta, and Mira are in the game, behind the `realistic_villagers` flag. See [#76](https://github.com/Gamperle/Erlenfall/issues/76).
+**Status: experimental.** All five villagers are in the game, behind the `realistic_villagers` flag. See [#76](https://github.com/Gamperle/Erlenfall/issues/76).
 
 ## Setup
 
 1. Install Blender 5.2 and the [MPFB](https://extensions.blender.org/add-ons/mpfb/) extension.
-2. Download these CC0 packs from [MakeHuman's asset packs](https://static.makehumancommunity.org/assets/assetpacks.html) and unzip them, outside the repository: MakeHuman system assets, Pants 01, Shirts 01, and Skirts 01. The men's recipes will also need Suits 02 and Bodyparts 05.
+2. Download these CC0 packs from [MakeHuman's asset packs](https://static.makehumancommunity.org/assets/assetpacks.html) and unzip them, outside the repository: MakeHuman system assets, Bodyparts 05, Pants 01, Shirts 01, Skirts 01, and Suits 02.
 
 Only use packs marked CC0. Packs marked CC-BY need credit and aren't used here.
 
@@ -44,6 +44,7 @@ The animation library is optional. With one, characters stand in the first frame
 | `under_hem` | Lower layers cut off under a top's hem, as `{ "under": "top" }` |
 | `trim_above` | Parts cut off above a height in meters, such as shoe shafts inside pants |
 | `hair`, `hair_color` | Hair, and an optional sRGB color to repaint it |
+| `beard` | Beard or moustache |
 | `brows`, `eyes` | Eyebrows and eyes |
 
 ## Importing into Godot

@@ -19,10 +19,10 @@
 	],
 	"npcs": [
 		{ "id": "hedda", "model": "res://assets/characters/hedda.glb", "name": "NPC_HEDDA", "x": -18, "z": -2, "color": "#6d5a7a", "hair": "#b5b2ad" },
-		{ "id": "bertram", "name": "NPC_BERTRAM", "x": 12.5, "z": 21, "color": "#4a3b30" },
+		{ "id": "bertram", "model": "res://assets/characters/bertram.glb", "name": "NPC_BERTRAM", "x": 12.5, "z": 21, "color": "#4a3b30" },
 		{ "id": "mira", "model": "res://assets/characters/mira.glb", "name": "NPC_MIRA", "x": -9, "z": 30, "color": "#3f7a6a", "hair": "#8a4f24" },
 		{ "id": "greta", "model": "res://assets/characters/greta.glb", "name": "NPC_GRETA", "x": 17, "z": -8, "color": "#a0703a" },
-		{ "id": "brandt", "name": "NPC_BRANDT", "x": 4, "z": -19, "color": "#7a2e2e", "hair": "#6e6a64" }
+		{ "id": "brandt", "model": "res://assets/characters/brandt.glb", "name": "NPC_BRANDT", "x": 4, "z": -19, "color": "#7a2e2e", "hair": "#6e6a64" }
 	],
 	"enemies": [
 		{ "type": "goblin", "x": 118, "z": -150 },

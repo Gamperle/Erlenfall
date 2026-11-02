@@ -61,6 +61,7 @@ void fragment() {
 	vec2 slope_dy = dFdy(slope_uv);
 
 	// Each cover has its own weight, and a photo is only read where its cover shows.
+	// Surfaces.ground_dryness works this out the same way, so that the grass matches the ground.
 	float dryness = smoothstep(0.38, 0.62, meadow * 0.6 + patches * 0.4);
 	float steep = smoothstep(0.86, 0.72, world_normal.y + (broad - 0.5) * 0.12);
 	float high = smoothstep(85.0, 125.0, world_position.y + (broad - 0.5) * 50.0);

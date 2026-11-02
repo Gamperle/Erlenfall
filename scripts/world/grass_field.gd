@@ -29,7 +29,6 @@ var _thinning_height: float
 var _attempts_per_cell: int
 var _meshes: Array[ArrayMesh] = []
 var _material: ShaderMaterial
-var _dryness := FastNoiseLite.new()
 var _clearings := FastNoiseLite.new()
 var _planted: Dictionary = {}
 var _batch: Array[Vector2i] = []
@@ -46,8 +45,7 @@ func setup(terrain_node: Terrain, data: Dictionary, fields: Array, road_samples:
 	_max_height = data["max_height"]
 	_thinning_height = data["thinning_height"]
 	_attempts_per_cell = roundi(float(data["density"]) * CELL_SIZE * CELL_SIZE)
-	_dryness.seed = data["seed"]
-	_dryness.frequency = 0.012
+	Surfaces.prepare_ground_dryness()
 	_clearings.seed = int(data["seed"]) + 1
 	_clearings.frequency = 0.05
 	_material = ShaderMaterial.new()
@@ -201,9 +199,9 @@ func _is_clear_ground(point: Vector2, height: float, roads: PackedVector2Array) 
 	return true
 
 
-## Species grow in drifts: each suits a level of dryness, and riverside species grow only by the water.
+## Species grow in drifts: each suits the ground's level of dryness, and riverside species grow only by the water.
 func _choose_species(point: Vector2, chosen: float) -> int:
-	var dryness := _dryness.get_noise_2d(point.x, point.y) * 0.5 + 0.5
+	var dryness := Surfaces.ground_dryness(point.x, point.y)
 	var by_river := terrain.river_clearance(point.x, point.y) < float(_data["riverside_distance"])
 	var scores := PackedFloat32Array()
 	var total := 0.0

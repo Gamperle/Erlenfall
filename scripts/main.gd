@@ -31,6 +31,8 @@ var _fade_overlay: ColorRect
 @onready var _village: Village = $Village
 @onready var _day_night: DayNight = $DayNight
 @onready var _player: Player = $Player
+var _controls_tween: Tween
+
 @onready var _menu: GameMenu = $GameMenu
 @onready var _ui: HudLayout = $UI
 @onready var _welcome_label: Label = $UI/WelcomeLabel
@@ -145,6 +147,7 @@ func save_game() -> void:
 
 
 func open_pause_menu() -> void:
+	_show_controls_hint()
 	_player.set_busy(true)
 	_menu.open_pause()
 
@@ -152,6 +155,7 @@ func open_pause_menu() -> void:
 func resume() -> void:
 	_menu.close()
 	_player.set_busy(false)
+	_fade_controls_hint(0.0)
 
 
 func sleep() -> void:
@@ -204,6 +208,8 @@ func _begin_playing() -> void:
 	_player.give_starting_items()
 	_on_quests_changed()
 	_update_health_bar()
+	_show_controls_hint()
+	_fade_controls_hint(FeatureFlags.value("controls_hint_seconds"))
 
 
 func _save_and_quit() -> void:
@@ -259,6 +265,22 @@ func _add_overlay(color: Color) -> ColorRect:
 	overlay.modulate.a = 0.0
 	_ui.add_child(overlay)
 	return overlay
+
+
+func _show_controls_hint() -> void:
+	if _controls_tween != null:
+		_controls_tween.kill()
+	_controls_label.modulate.a = 1.0
+
+
+## The line takes up much of a small window, so it only stays while it's useful.
+func _fade_controls_hint(delay: float) -> void:
+	if FeatureFlags.value("controls_hint_seconds") <= 0:
+		return
+	_show_controls_hint()
+	_controls_tween = create_tween()
+	_controls_tween.tween_interval(delay)
+	_controls_tween.tween_property(_controls_label, "modulate:a", 0.0, FADE_SECONDS)
 
 
 func _show_message(text_key: String) -> void:

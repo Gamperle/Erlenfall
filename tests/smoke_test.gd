@@ -31,6 +31,7 @@ func _run() -> void:
 	_check(absf(terrain.height_at(0.0, -28.0)) < 2.0, "village site stays low")
 	_check(terrain.height_at(0.0, 600.0) > 60.0, "mountains surround the valley")
 	_check(player.is_on_floor(), "player lands on terrain")
+	_check(terrain.get_children().filter(func(child): return child is MeshInstance3D).size() > 100, "the terrain is split into chunks")
 	var slowed_on_land := 0
 	for z in range(-500, 500, 10):
 		for x in range(-500, 500, 10):
@@ -733,8 +734,10 @@ func _test_settings(scene: Node, player: Player) -> void:
 	menu._choose_graphics(0)
 	var sun: DirectionalLight3D = scene.get_node("Sun")
 	_check(not sun.shadow_enabled and is_equal_approx(root.scaling_3d_scale, Settings.render_scale()), "low graphics take effect at once")
+	menu._choose_graphics(1)
+	_check(sun.shadow_enabled and sun.directional_shadow_mode == DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS, "medium graphics use fewer shadow levels")
 	menu._choose_graphics(2)
-	_check(sun.shadow_enabled and root.scaling_3d_scale == 1.0, "high graphics take effect at once")
+	_check(sun.shadow_enabled and sun.directional_shadow_mode == DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS and root.scaling_3d_scale == 1.0, "high graphics take effect at once")
 
 	menu._choose_look_speed(2.0)
 	menu._close_settings()

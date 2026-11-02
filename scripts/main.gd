@@ -113,7 +113,9 @@ func _set_translated_text() -> void:
 
 func _apply_graphics() -> void:
 	get_viewport().scaling_3d_scale = Settings.render_scale()
-	($Sun as DirectionalLight3D).shadow_enabled = Settings.shadows()
+	var sun: DirectionalLight3D = $Sun
+	sun.shadow_enabled = Settings.shadows()
+	sun.directional_shadow_mode = Settings.shadow_splits()
 
 
 func save_game() -> void:

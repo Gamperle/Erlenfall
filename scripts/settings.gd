@@ -6,8 +6,8 @@ const DEFAULT_PATH := "user://settings.json"
 const LANGUAGES: Array[String] = ["", "en", "de"]
 const GRAPHICS_LEVELS: Dictionary = {
 	"low": { "name": "UI_GRAPHICS_LOW", "render_scale": 0.7, "shadows": false },
-	"medium": { "name": "UI_GRAPHICS_MEDIUM", "render_scale": 0.85, "shadows": true },
-	"high": { "name": "UI_GRAPHICS_HIGH", "render_scale": 1.0, "shadows": true },
+	"medium": { "name": "UI_GRAPHICS_MEDIUM", "render_scale": 0.85, "shadows": true, "shadow_splits": DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS },
+	"high": { "name": "UI_GRAPHICS_HIGH", "render_scale": 1.0, "shadows": true, "shadow_splits": DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS },
 }
 const MIN_LOOK_SPEED := 0.25
 const MAX_LOOK_SPEED := 2.5
@@ -54,3 +54,7 @@ static func render_scale() -> float:
 
 static func shadows() -> bool:
 	return GRAPHICS_LEVELS[graphics]["shadows"]
+
+
+static func shadow_splits() -> DirectionalLight3D.ShadowMode:
+	return GRAPHICS_LEVELS[graphics].get("shadow_splits", DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS)

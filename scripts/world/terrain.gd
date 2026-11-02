@@ -43,11 +43,12 @@ const ROAD_BLEND := 11.0
 const ROAD_SMOOTH_SAMPLES := 14
 const ROAD_SMOOTH_PASSES := 3
 const RIVER_SPACING := 8.0
-## How far either side of the river the terrain mesh is finer, so that the water's edge is smooth.
-const RIVER_FINE_MARGIN := 1.0
 ## Past this distance from the village the river can only be seen from afar.
 const RIVER_FINE_RADIUS := 560.0
 const FINE_CELLS := 4
+## How far the height map sinks under the fine collision, which is further than a cell's own ground
+## can lie below the height map's.
+const COVERED_GRID_DROP := 4.0
 const WATER_OVERLAP := 0.75
 const CHUNK_CELLS := 32
 ## More vertices than any chunk has, so that each chunk can mark the ones it has used.
@@ -103,8 +104,9 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	var count := int(SIZE / STEP) + 1
 	var heights := _sample_heights(count)
-	_build_mesh(heights, count)
-	_build_collision(heights, count)
+	var fine_cells := _fine_cells(count)
+	var fine_faces := _build_mesh(heights, count, fine_cells)
+	_build_collision(heights, count, fine_cells, fine_faces)
 	_build_water()
 
 
@@ -277,7 +279,8 @@ func _sample_heights(count: int) -> PackedFloat32Array:
 	return heights
 
 
-func _build_mesh(heights: PackedFloat32Array, count: int) -> void:
+## Returns the triangles of the fine cells.
+func _build_mesh(heights: PackedFloat32Array, count: int, fine_cells: PackedByteArray) -> PackedVector3Array:
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
@@ -299,9 +302,8 @@ func _build_mesh(heights: PackedFloat32Array, count: int) -> void:
 			normals[index] = normal
 			colors[index] = _color_at(x, z)
 
-	var fine_cells := _fine_cells(count)
 	var chunk_indices := _coarse_chunk_indices(fine_cells, count)
-	_add_fine_cells(fine_cells, heights, count, vertices, normals, colors, chunk_indices)
+	var fine_faces := _add_fine_cells(fine_cells, heights, count, vertices, normals, colors, chunk_indices)
 
 	var material := _ground_material()
 	var used_as := PackedInt32Array()
@@ -312,6 +314,7 @@ func _build_mesh(heights: PackedFloat32Array, count: int) -> void:
 		if indices.is_empty():
 			continue
 		_add_chunk_mesh(chunk, indices, vertices, normals, colors, used_as, material)
+	return fine_faces
 
 
 ## Sorts the triangles of the ordinary cells into one list per chunk, leaving out the marked cells.
@@ -375,20 +378,22 @@ func _add_chunk_mesh(chunk: int, indices: PackedInt32Array, vertices: PackedVect
 
 ## Marks the cells near the river. Each row of the result holds count - 1 cells.
 func _fine_cells(count: int) -> PackedByteArray:
+	var margin: float = FeatureFlags.value("river_fine_margin")
 	var cells := PackedByteArray()
 	cells.resize((count - 1) * (count - 1))
 	for j in count - 1:
 		for i in count - 1:
 			var x := (i + 0.5) * STEP - SIZE / 2.0
 			var z := (j + 0.5) * STEP - SIZE / 2.0
-			if river_clearance(x, z) < RIVER_FINE_MARGIN and Vector2(x, z).length() < RIVER_FINE_RADIUS:
+			if river_clearance(x, z) < margin and Vector2(x, z).length() < RIVER_FINE_RADIUS:
 				cells[j * (count - 1) + i] = 1
 	return cells
 
 
 ## Gives each marked cell its own smaller grid. Where a cell meets a coarse one, its edge stays
-## straight along the coarse cell's edge, so no crack opens between them.
-func _add_fine_cells(cells: PackedByteArray, heights: PackedFloat32Array, count: int, vertices: PackedVector3Array, normals: PackedVector3Array, colors: PackedColorArray, chunk_indices: Array[PackedInt32Array]) -> void:
+## straight along the coarse cell's edge, so no crack opens between them. Returns their triangles.
+func _add_fine_cells(cells: PackedByteArray, heights: PackedFloat32Array, count: int, vertices: PackedVector3Array, normals: PackedVector3Array, colors: PackedColorArray, chunk_indices: Array[PackedInt32Array]) -> PackedVector3Array:
+	var faces := PackedVector3Array()
 	var size := STEP / FINE_CELLS
 	var row := count - 1
 	# Neighboring vertices and cells ask for the same points, and working out a height is slow.
@@ -443,6 +448,9 @@ func _add_fine_cells(cells: PackedByteArray, heights: PackedFloat32Array, count:
 					cell_indices.append_array(PackedInt32Array([a, b, c, b, d, c]))
 			var chunk: int = j / CHUNK_CELLS * ceili(float(row) / CHUNK_CELLS) + i / CHUNK_CELLS
 			chunk_indices[chunk].append_array(cell_indices)
+			for index in cell_indices:
+				faces.append(vertices[index])
+	return faces
 
 
 func _ground_material() -> ShaderMaterial:
@@ -472,12 +480,15 @@ func _color_at(x: float, z: float) -> Color:
 	return color
 
 
-func _build_collision(heights: PackedFloat32Array, count: int) -> void:
+func _build_collision(heights: PackedFloat32Array, count: int, fine_cells: PackedByteArray, fine_faces: PackedVector3Array) -> void:
 	# Height map spacing is fixed at 1 m, so the shape is scaled uniformly to match STEP.
 	var scaled_heights := PackedFloat32Array()
 	scaled_heights.resize(heights.size())
 	for index in heights.size():
 		scaled_heights[index] = heights[index] / STEP
+
+	if FeatureFlags.enabled("river_fine_collision"):
+		_cover_grid_with_fine_collision(scaled_heights, heights, count, fine_cells, fine_faces)
 
 	var shape := HeightMapShape3D.new()
 	shape.map_width = count
@@ -487,6 +498,45 @@ func _build_collision(heights: PackedFloat32Array, count: int) -> void:
 	var collision := CollisionShape3D.new()
 	collision.shape = shape
 	collision.scale = Vector3.ONE * STEP
+	add_child(collision)
+
+
+## Near the river the visible ground itself becomes the collision. A higher height map would still
+## win over it, so the height map sinks there, and the coarse triangles that sink along with it join
+## the fine ones. Sinking leaves solid ground underneath, which holes in the height map would not.
+func _cover_grid_with_fine_collision(scaled_heights: PackedFloat32Array, heights: PackedFloat32Array, count: int, fine_cells: PackedByteArray, fine_faces: PackedVector3Array) -> void:
+	var row := count - 1
+	var sunk := PackedByteArray()
+	sunk.resize(heights.size())
+	for j in row:
+		for i in row:
+			if fine_cells[j * row + i] == 1:
+				var a := j * count + i
+				for corner: int in [a, a + 1, a + count, a + count + 1]:
+					if sunk[corner] == 0:
+						sunk[corner] = 1
+						scaled_heights[corner] -= COVERED_GRID_DROP / STEP
+
+	var ground := func(index: int) -> Vector3:
+		return Vector3((index % count) * STEP - SIZE / 2.0, heights[index], (index / count) * STEP - SIZE / 2.0)
+	for j in row:
+		for i in row:
+			if fine_cells[j * row + i] == 1:
+				continue
+			var a := j * count + i
+			var b := a + 1
+			var c := a + count
+			var d := c + 1
+			# The same two triangles as the mesh and the height map.
+			if sunk[a] + sunk[b] + sunk[c] > 0:
+				fine_faces.append_array(PackedVector3Array([ground.call(a), ground.call(b), ground.call(c)]))
+			if sunk[b] + sunk[d] + sunk[c] > 0:
+				fine_faces.append_array(PackedVector3Array([ground.call(b), ground.call(d), ground.call(c)]))
+
+	var shape := ConcavePolygonShape3D.new()
+	shape.set_faces(fine_faces)
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
 	add_child(collision)
 
 

@@ -6,6 +6,7 @@
 		"realistic_enemies": true,
 		"realistic_player": true,
 		"performance_overlay": true,
+		"river_fine_collision": true,
 		"torches": true,
 		"torch_crafting_enabled": true,
 		"torch_starting_item_enabled": true,
@@ -17,6 +18,7 @@
 	"values": {
 		"torch_burn_seconds": 600,
 		"interface_min_scale": 0.9,
-		"controls_hint_seconds": 30
+		"controls_hint_seconds": 30,
+		"river_fine_margin": 3.0
 	}
 }

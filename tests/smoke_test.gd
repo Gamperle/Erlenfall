@@ -231,6 +231,20 @@ func _test_crafting(scene: Node, player: Player) -> void:
 	_check(made.size() == 1 and made[0]["quality"] == "masterwork", "perfect forging gives masterwork")
 	ui.close()
 
+	player.inventory.add("iron_ingot", 2)
+	player.inventory.add("wood", 1)
+	var ingots := player.inventory.count("iron_ingot")
+	var wood := player.inventory.count("wood")
+	ui.open_station("anvil", "Anvil", player)
+	ui.add_material("iron_ingot")
+	ui.add_material("iron_ingot")
+	ui.add_material("wood")
+	ui.craft()
+	ui.abandon_forging()
+	_check(not ui.is_forging() and ui.is_open(), "forging can be abandoned")
+	_check(player.inventory.count("iron_ingot") == ingots - 1 and player.inventory.count("wood") == wood - 1, "abandoning saves half the materials")
+	ui.close()
+
 	var clumsy := HammerGame.new(2, 1.0)
 	clumsy.marker = clamp(clumsy.target + 0.5, 0.0, 1.0) if clumsy.target < 0.5 else clumsy.target - 0.5
 	clumsy.strike()

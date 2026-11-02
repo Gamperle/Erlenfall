@@ -16,7 +16,8 @@ UI_KNOWN_RECIPES,"Known recipes:
 %s","Bekannte Rezepte:
 %s"
 UI_FORGING,Forging %s: strike %d of %d,Schmieden: %s – Schlag %d von %d
-UI_FORGE_HINT,Press E / X when the white marker is over the orange target.,"Drücke E / X, wenn die weiße Markierung über dem orangen Ziel ist."
+UI_FORGE_HINT,Press E / X when the white marker is over the orange target. Esc / B stops and loses materials.,"Drücke E / X, wenn die weiße Markierung über dem orangen Ziel ist. Esc / B bricht ab und kostet Material."
+UI_FORGE_ABANDONED,"You stopped forging. Half of the materials were saved, rounded down.","Du hast das Schmieden abgebrochen. Die Hälfte des Materials ist abgerundet erhalten geblieben."
 UI_STRIKE_PERFECT,Perfect strike!,Perfekter Schlag!
 UI_STRIKE_GOOD,Good strike.,Guter Schlag.
 UI_STRIKE_POOR,Poor strike.,Schlechter Schlag.

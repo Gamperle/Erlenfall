@@ -5,13 +5,14 @@ extends RefCounted
 enum Pattern { PLASTER, WOOD, SHINGLES, STONE, CROPS, ROAD }
 
 const SHADER := preload("res://shaders/surface.gdshader")
-## Each surface's photo, the width in meters that the photo covers, and how strongly it shows.
+## Each surface's photo, the width in meters that the photo covers, how strongly it shows,
+## and a second photo with its width, which the shader mixes in by area.
 const PHOTOS: Dictionary = {
-	Pattern.PLASTER: [preload("res://assets/textures/plaster.jpg"), 2.0, 1.0],
-	Pattern.WOOD: [preload("res://assets/textures/wood.jpg"), 1.0, 1.0],
-	Pattern.SHINGLES: [preload("res://assets/textures/shingles.jpg"), 1.5, 1.0],
-	Pattern.STONE: [preload("res://assets/textures/stone.jpg"), 1.5, 1.0],
-	Pattern.ROAD: [preload("res://assets/textures/road.jpg"), 2.2, 0.5],
+	Pattern.PLASTER: [preload("res://assets/textures/plaster.jpg"), 2.0, 1.0, preload("res://assets/textures/plaster_2.jpg"), 1.8],
+	Pattern.WOOD: [preload("res://assets/textures/wood.jpg"), 1.0, 1.0, preload("res://assets/textures/wood_2.jpg"), 2.0],
+	Pattern.SHINGLES: [preload("res://assets/textures/shingles.jpg"), 1.5, 1.0, preload("res://assets/textures/shingles_2.jpg"), 3.0],
+	Pattern.STONE: [preload("res://assets/textures/stone.jpg"), 1.5, 1.0, preload("res://assets/textures/stone_2.jpg"), 1.7],
+	Pattern.ROAD: [preload("res://assets/textures/road.jpg"), 2.2, 0.5, preload("res://assets/textures/road_2.jpg"), 2.25],
 }
 
 static var _noise_texture: NoiseTexture2D
@@ -30,6 +31,8 @@ static func get_material(pattern: Pattern, color: Color) -> ShaderMaterial:
 			material.set_shader_parameter("surface_texture", PHOTOS[pattern][0])
 			material.set_shader_parameter("tile_metres", PHOTOS[pattern][1])
 			material.set_shader_parameter("photo_strength", PHOTOS[pattern][2])
+			material.set_shader_parameter("surface_texture_2", PHOTOS[pattern][3])
+			material.set_shader_parameter("tile_metres_2", PHOTOS[pattern][4])
 		_cache[key] = material
 	return _cache[key]
 

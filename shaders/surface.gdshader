@@ -7,7 +7,9 @@ const int CROPS = 4;
 
 uniform sampler2D detail_noise : repeat_enable, filter_linear_mipmap_anisotropic;
 uniform sampler2D surface_texture : source_color, repeat_enable, filter_linear_mipmap_anisotropic;
+uniform sampler2D surface_texture_2 : source_color, repeat_enable, filter_linear_mipmap_anisotropic;
 uniform float tile_metres = 2.0;
+uniform float tile_metres_2 = 2.0;
 uniform float photo_strength = 1.0;
 uniform vec3 base_color : source_color;
 uniform int pattern = 0;
@@ -38,8 +40,18 @@ void fragment() {
 	} else {
 		// The photo adds detail, and dividing by its average keeps base_color as the overall color.
 		vec3 photo = texture(surface_texture, uv / tile_metres).rgb;
-		vec3 average = textureLod(surface_texture, vec2(0.5), 12.0).rgb;
-		ALBEDO = base_color * mix(vec3(1.0), photo / max(average, vec3(0.02)), photo_strength) * (0.85 + noise * 0.3);
+		photo /= max(textureLod(surface_texture, vec2(0.5), 12.0).rgb, vec3(0.02));
+		// Areas of a second photo keep large walls and roads from repeating.
+		float area = texture(detail_noise, uv * 0.037).r;
+		float other = smoothstep(0.46, 0.56, area + (fine - 0.5) * 0.15);
+		vec2 dx = dFdx(uv) / tile_metres_2;
+		vec2 dy = dFdy(uv) / tile_metres_2;
+		if (other > 0.0) {
+			vec3 second = textureGrad(surface_texture_2, uv / tile_metres_2, dx, dy).rgb;
+			second /= max(textureLod(surface_texture_2, vec2(0.5), 12.0).rgb, vec3(0.02));
+			photo = mix(photo, second, other);
+		}
+		ALBEDO = base_color * mix(vec3(1.0), photo, photo_strength) * (0.85 + noise * 0.3);
 	}
 	ROUGHNESS = 0.95;
 	SPECULAR = 0.2;

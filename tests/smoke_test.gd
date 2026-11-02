@@ -46,7 +46,7 @@ func _run() -> void:
 	_check(terrain.wading_factor(river_floor + Vector3.UP * 5.0) == 1.0, "a bridge over the river doesn't slow anyone")
 	_check(absf(player.position.y - terrain.height_at(player.position.x, player.position.z)) < 1.0, "collision matches terrain")
 	_check(village.get_node_or_null("forge") != null, "buildings load from data")
-	_check(village.get_node("Roads").get_child_count() == 2, "roads load from data")
+	_check(village.get_node("Roads").get_child_count() == 3, "roads load from data")
 	_check(village.get_node("Boulders").get_child_count() > 0, "boulders have collision")
 	_check(village.get_node("Boulders").get_child(0).shape is ConvexPolygonShape3D, "boulders collide with their real shape")
 	_check(terrain.is_on_landslide(40.0, -300.0) and not terrain.is_on_landslide(0.0, 0.0), "landslide stays out of the village")
@@ -123,6 +123,7 @@ func _run() -> void:
 	await _test_story(scene, player)
 	await _test_combat(scene, player)
 	await _test_gathering_collision(scene, player)
+	await _test_forest(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
 	await _test_settings(scene, player)
 	_test_translations()
@@ -669,6 +670,59 @@ func _test_combat(scene: Node, player: Player) -> void:
 	enemy._home = home
 	enemy.revive()
 	await _physics_frames(1)
+
+
+func _test_forest(scene: Node, player: Player) -> void:
+	var forest: Forest = scene.get_node("Village/Forest")
+	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/village_layout.json"))
+	var data: Dictionary = layout["forest"]
+	_check(forest.tree_count() > int(data["count"]) * 0.8, "the forest is dense (%d trees)" % forest.tree_count())
+	var center := Vector2(data["x"], data["z"])
+	var well_placed := true
+	for tree in forest.tree_count():
+		var at := forest.tree_position(tree)
+		well_placed = well_placed and Vector2(at.x, at.z).distance_to(center) <= float(data["radius"]) and absf(at.y - scene.get_node("Terrain").height_at(at.x, at.z)) < 0.01
+	_check(well_placed, "forest trees stand on the ground inside the forest")
+
+	var saved_position := player.position
+	var saved_items := player.inventory.to_data()
+	var tree_at := forest.tree_position(0)
+	player.position = tree_at + player.facing_direction() * -2.5 + Vector3.UP * 0.2
+	await _physics_frames(3)
+	_check(player.interact_target == forest.target() and forest.has_target(), "the player can aim at a forest tree")
+	player.inventory.load_data({})
+	var messages: Array[String] = []
+	var on_notice := func(text: String) -> void: messages.append(text)
+	player.notice.connect(on_notice)
+	player.interact()
+	_check(player.inventory.count("wood") == 0 and messages.has("UI_NEED_AXE"), "chopping without an axe gives nothing and says why")
+	player.inventory.add("iron_axe")
+	var standing := forest.standing_count()
+	var target_tree := forest._target_tree
+	player._attack_cooldown = 0.0
+	player.interact()
+	_check(player.inventory.count("wood") == 1, "an axe strike gives wood")
+	player.interact()
+	_check(player.inventory.count("wood") == 1, "swings set the pace of chopping")
+	player.notice.disconnect(on_notice)
+	forest.strike_tree(target_tree, player)
+	_check(forest.standing_count() == standing, "a tree takes several strikes")
+	forest.strike_tree(target_tree, player)
+	_check(forest.standing_count() == standing - 1 and player.inventory.count("wood") == int(data["strikes"]), "enough strikes fell the tree")
+	await _physics_frames(3)
+	_check(forest._target_tree != target_tree, "a felled tree can't be chopped again")
+
+	var saved: Dictionary = JSON.parse_string(JSON.stringify(forest.to_data()))
+	forest.load_data({})
+	_check(forest.standing_count() == standing, "an old save without a forest has every tree standing")
+	forest.load_data(saved)
+	_check(forest.standing_count() == standing - 1, "felled trees are saved")
+	player.position = saved_position
+	await _physics_frames(1)
+	forest._felled[target_tree] = 0.0
+	await _physics_frames(2)
+	_check(forest.standing_count() == standing, "felled trees grow back")
+	player.inventory.load_data(saved_items)
 
 
 func _test_gathering_collision(scene: Node, player: Player) -> void:

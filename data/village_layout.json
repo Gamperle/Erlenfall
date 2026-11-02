@@ -65,7 +65,14 @@
 		]
 	},
 	"building_sites": [
-		{ "id": "assembly_hall", "x": 34, "z": -58, "radius": 11, "blend": 24, "rise": 9 }
+		{ "id": "assembly_hall", "x": 34, "z": -58, "radius": 11, "blend": 24, "rise": 9 },
+		{ "id": "wooden_fort", "x": -45, "z": 68, "radius": 9, "blend": 21, "rise": 10 }
+	],
+	"hills": [
+		{ "x": -72, "z": -55, "radius": 34, "height": 12 },
+		{ "x": 88, "z": -22, "radius": 30, "height": 10 },
+		{ "x": 72, "z": 80, "radius": 36, "height": 13 },
+		{ "x": -105, "z": -10, "radius": 28, "height": 9 }
 	],
 	"flat_areas": [
 		{ "x": 118, "z": -145, "radius": 14, "blend": 22 }
@@ -77,6 +84,24 @@
 		"max_radius": 440,
 		"road_clearance": 6,
 		"field_clearance": 32
+	},
+	"leaf_trees": {
+		"seed": 17,
+		"count": 220,
+		"min_radius": 62,
+		"max_radius": 400,
+		"max_height": 45,
+		"road_clearance": 7,
+		"field_clearance": 32
+	},
+	"bushes": {
+		"seed": 19,
+		"count": 650,
+		"min_radius": 40,
+		"max_radius": 420,
+		"max_height": 70,
+		"road_clearance": 3.5,
+		"field_clearance": 26
 	},
 	"grass": {
 		"seed": 13,

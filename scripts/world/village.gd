@@ -12,6 +12,19 @@ const CROWN_RADIUS := 2.6
 const TRUNK_COLOR := Color(0.25, 0.17, 0.11)
 const CROWN_COLOR := Color(0.09, 0.2, 0.11)
 const CROWN_TIP_COLOR := Color(0.2, 0.34, 0.17)
+const LEAF_TRUNK_RADIUS := 0.38
+const LEAF_TRUNK_HEIGHT := 6.5
+const LEAF_COLOR := Color(0.13, 0.23, 0.08)
+const LEAF_TIP_COLOR := Color(0.28, 0.38, 0.13)
+const BUSH_COLOR := Color(0.07, 0.14, 0.06)
+const BUSH_TIP_COLOR := Color(0.2, 0.3, 0.11)
+const CLUMP_SIDES := 7
+const CLUMP_RINGS := 4
+const CLUMP_LUMPINESS := 0.18
+const BUSH_CLUMPS := 4
+const BUSH_SPREAD := 0.75
+const PLANT_BUILDING_CLEARANCE := 11.0
+const PLANT_SPOT_CLEARANCE := 4.0
 const GRASS_BLADES := 7
 const GRASS_BASE_COLOR := Color(0.17, 0.22, 0.1)
 const GRASS_TIP_COLOR := Color(0.36, 0.4, 0.2)
@@ -37,6 +50,7 @@ const WOOD_PILE_SHAPE := Vector3(1.0, 0.9, 1.5)
 var _road_samples: Array[PackedVector2Array] = []
 var _repairs: Array[Dictionary] = []
 var _building_spots: Array[Vector2] = []
+var _busy_spots: Array[Vector2] = []
 
 
 func _ready() -> void:
@@ -44,10 +58,19 @@ func _ready() -> void:
 	for building: Dictionary in layout["buildings"]:
 		_add_building(building)
 		_building_spots.append(Vector2(building["x"], building["z"]))
+	for list: String in ["npcs", "enemies", "stations", "beds", "repair_sites", "resources"]:
+		for spot: Dictionary in layout[list]:
+			_busy_spots.append(Vector2(spot["x"], spot["z"]))
 	for field: Dictionary in layout["fields"]:
 		_add_field(field)
 	_add_roads(layout["roads"])
 	_add_trees(layout["trees"], layout["fields"])
+	var leaf_trees := _scatter(layout["leaf_trees"], layout["fields"])
+	_add_multimesh(_leaf_tree_mesh(), leaf_trees, 0.0, _tint_random(layout["leaf_trees"])).name = "LeafTrees"
+	_add_tree_collision(leaf_trees)
+	var bushes := _add_multimesh(_bush_mesh(), _scatter(layout["bushes"], layout["fields"]), 0.0, _tint_random(layout["bushes"]))
+	bushes.name = "Bushes"
+	bushes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_add_grass(layout["grass"], layout["fields"])
 	_add_boulders(layout["boulders"])
 	for npc_data: Dictionary in layout["npcs"]:
@@ -310,6 +333,20 @@ func _add_field(data: Dictionary) -> void:
 
 
 func _add_trees(data: Dictionary, fields: Array) -> void:
+	var transforms := _scatter(data, fields)
+	_add_multimesh(_fir_mesh(), transforms, 0.0, _tint_random(data))
+	_add_tree_collision(transforms)
+
+
+## Separate from the placement, so that adding plants never changes where others stand.
+func _tint_random(data: Dictionary) -> RandomNumberGenerator:
+	var random := RandomNumberGenerator.new()
+	random.seed = int(data["seed"]) + 1
+	return random
+
+
+## Picks random allowed spots in a ring around the village, with varied turns and sizes.
+func _scatter(data: Dictionary, fields: Array) -> Array[Transform3D]:
 	var transforms: Array[Transform3D] = []
 	var random := RandomNumberGenerator.new()
 	random.seed = data["seed"]
@@ -323,10 +360,67 @@ func _add_trees(data: Dictionary, fields: Array) -> void:
 				var basis := Basis(Vector3.UP, random.randf() * TAU).scaled(Vector3.ONE * scale_factor)
 				transforms.append(Transform3D(basis, _ground_position(point.x, point.y)))
 				break
+	return transforms
 
-	_add_multimesh(_fir_mesh(), transforms, 0.0, random)
 
-	_add_tree_collision(transforms)
+## A broad tree: a trunk under a few overlapping clumps of leaves.
+func _leaf_tree_mesh() -> ArrayMesh:
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	surface.set_smooth_group(-1)
+	var jitter := RandomNumberGenerator.new()
+	jitter.seed = 23
+	_add_cone(surface, LEAF_TRUNK_RADIUS, 0.14, 0.0, LEAF_TRUNK_HEIGHT, 6, TRUNK_COLOR, TRUNK_COLOR, jitter, 0.0)
+	_add_clump(surface, Vector3(0.0, 7.6, 0.0), Vector3(3.3, 2.6, 3.3), LEAF_COLOR, LEAF_TIP_COLOR, jitter)
+	_add_clump(surface, Vector3(2.2, 6.3, 0.7), Vector3(2.2, 1.7, 2.2), LEAF_COLOR, LEAF_TIP_COLOR, jitter)
+	_add_clump(surface, Vector3(-1.8, 6.5, 1.4), Vector3(2.1, 1.7, 2.1), LEAF_COLOR, LEAF_TIP_COLOR, jitter)
+	_add_clump(surface, Vector3(-0.6, 6.2, -2.1), Vector3(2.3, 1.6, 2.3), LEAF_COLOR, LEAF_TIP_COLOR, jitter)
+	surface.generate_normals()
+	return surface.commit()
+
+
+## A few low clumps of leaves with no trunk.
+func _bush_mesh() -> ArrayMesh:
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	surface.set_smooth_group(-1)
+	var jitter := RandomNumberGenerator.new()
+	jitter.seed = 24
+	for clump in BUSH_CLUMPS:
+		var angle := TAU * clump / BUSH_CLUMPS + jitter.randf_range(-0.4, 0.4)
+		var out := 0.0 if clump == 0 else jitter.randf_range(0.5, 1.0) * BUSH_SPREAD
+		var size := jitter.randf_range(0.4, 0.6)
+		var height := size * 0.7 + (0.35 if clump == 0 else jitter.randf_range(0.0, 0.2))
+		_add_clump(surface, Vector3(cos(angle) * out, height, sin(angle) * out), Vector3(size, size * 0.85, size), BUSH_COLOR, BUSH_TIP_COLOR, jitter)
+	surface.generate_normals()
+	return surface.commit()
+
+
+## Adds an uneven ball of leaves, darker underneath and lighter on top.
+func _add_clump(surface: SurfaceTool, center: Vector3, size: Vector3, bottom_color: Color, top_color: Color, jitter: RandomNumberGenerator) -> void:
+	var rings: Array[PackedVector3Array] = []
+	for ring in CLUMP_RINGS - 1:
+		var up := PI * (float(ring + 1) / CLUMP_RINGS - 0.5)
+		var points := PackedVector3Array()
+		for side in CLUMP_SIDES:
+			var around := TAU * side / CLUMP_SIDES
+			var lump := 1.0 + jitter.randf_range(-CLUMP_LUMPINESS, CLUMP_LUMPINESS)
+			points.append(center + Vector3(cos(up) * cos(around), sin(up), cos(up) * sin(around)) * size * lump)
+		rings.append(points)
+	var bottom := center + Vector3.DOWN * size.y
+	var top := center + Vector3.UP * size.y
+	var add := func(corner: Vector3) -> void:
+		surface.set_color(bottom_color.lerp(top_color, clampf((corner.y - bottom.y) / (top.y - bottom.y), 0.0, 1.0)))
+		surface.add_vertex(corner)
+	for side in CLUMP_SIDES:
+		var next := (side + 1) % CLUMP_SIDES
+		for corner: Vector3 in [bottom, rings[0][side], rings[0][next], top, rings[rings.size() - 1][next], rings[rings.size() - 1][side]]:
+			add.call(corner)
+		for ring in rings.size() - 1:
+			var low: PackedVector3Array = rings[ring]
+			var high: PackedVector3Array = rings[ring + 1]
+			for corner: Vector3 in [low[side], high[side], low[next], low[next], high[side], high[next]]:
+				add.call(corner)
 
 
 ## A fir tree built as one mesh: a trunk under overlapping tiers of drooping branches.
@@ -420,12 +514,18 @@ func _is_tree_allowed(point: Vector2, data: Dictionary, fields: Array) -> bool:
 		for sample in samples:
 			if point.distance_to(sample) < data["road_clearance"]:
 				return false
-	if terrain.height_at(point.x, point.y) > MAX_TREE_HEIGHT:
+	if terrain.height_at(point.x, point.y) > data.get("max_height", MAX_TREE_HEIGHT):
 		return false
+	for building: Vector2 in _building_spots:
+		if point.distance_to(building) < PLANT_BUILDING_CLEARANCE:
+			return false
+	for spot: Vector2 in _busy_spots:
+		if point.distance_to(spot) < PLANT_SPOT_CLEARANCE:
+			return false
 	if terrain.is_on_landslide(point.x, point.y) or terrain.river_clearance(point.x, point.y) < RIVER_TREE_CLEARANCE:
 		return false
 	for site: Dictionary in terrain.building_sites:
-		if point.distance_to(Vector2(site["x"], site["z"])) < float(site["radius"]) + SITE_TREE_CLEARANCE:
+		if point.distance_to(Vector2(site["x"], site["z"])) < float(site["radius"]) + float(site["blend"]) + SITE_TREE_CLEARANCE:
 			return false
 	for field: Dictionary in fields:
 		if point.distance_to(Vector2(field["x"], field["z"])) < data["field_clearance"]:

@@ -61,6 +61,7 @@ var _bank_height := 0.0
 var _river_depth := 0.0
 var _valley_width := 0.0
 var _flat_cells: Dictionary = {}
+var _rounded_hills: Array = []
 
 var _hills := FastNoiseLite.new()
 var _peaks := FastNoiseLite.new()
@@ -82,6 +83,7 @@ func _init() -> void:
 	_patches.seed = 4
 	_patches.frequency = 0.02
 	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(LAYOUT_PATH))
+	_rounded_hills = layout["hills"]
 	_add_flat_areas(layout)
 	_add_roads(layout["roads"])
 	_add_river(layout["river"])
@@ -118,6 +120,10 @@ func _natural_height(x: float, z: float) -> float:
 	var distance := Vector2(x, z).length()
 	var fade := lerpf(VILLAGE_HILLS, 1.0, smoothstep(VILLAGE_RADIUS * 0.6, VILLAGE_RADIUS * 2.5, distance))
 	var hills := _hills.get_noise_2d(x, z) * HILL_HEIGHT * fade
+	for hill: Dictionary in _rounded_hills:
+		var from_hill := Vector2(x, z).distance_to(Vector2(hill["x"], hill["z"]))
+		if from_hill < hill["radius"]:
+			hills += hill["height"] * (1.0 - smoothstep(0.0, hill["radius"], from_hill))
 	var mountain := smoothstep(VALLEY_RADIUS, MOUNTAIN_RADIUS, distance)
 	var peaks := mountain * mountain * (MOUNTAIN_HEIGHT + _peaks.get_noise_2d(x, z) * 110.0)
 	return hills + peaks + _landslide_height(x, z)

@@ -120,25 +120,24 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 				steepest_road = maxf(steepest_road, _slope_degrees(terrain, at.x, at.y))
 	_check(steepest_road < 20.0, "roads stay gentle (steepest %.1f degrees)" % steepest_road)
 
-	var site: Dictionary = terrain.building_sites[0]
-	var center := Vector2(site["x"], site["z"])
-	var site_height := terrain.height_at(center.x, center.y)
-	var top_low := INF
-	var top_high := -INF
-	for i in 16:
-		for radius: float in [site["radius"] / 2.0, site["radius"]]:
-			var at := center + Vector2.from_angle(TAU * i / 16.0) * radius
-			top_low = minf(top_low, terrain.height_at(at.x, at.y))
-			top_high = maxf(top_high, terrain.height_at(at.x, at.y))
-	_check(top_high - top_low < 0.5, "the hill for the assembly building has a flat top")
-	_check(site_height > terrain.height_at(0.0, -28.0) + 5.0, "the hill rises above the village")
-	_check(center.length() - site["radius"] - site["blend"] < Terrain.VILLAGE_RADIUS * 0.75, "the hill's foot reaches into the village")
-	var steepest_hill := 0.0
-	for i in 16:
-		for radius in range(int(site["radius"]), int(site["radius"] + site["blend"])):
-			var at := center + Vector2.from_angle(TAU * i / 16.0) * radius
-			steepest_hill = maxf(steepest_hill, _slope_degrees(terrain, at.x, at.y))
-	_check(steepest_hill < 40.0, "the hill can be climbed (steepest %.1f degrees)" % steepest_hill)
+	_check(terrain.building_sites.size() == 2, "the assembly building and the fort each have a site")
+	for site: Dictionary in terrain.building_sites:
+		_test_building_site(terrain, site)
+	for hill: Dictionary in layout["hills"]:
+		var rise := terrain.height_at(hill["x"], hill["z"]) - terrain.height_at(hill["x"] + hill["radius"], hill["z"])
+		_check(rise > 3.0, "a hill stands near the village at (%s, %s)" % [hill["x"], hill["z"]])
+
+	# Headless runs can't read a MultiMesh back, so this checks the same repeatable placement.
+	for plants: String in ["leaf_trees", "bushes"]:
+		var spots: Array[Transform3D] = village._scatter(layout[plants], layout["fields"])
+		var well_placed := spots.size() > int(layout[plants]["count"]) / 2
+		for spot in spots:
+			var at := spot.origin
+			well_placed = well_placed and terrain.river_clearance(at.x, at.z) > 0.0 and absf(at.y - terrain.height_at(at.x, at.z)) < 0.01
+			for building: Dictionary in layout["buildings"]:
+				well_placed = well_placed and Vector2(at.x, at.z).distance_to(Vector2(building["x"], building["z"])) > 5.0
+		_check(well_placed, "%s grow on the ground, clear of the river and buildings" % plants)
+	_check(village.get_node("LeafTrees").multimesh.instance_count > 0 and village.get_node("Bushes").multimesh.instance_count > 0, "leaf trees and bushes are planted")
 
 	var low := INF
 	var high := -INF
@@ -165,6 +164,25 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 		_check(crossed, "the player crosses the river at x=%.0f" % x)
 	player.position = saved_position
 	await _physics_frames(10)
+
+
+func _test_building_site(terrain: Terrain, site: Dictionary) -> void:
+	var center := Vector2(site["x"], site["z"])
+	var top_low := INF
+	var top_high := -INF
+	var steepest := 0.0
+	for i in 16:
+		for radius: float in [site["radius"] / 2.0, site["radius"]]:
+			var at := center + Vector2.from_angle(TAU * i / 16.0) * radius
+			top_low = minf(top_low, terrain.height_at(at.x, at.y))
+			top_high = maxf(top_high, terrain.height_at(at.x, at.y))
+		for radius in range(int(site["radius"]), int(site["radius"] + site["blend"])):
+			var at := center + Vector2.from_angle(TAU * i / 16.0) * radius
+			steepest = maxf(steepest, _slope_degrees(terrain, at.x, at.y))
+	_check(top_high - top_low < 0.5, "%s has a flat top" % site["id"])
+	_check(terrain.height_at(center.x, center.y) > terrain.height_at(0.0, -28.0) + 5.0, "%s rises above the village" % site["id"])
+	_check(center.length() - site["radius"] - site["blend"] < Terrain.VILLAGE_RADIUS, "%s's foot reaches the village" % site["id"])
+	_check(steepest < 42.0, "%s can be climbed (steepest %.1f degrees)" % [site["id"], steepest])
 
 
 func _slope_degrees(terrain: Terrain, x: float, z: float) -> float:

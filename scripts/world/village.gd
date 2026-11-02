@@ -68,6 +68,28 @@ func _ready() -> void:
 		_add_resource(resource)
 
 
+## Returns what changes during play in the world, in the same order as the layout file.
+func to_data() -> Dictionary:
+	var enemies := []
+	var resources := []
+	for child in get_children():
+		if child is Enemy:
+			enemies.append(child.to_data())
+		elif child is ResourceNode:
+			resources.append(child.to_data())
+	return { "enemies": enemies, "resources": resources }
+
+
+func load_data(data: Dictionary) -> void:
+	var enemies: Array = data["enemies"]
+	var resources: Array = data["resources"]
+	for child in get_children():
+		if child is Enemy and not enemies.is_empty():
+			child.load_data(enemies.pop_front())
+		elif child is ResourceNode and not resources.is_empty():
+			child.load_data(resources.pop_front())
+
+
 ## Shows or hides repairs to match the story flags.
 func apply_flags(flags: Dictionary) -> void:
 	for repair in _repairs:

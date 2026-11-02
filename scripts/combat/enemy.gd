@@ -90,6 +90,28 @@ func revive() -> void:
 	_collision.set_deferred("disabled", false)
 
 
+func to_data() -> Dictionary:
+	return {
+		"position": [position.x, position.y, position.z],
+		"health": health.current,
+		"respawn_left": _timer if state == State.DEAD else 0.0,
+	}
+
+
+## Restores a saved enemy. A living one has forgotten any fight and walks back if it was chasing.
+func load_data(data: Dictionary) -> void:
+	revive()
+	var saved_position: Array = data["position"]
+	position = Vector3(saved_position[0], saved_position[1], saved_position[2])
+	if data["health"] <= 0.0:
+		health.current = 0.0
+		_die()
+		_timer = data["respawn_left"]
+	else:
+		health.current = data["health"]
+	health.changed.emit()
+
+
 func _process_idle(player: Player) -> void:
 	if player != null and _distance_to(player) < float(_stats["aggro_range"]):
 		state = State.CHASE

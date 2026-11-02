@@ -365,9 +365,9 @@ func _test_combat(scene: Node, player: Player) -> void:
 	_check(chasing != Enemy.State.IDLE and enemy.state == chasing, "enemies don't lose the player during a menu")
 	screen.close()
 	_check(not root.get_tree().paused, "closing a menu resumes the world")
-	var home := enemy._home
 	enemy.revive()
-	enemy.position = home
+
+	await _physics_frames(1)
 
 
 func _test_gathering_collision(scene: Node, player: Player) -> void:
@@ -419,7 +419,7 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	_check(not full_roof.visible, "the roof depends on saved flags")
 	day_night.hour = 3.0
 
-	_check(SaveGame.apply(TEST_SAVE, player, day_night), "the game loads")
+	_check(SaveGame.apply(TEST_SAVE, player, day_night, village), "the game loads")
 	_check(player.position.is_equal_approx(saved_position), "position is restored")
 	_check(player.inventory.count("coal") == saved_coal, "inventory is restored")
 	_check(player.known_recipes.size() == recipes, "recipes are restored")
@@ -429,13 +429,34 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	_check(player.quests.is_done("first_nails") and player.quests.flags.has("mayor_annoyed"), "quests and choices are restored")
 	_check(full_roof.visible, "the repaired roof is restored")
 	_check(day_night.hour != 3.0, "the time of day is restored")
+	var enemy := _first_of(village, Enemy) as Enemy
+	var spot := _first_of(village, ResourceNode) as ResourceNode
+	for i in spot.uses:
+		spot.interact(player)
+	while enemy.state != Enemy.State.DEAD:
+		enemy.take_hit(1000.0)
+	scene.save_game()
+	enemy.revive()
+	spot._respawn()
+
+	_check(SaveGame.apply(TEST_SAVE, player, day_night, village), "the world loads")
+	_check(enemy.state == Enemy.State.DEAD and not enemy.visible, "a defeated enemy stays defeated after loading")
+	_check(enemy._timer > 0.0, "a defeated enemy still returns later")
+	_check(not spot.is_available() and spot._respawn_left > 0.0, "an emptied gathering spot stays empty after loading")
+	enemy.revive()
+	spot._respawn()
+	var old_save: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(TEST_SAVE))
+	old_save.erase("world")
+	FileAccess.open(TEST_SAVE, FileAccess.WRITE).store_string(JSON.stringify(old_save))
+	_check(SaveGame.apply(TEST_SAVE, player, day_night, village), "saves without world data still load")
+	_check(enemy.state != Enemy.State.DEAD, "older saves leave enemies alone")
 	scene._playing = true
 
 	var damaged := FileAccess.open(TEST_SAVE, FileAccess.WRITE)
 	damaged.store_string("{ not json")
 	damaged.close()
 	_check(not SaveGame.exists(TEST_SAVE), "a damaged save is ignored")
-	_check(not SaveGame.apply(TEST_SAVE, player, day_night), "a damaged save doesn't load")
+	_check(not SaveGame.apply(TEST_SAVE, player, day_night, village), "a damaged save doesn't load")
 
 	player.health.current = 50.0
 	day_night.hour = 22.0
@@ -489,6 +510,13 @@ func _test_translations() -> void:
 				missing.append("%s:%s" % [locale, found.get_string(1)])
 	TranslationServer.set_locale("en")
 	_check(missing.is_empty(), "all text is translated %s" % ", ".join(missing))
+
+
+func _first_of(parent: Node, type: Variant) -> Node:
+	for child in parent.get_children():
+		if is_instance_of(child, type):
+			return child
+	return null
 
 
 func _has_joypad(kinds: Dictionary) -> bool:

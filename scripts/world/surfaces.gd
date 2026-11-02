@@ -2,18 +2,26 @@ class_name Surfaces
 extends RefCounted
 ## Shared world-mapped materials, reused so that similar surfaces batch together.
 
-enum Pattern { PLASTER, WOOD, SHINGLES, STONE, CROPS, ROAD }
+enum Pattern { PLASTER, WOOD, SHINGLES, STONE, CROPS, ROAD, IRON_ORE, COAL, BOULDER }
 
 const SHADER := preload("res://shaders/surface.gdshader")
-## Each surface's photo, the width in meters that the photo covers, how strongly it shows,
-## and a second photo with its width, which the shader mixes in by area.
+## Each surface's photos, each with the width in meters that it covers.
 const PHOTOS: Dictionary = {
-	Pattern.PLASTER: [preload("res://assets/textures/plaster.jpg"), 2.0, 1.0, preload("res://assets/textures/plaster_2.jpg"), 1.8],
-	Pattern.WOOD: [preload("res://assets/textures/wood.jpg"), 1.0, 1.0, preload("res://assets/textures/wood_2.jpg"), 2.0],
-	Pattern.SHINGLES: [preload("res://assets/textures/shingles.jpg"), 1.5, 1.0, preload("res://assets/textures/shingles_2.jpg"), 3.0],
-	Pattern.STONE: [preload("res://assets/textures/stone.jpg"), 1.5, 1.0, preload("res://assets/textures/stone_2.jpg"), 1.7],
-	Pattern.ROAD: [preload("res://assets/textures/road.jpg"), 2.2, 0.5, preload("res://assets/textures/road_2.jpg"), 2.25],
+	Pattern.PLASTER: [[preload("res://assets/textures/plaster.jpg"), 2.0], [preload("res://assets/textures/plaster_2.jpg"), 1.8], [preload("res://assets/textures/plaster_3.jpg"), 1.0]],
+	Pattern.WOOD: [[preload("res://assets/textures/wood.jpg"), 1.0], [preload("res://assets/textures/wood_2.jpg"), 2.0]],
+	Pattern.SHINGLES: [[preload("res://assets/textures/shingles.jpg"), 1.5], [preload("res://assets/textures/shingles_2.jpg"), 3.0]],
+	Pattern.STONE: [[preload("res://assets/textures/stone.jpg"), 1.5], [preload("res://assets/textures/stone_2.jpg"), 1.7], [preload("res://assets/textures/stone_3.jpg"), 2.0]],
+	Pattern.ROAD: [[preload("res://assets/textures/road.jpg"), 2.2], [preload("res://assets/textures/road_2.jpg"), 2.25]],
+	Pattern.IRON_ORE: [[preload("res://assets/textures/iron_ore.jpg"), 1.5], [preload("res://assets/textures/iron_ore_2.jpg"), 2.2], [preload("res://assets/textures/iron_ore_3.jpg"), 1.5]],
+	Pattern.COAL: [[preload("res://assets/textures/coal.jpg"), 2.0], [preload("res://assets/textures/rock_3.jpg"), 1.5]],
+	Pattern.BOULDER: [[preload("res://assets/textures/boulder.jpg"), 1.8], [preload("res://assets/textures/boulder_2.jpg"), 1.4], [preload("res://assets/textures/rock_3.jpg"), 1.5]],
 }
+## How strongly the photos show, where it isn't the full strength.
+const PHOTO_STRENGTH: Dictionary = { Pattern.ROAD: 0.5 }
+## The photos on a road fade over a wide area, so that its look changes gradually.
+const AREA_SOFTNESS: Dictionary = { Pattern.ROAD: 0.35 }
+## How often the photos change per meter. Rocks are small, so each one needs its own mix.
+const AREA_FREQUENCY: Dictionary = { Pattern.IRON_ORE: 0.3, Pattern.COAL: 0.3, Pattern.BOULDER: 0.15 }
 
 static var _noise_texture: NoiseTexture2D
 static var _cache: Dictionary = {}
@@ -28,11 +36,14 @@ static func get_material(pattern: Pattern, color: Color) -> ShaderMaterial:
 		material.set_shader_parameter("base_color", color)
 		material.set_shader_parameter("pattern", int(pattern))
 		if PHOTOS.has(pattern):
-			material.set_shader_parameter("surface_texture", PHOTOS[pattern][0])
-			material.set_shader_parameter("tile_metres", PHOTOS[pattern][1])
-			material.set_shader_parameter("photo_strength", PHOTOS[pattern][2])
-			material.set_shader_parameter("surface_texture_2", PHOTOS[pattern][3])
-			material.set_shader_parameter("tile_metres_2", PHOTOS[pattern][4])
+			var photos: Array = PHOTOS[pattern]
+			for i in photos.size():
+				var suffix := "" if i == 0 else "_%d" % (i + 1)
+				material.set_shader_parameter("surface_texture" + suffix, photos[i][0])
+				material.set_shader_parameter("tile_metres" + suffix, photos[i][1])
+			material.set_shader_parameter("photo_strength", PHOTO_STRENGTH.get(pattern, 1.0))
+			material.set_shader_parameter("area_softness", AREA_SOFTNESS.get(pattern, 0.05))
+			material.set_shader_parameter("area_frequency", AREA_FREQUENCY.get(pattern, 0.037))
 		_cache[key] = material
 	return _cache[key]
 

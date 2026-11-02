@@ -24,6 +24,15 @@ Every third-party or AI-generated asset is listed here. For AI-generated assets,
 | `assets/textures/shingles_2.jpg` | [Poly Haven: roof_slates_02](https://polyhaven.com/a/roof_slates_02) | Rob Tuytel | CC0 | 1K diffuse map, unedited |
 | `assets/textures/stone_2.jpg` | [Poly Haven: stone_wall_04](https://polyhaven.com/a/stone_wall_04) | Amal Kumar | CC0 | 1K diffuse map, unedited |
 | `assets/textures/road_2.jpg` | [Poly Haven: muddy_tracks](https://polyhaven.com/a/muddy_tracks) | Amal Kumar | CC0 | 1K diffuse map, unedited |
+| `assets/textures/iron_ore.jpg` | [Poly Haven: rock_06](https://polyhaven.com/a/rock_06) | Rob Tuytel | CC0 | 1K diffuse map, unedited |
+| `assets/textures/iron_ore_2.jpg` | [Poly Haven: rust_coarse_01](https://polyhaven.com/a/rust_coarse_01) | Dimitrios Savva, Rico Cilliers | CC0 | 1K diffuse map, unedited |
+| `assets/textures/iron_ore_3.jpg` | [Poly Haven: red_mud_stones](https://polyhaven.com/a/red_mud_stones) | Rob Tuytel | CC0 | 1K diffuse map, unedited |
+| `assets/textures/coal.jpg` | [Poly Haven: dark_rock_02](https://polyhaven.com/a/dark_rock_02) | Amal Kumar | CC0 | 1K diffuse map, unedited |
+| `assets/textures/rock_3.jpg` | [Poly Haven: rock_05](https://polyhaven.com/a/rock_05) | Rob Tuytel | CC0 | 1K diffuse map, unedited |
+| `assets/textures/boulder.jpg` | [Poly Haven: rock_boulder_dry](https://polyhaven.com/a/rock_boulder_dry) | Dimitrios Savva, Rico Cilliers | CC0 | 1K diffuse map, unedited |
+| `assets/textures/boulder_2.jpg` | [Poly Haven: rock_boulder_cracked](https://polyhaven.com/a/rock_boulder_cracked) | Dario Barresi, Dimitrios Savva | CC0 | 1K diffuse map, unedited |
+| `assets/textures/plaster_3.jpg` | [Poly Haven: grey_plaster_02](https://polyhaven.com/a/grey_plaster_02) | Rob Tuytel | CC0 | 1K diffuse map, unedited |
+| `assets/textures/stone_3.jpg` | [Poly Haven: old_stone_wall](https://polyhaven.com/a/old_stone_wall) | Charlotte Baglioni | CC0 | 1K diffuse map, unedited |
 | `assets/characters/hedda.glb` | Built with [MPFB](https://static.makehumancommunity.org/mpfb.html) from [MakeHuman asset packs](https://static.makehumancommunity.org/assets/assetpacks.html): system assets, Shirts 01, Skirts 01, Pants 01 | MakeHuman community; asset authors in each pack | CC0 | Recipe in `tools/character_pipeline/villagers.json`. Reduced and recolored by `build_character.py` |
 | `assets/characters/greta.glb` | Built with [MPFB](https://static.makehumancommunity.org/mpfb.html) from [MakeHuman asset packs](https://static.makehumancommunity.org/assets/assetpacks.html): system assets, Shirts 01, Skirts 01, Pants 01 | MakeHuman community; asset authors in each pack | CC0 | Recipe in `tools/character_pipeline/villagers.json`. Reduced and recolored by `build_character.py` |
 | `assets/characters/mira.glb` | Built with [MPFB](https://static.makehumancommunity.org/mpfb.html) from [MakeHuman asset packs](https://static.makehumancommunity.org/assets/assetpacks.html): system assets, Shirts 01, Skirts 01, Pants 01 | MakeHuman community; asset authors in each pack | CC0 | Recipe in `tools/character_pipeline/villagers.json`. Reduced and recolored by `build_character.py` |

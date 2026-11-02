@@ -40,9 +40,9 @@
 		{ "id": "anvil", "model": "anvil", "prompt": "UI_ANVIL", "x": 16, "z": 25, "width": 1.2, "depth": 0.6, "height": 0.9, "color": "#26282b" }
 	],
 	"resources": [
-		{ "item": "iron_ore", "prompt": "PROMPT_MINE_IRON", "x": 28, "z": -172, "size": 1.7, "uses": 4, "respawn_seconds": 120, "color": "#b5532a" },
-		{ "item": "iron_ore", "prompt": "PROMPT_MINE_IRON", "x": 52, "z": -176, "size": 1.7, "uses": 4, "respawn_seconds": 120, "color": "#b5532a" },
-		{ "item": "iron_ore", "prompt": "PROMPT_MINE_IRON", "x": 74, "z": -186, "size": 1.7, "uses": 4, "respawn_seconds": 120, "color": "#b5532a" },
+		{ "item": "iron_ore", "prompt": "PROMPT_MINE_IRON", "x": 28, "z": -172, "size": 1.7, "uses": 4, "respawn_seconds": 120, "color": "#6b4a35" },
+		{ "item": "iron_ore", "prompt": "PROMPT_MINE_IRON", "x": 52, "z": -176, "size": 1.7, "uses": 4, "respawn_seconds": 120, "color": "#6b4a35" },
+		{ "item": "iron_ore", "prompt": "PROMPT_MINE_IRON", "x": 74, "z": -186, "size": 1.7, "uses": 4, "respawn_seconds": 120, "color": "#6b4a35" },
 		{ "item": "coal", "prompt": "PROMPT_MINE_COAL", "x": 16, "z": -180, "size": 1.1, "uses": 3, "respawn_seconds": 120, "color": "#17171a" },
 		{ "item": "coal", "prompt": "PROMPT_MINE_COAL", "x": 64, "z": -172, "size": 1.1, "uses": 3, "respawn_seconds": 120, "color": "#17171a" },
 		{ "item": "wood", "prompt": "PROMPT_TAKE_WOOD", "x": 22, "z": 28, "size": 0.9, "uses": 5, "respawn_seconds": 90, "color": "#7a5a35" },

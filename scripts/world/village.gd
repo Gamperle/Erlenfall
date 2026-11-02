@@ -169,7 +169,8 @@ func _add_resource(data: Dictionary) -> void:
 		node.setup(data, ModelBuilder.wood_pile(data["size"]), pile, Vector3.UP * (pile.size.y / 2.0))
 		return
 	var mesh := _boulder_mesh()
-	mesh.surface_set_material(0, _material(Color(data["color"])))
+	var pattern: Surfaces.Pattern = Surfaces.Pattern.COAL if data["item"] == "coal" else Surfaces.Pattern.IRON_ORE
+	mesh.surface_set_material(0, Surfaces.get_material(pattern, Color(data["color"])))
 	var visual := _mesh_instance(mesh, Vector3.UP * (data["size"] * 0.4))
 	visual.scale = Vector3.ONE * data["size"]
 	node.setup(data, visual, _rock_shape(mesh, Basis.IDENTITY.scaled(visual.scale)), visual.position)
@@ -264,7 +265,7 @@ func _add_boulders(data: Dictionary) -> void:
 			collision.position = at
 			body.add_child(collision)
 
-	mesh.surface_set_material(0, _material(BOULDER_COLOR))
+	mesh.surface_set_material(0, Surfaces.get_material(Surfaces.Pattern.BOULDER, BOULDER_COLOR))
 	_add_multimesh(mesh, transforms, 0.0)
 
 

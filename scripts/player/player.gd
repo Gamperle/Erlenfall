@@ -52,17 +52,17 @@ const WEAPON_BLOCK_ANGLE := 1.3
 const MODEL_PATH := "res://assets/characters/player.glb"
 const ATTACK_ANIMATION := &"Sword_Attack"
 const DODGE_ANIMATION := &"Roll"
-const DODGE_ANIMATION_SECONDS := 0.5
-## The roll starts with a high dive, which this skips.
-const DODGE_ANIMATION_START := 0.38
+const DODGE_ANIMATION_SECONDS := 0.8
+## The roll keeps carrying the player after the protected part of the dodge ends.
+const ROLL_CARRY_SPEED := 3.0
 const BACKSTEP_ANIMATION := &"Crouch_Idle"
 const BACKSTEP_ANIMATION_SECONDS := 0.4
 const BLOCK_ANIMATION := &"Sword_Idle"
 const TORCH_ANIMATION := &"Idle_Torch"
-const WEAPON_GRIP_POSITION := Vector3(0.0, 0.08, 0.02)
-## Points the blade up and ahead in the blocking pose.
-const WEAPON_GRIP_ROTATION := Vector3(-0.005935, 0.008892, -1.964538)
-const TORCH_GRIP_POSITION := Vector3(0.0, 0.08, 0.02)
+const WEAPON_GRIP_POSITION := Vector3(0.0, 0.095, 0.035)
+## The blade runs through the closed hand, out past the index finger.
+const WEAPON_BLADE_IN_HAND := Vector3(0.96, 0.15, -0.22)
+const TORCH_GRIP_POSITION := Vector3(0.0, 0.095, 0.035)
 const TORCH_GRIP_SCALE := 0.75
 const TORCH_ITEM := "torch"
 const TORCH_ARM_RAISE := 1.2
@@ -90,6 +90,8 @@ var _attack_windup := 0.0
 var _dodge_time := 0.0
 var _dodge_cooldown := 0.0
 var _dodge_direction := Vector3.ZERO
+var _roll_left := 0.0
+var _hand_pose: HandPose
 var _since_hit := REGEN_DELAY
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _torch := Torch.new()
@@ -211,7 +213,8 @@ func dodge() -> void:
 	else:
 		# The roll animation goes forward, so the body faces where it's going.
 		_body_mesh.rotation.y = atan2(-_dodge_direction.x, -_dodge_direction.z)
-		_body_mesh.play_action(DODGE_ANIMATION, DODGE_ANIMATION_SECONDS, DODGE_ANIMATION_START)
+		_body_mesh.play_action(DODGE_ANIMATION, DODGE_ANIMATION_SECONDS)
+		_roll_left = DODGE_ANIMATION_SECONDS
 	_dodge_time = DODGE_SECONDS
 	_dodge_cooldown = DODGE_COOLDOWN
 
@@ -294,9 +297,13 @@ func _physics_process(delta: float) -> void:
 	var target := direction * speed
 	velocity.x = move_toward(velocity.x, target.x, acceleration * delta)
 	velocity.z = move_toward(velocity.z, target.z, acceleration * delta)
+	_roll_left = maxf(_roll_left - delta, 0.0)
 	if is_dodging():
 		velocity.x = _dodge_direction.x * DODGE_SPEED
 		velocity.z = _dodge_direction.z * DODGE_SPEED
+	elif _roll_left > 0.0:
+		velocity.x = _dodge_direction.x * ROLL_CARRY_SPEED
+		velocity.z = _dodge_direction.z * ROLL_CARRY_SPEED
 	move_and_slide()
 	_keep_inside_world()
 	interact_target = _find_interact_target()
@@ -327,6 +334,8 @@ func _update_combat(delta: float) -> void:
 		elif torch_lit:
 			idle = TORCH_ANIMATION
 		(_body_mesh as CharacterModel).idle_override = idle
+		_hand_pose.guarding = is_blocking() and not is_dodging()
+		_hand_pose.grip_left = torch_lit
 		# In third person, the model's own animations move the weapon.
 		if not first_person:
 			return
@@ -404,6 +413,9 @@ func _replace_body() -> void:
 	model.load_model(MODEL_PATH)
 	add_child(model)
 	_body_mesh = model
+	_hand_pose = HandPose.new()
+	_hand_pose.blade_in_hand = WEAPON_BLADE_IN_HAND.normalized()
+	model.add_modifier(_hand_pose)
 
 
 func _apply_camera_mode() -> void:
@@ -421,7 +433,7 @@ func _apply_camera_mode() -> void:
 	_torch.scale = Vector3.ONE * (TORCH_FIRST_PERSON_SCALE if first_person else 1.0)
 	if _body_mesh is CharacterModel and not first_person:
 		_weapon.position = WEAPON_GRIP_POSITION
-		_weapon.rotation = WEAPON_GRIP_ROTATION
+		_weapon.quaternion = Quaternion(Vector3.UP, WEAPON_BLADE_IN_HAND.normalized())
 		_torch.position = TORCH_GRIP_POSITION
 		_torch.scale = Vector3.ONE * TORCH_GRIP_SCALE
 	_torch.keep_upright = _body_mesh is CharacterModel and not first_person

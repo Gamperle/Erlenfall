@@ -30,6 +30,11 @@ func load_model(path: String) -> void:
 	_copy_materials()
 
 
+## Adds something that adjusts the skeleton after the animations.
+func add_modifier(modifier: SkeletonModifier3D) -> void:
+	_skeleton.add_child(modifier)
+
+
 func right_hand() -> Node3D:
 	return _attach(&"RightHand")
 

@@ -8,12 +8,13 @@ const FADE_START := 0.7
 const FONT_SIZE := 15
 const MAJOR_FONT_SIZE := 20
 const OUTLINE_SIZE := 4
-const BACKGROUND_COLOR := Color(0.1, 0.08, 0.08, 0.55)
 const TICK_COLOR := Color(0.9, 0.87, 0.8)
 const NORTH_COLOR := Color(0.95, 0.55, 0.15)
 const CENTER_MARK_SIZE := 6.0
 const OBJECTIVE_COLOR := Color(1.0, 0.85, 0.3)
 const OBJECTIVE_SIZE := 7.0
+const OBJECTIVE_OUTLINE_COLOR := Color(0.1, 0.06, 0.03)
+const OBJECTIVE_OUTLINE := 1.5
 const POINTS: Dictionary = {
 	0: "UI_COMPASS_N", 45: "UI_COMPASS_NE", 90: "UI_COMPASS_E", 135: "UI_COMPASS_SE",
 	180: "UI_COMPASS_S", 225: "UI_COMPASS_SW", 270: "UI_COMPASS_W", 315: "UI_COMPASS_NW",
@@ -52,8 +53,8 @@ func _notification(what: int) -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), BACKGROUND_COLOR)
-	var font := ThemeDB.fallback_font
+	draw_style_box(get_theme_stylebox("panel", "CompassStrip"), Rect2(Vector2.ZERO, size))
+	var font := get_theme_default_font()
 	for bearing in range(0, 360, TICK_DEGREES):
 		var offset := offset_of(bearing)
 		if absf(offset) >= 1.0:
@@ -76,12 +77,15 @@ func _draw() -> void:
 	# An objective outside the strip stays at the nearest edge, to show which way to turn.
 	for bearing in objective_bearings:
 		var x := (clampf(offset_of(bearing), -1.0, 1.0) + 1.0) * size.x / 2.0
-		draw_colored_polygon(PackedVector2Array([
+		var diamond := PackedVector2Array([
 			Vector2(x, size.y / 2.0 - OBJECTIVE_SIZE),
 			Vector2(x + OBJECTIVE_SIZE, size.y / 2.0),
 			Vector2(x, size.y / 2.0 + OBJECTIVE_SIZE),
 			Vector2(x - OBJECTIVE_SIZE, size.y / 2.0),
-		]), OBJECTIVE_COLOR)
+		])
+		draw_colored_polygon(diamond, OBJECTIVE_COLOR)
+		diamond.append(diamond[0])
+		draw_polyline(diamond, OBJECTIVE_OUTLINE_COLOR, OBJECTIVE_OUTLINE, true)
 	var middle := size.x / 2.0
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(middle - CENTER_MARK_SIZE, size.y + CENTER_MARK_SIZE),

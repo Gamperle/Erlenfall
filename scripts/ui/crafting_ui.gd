@@ -4,8 +4,6 @@ extends CanvasLayer
 
 const PANEL_WIDTH := 640.0
 const BAR_HEIGHT := 36.0
-const BAR_COLOR := Color(0.16, 0.13, 0.11)
-const TARGET_COLOR := Color(0.95, 0.55, 0.15)
 const MARKER_COLOR := Color(1.0, 1.0, 0.95)
 const RESULT_SECONDS := 1.0
 
@@ -15,7 +13,7 @@ var _selected: Dictionary = {}
 var _game: HammerGame
 var _recipe: Dictionary = {}
 
-var _panel: PanelContainer
+var _panel: FittedPanel
 var _title: Label
 var _inventory_label: Label
 var _materials_label: Label
@@ -26,9 +24,10 @@ var _clear_button: Button
 var _craft_button: Button
 var _close_button: Button
 var _known_label: Label
+var _known_page: PanelContainer
 var _message: Label
 var _bar: Control
-var _target: ColorRect
+var _target: Panel
 var _marker: ColorRect
 
 
@@ -162,7 +161,7 @@ func _refresh() -> void:
 	_clear_button.visible = at_station and not forging
 	_craft_button.visible = at_station and not forging
 	_close_button.visible = not forging
-	_known_label.visible = at_station and not forging
+	_known_page.visible = at_station and not forging
 	if not at_station or forging:
 		if not forging:
 			_close_button.grab_focus()
@@ -273,25 +272,21 @@ func _strike_key(accuracy: float) -> String:
 
 
 func _build() -> void:
-	_panel = PanelContainer.new()
+	_panel = FittedPanel.new(PANEL_WIDTH)
 	_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_panel.custom_minimum_size.x = PANEL_WIDTH
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	add_child(_panel)
 
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 16)
-	_panel.add_child(margin)
-
-	var column := VBoxContainer.new()
+	var column := _panel.content
 	column.add_theme_constant_override("separation", 10)
-	margin.add_child(column)
 
 	_title = Label.new()
-	_title.add_theme_font_size_override("font_size", 24)
+	_title.theme_type_variation = &"TitleLabel"
+	_title.add_theme_font_size_override("font_size", 26)
+	_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_title)
+	column.add_child(HSeparator.new())
 
 	_inventory_label = _wrapped_label(column)
 	_materials_label = _wrapped_label(column)
@@ -308,26 +303,35 @@ func _build() -> void:
 	_bar.visible = false
 	_bar.clip_contents = true
 	column.add_child(_bar)
-	var background := ColorRect.new()
-	background.color = BAR_COLOR
+	var background := Panel.new()
+	background.theme_type_variation = &"BarTrough"
 	background.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_bar.add_child(background)
-	_target = ColorRect.new()
-	_target.color = TARGET_COLOR
+	_target = Panel.new()
+	_target.theme_type_variation = &"ForgeTarget"
 	_bar.add_child(_target)
 	_marker = ColorRect.new()
 	_marker.color = MARKER_COLOR
 	_marker.size = Vector2(6.0, BAR_HEIGHT)
 	_bar.add_child(_marker)
+	var frame := Panel.new()
+	frame.theme_type_variation = &"BarFrame"
+	frame.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_bar.add_child(frame)
 
 	_actions = HBoxContainer.new()
+	_actions.add_theme_constant_override("separation", 8)
 	column.add_child(_actions)
 	_craft_button = _action_button("UI_CRAFT", craft)
 	_clear_button = _action_button("UI_CLEAR", clear_selection)
 	_close_button = _action_button("UI_CLOSE", close)
 
 	_message = _wrapped_label(column)
-	_known_label = _wrapped_label(column)
+	_known_page = PanelContainer.new()
+	_known_page.theme_type_variation = &"ParchmentPanel"
+	column.add_child(_known_page)
+	_known_label = _wrapped_label(_known_page)
+	_known_label.theme_type_variation = &"InkLabel"
 
 
 func _action_button(text_key: String, action: Callable) -> Button:

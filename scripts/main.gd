@@ -1,5 +1,6 @@
 extends Node3D
 
+const MIN_WINDOW_SIZE := Vector2i(640, 360)
 const SPAWN := Vector2(0.0, 110.0)
 const WELCOME_SECONDS := 4.0
 const FADE_SECONDS := 1.5
@@ -31,7 +32,7 @@ var _fade_overlay: ColorRect
 @onready var _day_night: DayNight = $DayNight
 @onready var _player: Player = $Player
 @onready var _menu: GameMenu = $GameMenu
-@onready var _ui: CanvasLayer = $UI
+@onready var _ui: HudLayout = $UI
 @onready var _welcome_label: Label = $UI/WelcomeLabel
 @onready var _controls_label: Label = $UI/ControlsLabel
 @onready var _prompt_label: Label = $UI/PromptLabel
@@ -48,6 +49,9 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	Settings.load_saved()
+	get_window().min_size = MIN_WINDOW_SIZE
+	get_window().size_changed.connect(_fit_interface)
+	_fit_interface()
 	_apply_graphics()
 	_menu.graphics_changed.connect(_apply_graphics)
 	_welcome_label.modulate.a = 0.0
@@ -55,8 +59,7 @@ func _ready() -> void:
 	_compass.visible = FeatureFlags.enabled("compass")
 	_performance_overlay.visible = FeatureFlags.enabled("performance_overlay")
 	_performance_overlay.set_process(_performance_overlay.visible)
-	if not _performance_overlay.visible:
-		_quest_label.offset_top = _performance_overlay.offset_top
+	_ui.arrange()
 
 	_player.quests.changed.connect(_on_quests_changed)
 	_player.inventory.changed.connect(_update_quest_label)
@@ -120,6 +123,13 @@ func _notification(what: int) -> void:
 func _set_translated_text() -> void:
 	_welcome_label.text = tr("UI_WELCOME")
 	_controls_label.text = tr("UI_CONTROLS")
+
+
+func _fit_interface() -> void:
+	var window := get_window()
+	window.content_scale_factor = InterfaceScale.factor_for(
+		Vector2(window.size), Vector2(window.content_scale_size), FeatureFlags.value("interface_min_scale")
+	)
 
 
 func _apply_graphics() -> void:
@@ -214,6 +224,8 @@ func _on_quests_changed() -> void:
 
 func _update_quest_label() -> void:
 	_quest_label.text = "\n".join(_player.quests.tracker_lines(_player.inventory))
+	_quest_label.visible = _quest_label.text != ""
+	_ui.arrange()
 
 
 func _update_health_bar() -> void:

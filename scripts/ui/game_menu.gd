@@ -8,13 +8,13 @@ signal resume_chosen
 signal quit_chosen
 signal graphics_changed
 
-const PANEL_WIDTH := 360.0
+const PANEL_WIDTH := 420.0
 const ASSET_LIST_URL := "https://github.com/Gamperle/Erlenfall/blob/main/ASSETS.md"
 
 ## The save files to offer. Set before the title menu opens.
 var slot_paths: Array[String] = []
 
-var _panel: PanelContainer
+var _panel: FittedPanel
 var _title: Label
 var _buttons: VBoxContainer
 var _asset_note: VBoxContainer
@@ -254,26 +254,20 @@ func _add_action(text_key: String, action: Callable) -> void:
 
 
 func _build() -> void:
-	_panel = PanelContainer.new()
+	_panel = FittedPanel.new(PANEL_WIDTH)
 	_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_panel.custom_minimum_size.x = PANEL_WIDTH
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	add_child(_panel)
 
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 20)
-	_panel.add_child(margin)
-
-	var column := VBoxContainer.new()
+	var column := _panel.content
 	column.add_theme_constant_override("separation", 12)
-	margin.add_child(column)
 
 	_title = Label.new()
-	_title.add_theme_font_size_override("font_size", 32)
+	_title.theme_type_variation = &"TitleLabel"
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_title)
+	column.add_child(HSeparator.new())
 
 	_message = Label.new()
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -287,14 +281,15 @@ func _build() -> void:
 	_asset_note = VBoxContainer.new()
 	column.add_child(_asset_note)
 
+	# Set as keys, so that these follow a change of language on their own.
 	var note := Label.new()
-	note.text = tr("UI_AI_ASSETS_NOTE")
+	note.text = "UI_AI_ASSETS_NOTE"
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_asset_note.add_child(note)
 
 	var link := LinkButton.new()
-	link.text = tr("UI_AI_ASSETS_LINK")
+	link.text = "UI_AI_ASSETS_LINK"
 	link.uri = ASSET_LIST_URL
 	link.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_asset_note.add_child(link)

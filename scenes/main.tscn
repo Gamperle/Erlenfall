@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://scripts/world/mist.gd" id="9"]
 [ext_resource type="Script" path="res://scripts/ui/compass.gd" id="10"]
 [ext_resource type="Script" path="res://scripts/ui/performance_overlay.gd" id="11"]
+[ext_resource type="Script" path="res://scripts/ui/hud_layout.gd" id="12"]
 
 [sub_resource type="ProceduralSkyMaterial" id="1"]
 sky_top_color = Color(0.34, 0.45, 0.58, 1)
@@ -32,22 +33,19 @@ fog_sky_affect = 0.3
 
 [sub_resource type="LabelSettings" id="8"]
 font_size = 24
+font_color = Color(0.98, 0.93, 0.8, 1)
 outline_size = 6
 outline_color = Color(0, 0, 0, 0.8)
 
-[sub_resource type="StyleBoxFlat" id="6"]
-bg_color = Color(0.1, 0.08, 0.08, 0.7)
-
-[sub_resource type="StyleBoxFlat" id="7"]
-bg_color = Color(0.72, 0.13, 0.1, 1)
-
 [sub_resource type="LabelSettings" id="4"]
 font_size = 48
+font_color = Color(0.98, 0.84, 0.56, 1)
 outline_size = 6
 outline_color = Color(0, 0, 0, 0.6)
 
 [sub_resource type="LabelSettings" id="5"]
 font_size = 16
+font_color = Color(0.96, 0.91, 0.8, 1)
 outline_size = 4
 outline_color = Color(0, 0, 0, 0.7)
 
@@ -80,17 +78,18 @@ terrain = NodePath("../Terrain")
 [node name="Player" parent="." instance=ExtResource("5")]
 
 [node name="UI" type="CanvasLayer" parent="."]
+script = ExtResource("12")
 
 [node name="WelcomeLabel" type="Label" parent="UI"]
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -500.0
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 16.0
 offset_top = 176.0
-offset_right = 500.0
+offset_right = -16.0
 offset_bottom = 248.0
 label_settings = SubResource("4")
 horizontal_alignment = 1
+autowrap_mode = 3
 
 [node name="Compass" type="Control" parent="UI"]
 layout_mode = 3
@@ -122,21 +121,26 @@ offset_left = 16.0
 offset_top = 16.0
 offset_right = 276.0
 offset_bottom = 38.0
-theme_override_styles/background = SubResource("6")
-theme_override_styles/fill = SubResource("7")
 value = 100.0
 show_percentage = false
 
+[node name="Frame" type="Panel" parent="UI/HealthBar"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_type_variation = &"BarFrame"
+
 [node name="MessageLabel" type="Label" parent="UI"]
 modulate = Color(1, 1, 1, 0)
-anchors_preset = 8
-anchor_left = 0.5
+anchors_preset = 14
 anchor_top = 0.5
-anchor_right = 0.5
+anchor_right = 1.0
 anchor_bottom = 0.5
-offset_left = -400.0
+offset_left = 16.0
 offset_top = -120.0
-offset_right = 400.0
+offset_right = -16.0
 offset_bottom = -60.0
 label_settings = SubResource("8")
 horizontal_alignment = 1
@@ -151,20 +155,20 @@ offset_top = 92.0
 offset_right = -16.0
 offset_bottom = 166.0
 grow_horizontal = 0
+theme_type_variation = &"HudPlate"
 label_settings = SubResource("5")
 horizontal_alignment = 2
 autowrap_mode = 3
 
 [node name="PromptLabel" type="Label" parent="UI"]
 visible = false
-anchors_preset = 7
-anchor_left = 0.5
+anchors_preset = 12
 anchor_top = 1.0
-anchor_right = 0.5
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -300.0
+offset_left = 16.0
 offset_top = -130.0
-offset_right = 300.0
+offset_right = -16.0
 offset_bottom = -90.0
 label_settings = SubResource("5")
 horizontal_alignment = 1

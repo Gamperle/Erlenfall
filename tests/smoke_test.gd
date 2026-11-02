@@ -307,6 +307,8 @@ func _test_hud(scene: Node, player: Player) -> void:
 	_check(health_bar.offset_right < middle + compass.offset_left, "the compass clears the health bar at the base width")
 	_check(middle + compass.offset_right < 1152.0 + overlay.offset_left, "the compass clears the performance overlay at the base width")
 
+	await _test_interface_fit(scene)
+
 	overlay.refresh()
 	_check(overlay.visible and overlay.text.contains("FPS"), "the performance overlay shows measurements")
 	TranslationServer.set_locale("de")
@@ -688,6 +690,76 @@ func _test_gathering_collision(scene: Node, player: Player) -> void:
 	await _physics_frames(1)
 
 
+func _test_interface_fit(scene: Node) -> void:
+	_check(InterfaceScale.factor_for(Vector2(1152.0, 648.0), Vector2(1152.0, 648.0), 0.9) == 1.0, "the base window size lays out the interface at full size")
+	_check(InterfaceScale.factor_for(Vector2(1920.0, 1080.0), Vector2(1152.0, 648.0), 0.9) == 1.0, "large windows keep stretching the interface")
+	_check(is_equal_approx(InterfaceScale.factor_for(Vector2(800.0, 600.0), Vector2(1152.0, 648.0), 0.9) * 800.0 / 1152.0, 0.9), "text in a small window stays at the smallest readable scale")
+
+	var hud: HudLayout = scene.get_node("UI")
+	var compass: Control = scene.get_node("UI/Compass")
+	var health_bar: Control = scene.get_node("UI/HealthBar")
+	var overlay: Control = scene.get_node("UI/PerformanceOverlay")
+	var quest: Control = scene.get_node("UI/QuestLabel")
+	for width: float in [711.0, 889.0, 1151.0]:
+		hud.arrange_for(width)
+		var health_end := health_bar.offset_right
+		var overlay_start := width + overlay.offset_left
+		_check(compass.offset_bottom < overlay.offset_top and compass.offset_bottom < health_bar.offset_top, "the compass has its own row at width %d" % width)
+		_check(health_end < overlay_start, "the health bar clears the performance overlay at width %d" % width)
+		_check(width + quest.offset_left >= 0.0 and quest.offset_top >= overlay.offset_bottom, "the quest text fits below the overlay at width %d" % width)
+	hud.arrange()
+
+	var theme := ThemeDB.get_project_theme()
+	for state: String in ["normal", "hover", "pressed", "disabled", "focus"]:
+		_check(theme.get_stylebox(state, "Button") is StyleBoxTexture, "buttons have a texture when %s" % state)
+	_check_contrast(theme, "font_color", "Label", "panel", "PanelContainer", "text on panels")
+	_check_contrast(theme, "font_color", "InkLabel", "panel", "ParchmentPanel", "text on parchment")
+	_check_contrast(theme, "font_color", "Button", "normal", "Button", "text on buttons")
+
+	# A window too small for a menu scrolls it, with every panel staying inside the window.
+	var window := scene.get_window()
+	var old_size := window.size
+	window.size = Vector2i(1152, 648)
+	await process_frame
+	await process_frame
+	_check(is_equal_approx(window.content_scale_factor, 1.0), "the base window size has no extra interface scale")
+	window.size = Vector2i(640, 360)
+	await process_frame
+	await process_frame
+	_check(window.content_scale_factor > 1.0, "a small window raises the interface scale")
+	var menu: GameMenu = scene.get_node("GameMenu")
+	menu.slot_paths = [TEST_SAVE, TEST_SLOT_2, TEST_SLOT_3]
+	menu.open_title()
+	for i in 5:
+		await process_frame
+	_check(window.get_visible_rect().encloses(menu._panel.get_global_rect()), "the menu stays inside a small window")
+	menu.close()
+	window.size = old_size
+	await process_frame
+	await process_frame
+
+
+func _check_contrast(theme: Theme, color_name: String, color_type: String, box_name: String, box_type: String, what: String) -> void:
+	var image: Image = (theme.get_stylebox(box_name, box_type) as StyleBoxTexture).texture.get_image()
+	image = image.duplicate()
+	if image.is_compressed():
+		image.decompress()
+	image.resize(1, 1, Image.INTERPOLATE_BILINEAR)
+	var ratio := _contrast(theme.get_color(color_name, color_type), image.get_pixel(0, 0))
+	_check(ratio >= 4.5, "%s are readable, contrast %.1f" % [what, ratio])
+
+
+func _contrast(a: Color, b: Color) -> float:
+	var lighter := maxf(_luminance(a), _luminance(b))
+	var darker := minf(_luminance(a), _luminance(b))
+	return (lighter + 0.05) / (darker + 0.05)
+
+
+func _luminance(color: Color) -> float:
+	var linear := color.srgb_to_linear()
+	return 0.2126 * linear.r + 0.7152 * linear.g + 0.0722 * linear.b
+
+
 func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> void:
 	var menu: GameMenu = scene.get_node("GameMenu")
 	var village: Village = scene.get_node("Village")
@@ -779,6 +851,9 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	scene.save_game()
 	menu.open_title()
 	_check(menu._asset_note.is_visible_in_tree(), "the title menu notes AI-generated assets")
+	TranslationServer.set_locale("de")
+	_check(menu._asset_note.get_child(0).atr(menu._asset_note.get_child(0).text) == tr("UI_AI_ASSETS_NOTE"), "the AI asset note follows the language")
+	TranslationServer.set_locale("en")
 	_check(menu.is_open(), "the title menu opens")
 	var started := [""]
 	var loaded := [""]

@@ -13,19 +13,23 @@ import bmesh
 import bpy
 import mathutils
 import mathutils.bvhtree
+import mathutils.kdtree
 import numpy
 
 MPFB = "bl_ext.blender_org.mpfb"
 TEXTURE_SIZE = 512
 ALPHA_CUTOFF = 0.25
 COVERED_DISTANCE = 0.035
+EDGE_MARGIN = 0.03
+EDGE_SINK = 0.012
 # Triangle budgets per kind of part.
-PART_BUDGETS = {"clothes": 1800, "hair": 700, "beard": 300, "brows": 400, "eyes": 180}
-BODY_BUDGETS = {"rest": 900, "hands": 700, "head": 900}
+PART_BUDGETS = {"clothes": 2400, "hair": 700, "beard": 300, "brows": 400, "eyes": 180}
+BODY_BUDGETS = {"rest": 700, "hands": 1400, "head": 900}
 HAND_GROUPS = ("hand_", "index_", "middle_", "ring_", "pinky_", "thumb_")
 HEAD_GROUPS = ("head", "neck_")
 REGION_GROUPS = HAND_GROUPS + HEAD_GROUPS
 TUCK_DEPTH = 0.03
+LAYER_DISTANCE = 0.04
 
 
 def find_asset(folders, name):
@@ -71,6 +75,23 @@ def reduce_mesh(mesh_object, budget):
     bpy.ops.object.modifier_apply(modifier="reduce")
 
 
+def split_texture_seams(mesh_object):
+    """Splits edges where the texture map jumps, so reduction can't smear one area's color across."""
+    mesh = bmesh.new()
+    mesh.from_mesh(mesh_object.data)
+    uv = mesh.loops.layers.uv.active
+    seams = []
+    for edge in mesh.edges:
+        if len(edge.link_loops) != 2:
+            continue
+        first, second = edge.link_loops
+        if (first[uv].uv - second.link_loop_next[uv].uv).length > 1e-4 or (first.link_loop_next[uv].uv - second[uv].uv).length > 1e-4:
+            seams.append(edge)
+    bmesh.ops.split_edges(mesh, edges=seams)
+    mesh.to_mesh(mesh_object.data)
+    mesh.free()
+
+
 def vertices_in_groups(mesh_object, names):
     indexes = {group.index for group in mesh_object.vertex_groups if any(group.name.startswith(name) for name in names)}
     return {
@@ -99,11 +120,12 @@ def reduce_region(mesh_object, names, budget):
     if count > budget:
         bpy.ops.mesh.decimate(ratio=budget / count)
     bpy.ops.object.mode_set(mode="OBJECT")
-    print("REGION", names, count, "->", min(count, budget))
+    print("REGION", names, count, "->", triangles(mesh_object))
 
 
 def reduce_body(body):
     """Keeps more detail in the face and hands, where reduction shows most."""
+    split_texture_seams(body)
     reduce_region(body, None, BODY_BUDGETS["rest"])
     reduce_region(body, HAND_GROUPS, BODY_BUDGETS["hands"])
     reduce_region(body, HEAD_GROUPS, BODY_BUDGETS["head"])
@@ -158,24 +180,41 @@ def stand_on_ground(rig, meshes, body_calf, ground):
     bpy.ops.object.mode_set(mode="OBJECT")
 
 
-def remove_covered_skin(body, clothes):
-    """Deletes body vertices just under clothes, so skin can't poke through once reduced."""
+def remove_covered(hidden, clothes, distance=COVERED_DISTANCE):
+    """Deletes vertices well under clothes, so they can't poke through once reduced.
+
+    Keeps those near a garment's open edges, so nothing is missing at cuffs, collars, and hems.
+    """
     trees = []
+    edge_points = []
     for mesh_object in clothes:
-        vertices = [vertex.co.copy() for vertex in mesh_object.data.vertices]
-        polygons = [tuple(polygon.vertices) for polygon in mesh_object.data.polygons]
+        mesh = bmesh.new()
+        mesh.from_mesh(mesh_object.data)
+        vertices = [vertex.co.copy() for vertex in mesh.verts]
+        polygons = [tuple(vertex.index for vertex in face.verts) for face in mesh.faces]
         trees.append(mathutils.bvhtree.BVHTree.FromPolygons(vertices, polygons))
+        edge_points += [vertex.co.copy() for vertex in mesh.verts if vertex.is_boundary]
+        mesh.free()
+    edges = mathutils.kdtree.KDTree(len(edge_points))
+    for index, point in enumerate(edge_points):
+        edges.insert(point, index)
+    edges.balance()
     mesh = bmesh.new()
-    mesh.from_mesh(body.data)
+    mesh.from_mesh(hidden.data)
     covered = []
+    kept = []
     for vertex in mesh.verts:
-        for tree in trees:
-            location = tree.find_nearest(vertex.co, COVERED_DISTANCE)[0]
-            if location is not None:
-                covered.append(vertex)
-                break
+        if edge_points and edges.find(vertex.co)[2] < EDGE_MARGIN:
+            kept.append(vertex)
+            continue
+        if any(tree.find_nearest(vertex.co, distance)[0] is not None for tree in trees):
+            covered.append(vertex)
+    # What stays near an edge sits a little deeper, so it stays under the cloth.
+    for vertex in kept:
+        if any(tree.find_nearest(vertex.co, distance)[0] is not None for tree in trees):
+            vertex.co -= vertex.normal * EDGE_SINK
     bmesh.ops.delete(mesh, geom=covered, context="VERTS")
-    mesh.to_mesh(body.data)
+    mesh.to_mesh(hidden.data)
     mesh.free()
 
 
@@ -235,11 +274,13 @@ def build(recipe, folders, output):
     body_calf = calf_height(body)
     for asset, _kind, _name in meshes.values():
         bake_modifiers(asset)
-    remove_covered_skin(body, [item[0] for item in meshes.values() if item[1] == "clothes"])
+    remove_covered(body, [item[0] for item in meshes.values() if item[1] == "clothes"])
     reduce_body(body)
     named_parts = {item[2]: item[0] for item in meshes.values()}
     for under, over in recipe.get("tucked", {}).items():
         tuck_in(named_parts[under], named_parts[over])
+    for hidden, over in recipe.get("covered_by", {}).items():
+        remove_covered(named_parts[hidden], [named_parts[over]], LAYER_DISTANCE)
     if "hair_color" in recipe:
         hair = named_parts[as_list(recipe["hair"])[0]]
         for slot in hair.material_slots:

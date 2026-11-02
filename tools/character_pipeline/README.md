@@ -40,6 +40,7 @@ The animation library is optional. With one, characters stand in the first frame
 | `footwear` | Which clothes reach the ground |
 | `colors` | Plain sRGB colors that replace a part's printed pattern |
 | `tucked` | Layers cut off where another layer covers them, as `{ "under": "over" }` |
+| `covered_by` | Parts removed where another part covers them, as `{ "hidden": "over" }` |
 | `hair`, `hair_color` | Hair, and an optional sRGB color to repaint it |
 | `brows`, `eyes` | Eyebrows and eyes |
 
@@ -54,5 +55,5 @@ Set these on the model's `Skeleton3D` in the import settings, for both the chara
 
 - **Severe stretching:** the bones didn't line up with the mesh. `stand_on_ground` keeps them aligned.
 - **Dark eyes, hidden eyebrows:** materials were exported as blended, which Godot can't sort. `finish_materials` makes them opaque or cut out.
-- **Skin through clothes:** `remove_covered_skin` deletes the body under clothes before reducing it.
+- **Skin through clothes:** `remove_covered` deletes the body under clothes before reducing it, but keeps a margin at cuffs, collars, and hems. Without the margin, there are gaps at the wrists and neck.
 - **Spiky hands:** reducing the whole body at once destroys the fingers. `reduce_body` gives hands and the head their own budgets.

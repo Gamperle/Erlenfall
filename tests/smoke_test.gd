@@ -127,6 +127,18 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 		var rise := terrain.height_at(hill["x"], hill["z"]) - terrain.height_at(hill["x"] + hill["radius"], hill["z"])
 		_check(rise > 3.0, "a hill stands near the village at (%s, %s)" % [hill["x"], hill["z"]])
 
+	# Headless runs can't read a MultiMesh back, so this checks the same repeatable placement.
+	for plants: String in ["leaf_trees", "bushes"]:
+		var spots: Array[Transform3D] = village._scatter(layout[plants], layout["fields"])
+		var well_placed := spots.size() > int(layout[plants]["count"]) / 2
+		for spot in spots:
+			var at := spot.origin
+			well_placed = well_placed and terrain.river_clearance(at.x, at.z) > 0.0 and absf(at.y - terrain.height_at(at.x, at.z)) < 0.01
+			for building: Dictionary in layout["buildings"]:
+				well_placed = well_placed and Vector2(at.x, at.z).distance_to(Vector2(building["x"], building["z"])) > 5.0
+		_check(well_placed, "%s grow on the ground, clear of the river and buildings" % plants)
+	_check(village.get_node("LeafTrees").multimesh.instance_count > 0 and village.get_node("Bushes").multimesh.instance_count > 0, "leaf trees and bushes are planted")
+
 	var low := INF
 	var high := -INF
 	for i in 64:

@@ -85,6 +85,24 @@
 		"road_clearance": 6,
 		"field_clearance": 32
 	},
+	"leaf_trees": {
+		"seed": 17,
+		"count": 220,
+		"min_radius": 62,
+		"max_radius": 400,
+		"max_height": 45,
+		"road_clearance": 7,
+		"field_clearance": 32
+	},
+	"bushes": {
+		"seed": 19,
+		"count": 650,
+		"min_radius": 40,
+		"max_radius": 420,
+		"max_height": 70,
+		"road_clearance": 3.5,
+		"field_clearance": 26
+	},
 	"grass": {
 		"seed": 13,
 		"count": 22000,

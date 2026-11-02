@@ -41,6 +41,10 @@ const PROP_FOLDER := "res://assets/props/"
 ## Smaller props have no collision, so they never block the player.
 const PROP_SOLID_SIZE := 0.6
 const PLANT_CHUNK_SIZE := 128.0
+## How far a chunk of trees is from the camera when it swaps to simpler meshes.
+const PLANT_DETAIL_DISTANCE := 150.0
+const FAR_FIR_TIERS := 2
+const FAR_FIR_SIDES := 5
 const BUSH_DRAW_DISTANCE := 450.0
 const WOOD_PILE_SHAPE := Vector3(1.0, 0.9, 1.5)
 
@@ -66,7 +70,7 @@ func _ready() -> void:
 	_add_roads(layout["roads"])
 	_add_trees(layout["trees"], layout["fields"])
 	var leaf_trees := _scatter(layout["leaf_trees"], layout["fields"])
-	_add_multimesh(_leaf_tree_mesh(), leaf_trees, 0.0, _tint_random(layout["leaf_trees"])).name = "LeafTrees"
+	_add_multimesh(_leaf_tree_mesh(), leaf_trees, 0.0, _tint_random(layout["leaf_trees"]), _far_leaf_tree_mesh()).name = "LeafTrees"
 	_add_tree_collision(leaf_trees)
 	var bushes := _add_multimesh(_bush_mesh(), _scatter(layout["bushes"], layout["fields"]), 0.0, _tint_random(layout["bushes"]))
 	bushes.name = "Bushes"
@@ -86,6 +90,9 @@ func _ready() -> void:
 		var crafting_station := CraftingStation.new()
 		crafting_station.name = station["id"]
 		crafting_station.station_id = station["id"]
+		if station.has("work_spot"):
+			var spot: Array = station["work_spot"]
+			crafting_station.work_spot = Vector3(spot[0], spot[1], spot[2])
 		_add_box_interactable(crafting_station, station)
 	for site: Dictionary in layout["repair_sites"]:
 		var repair_site := RepairSite.new()
@@ -400,7 +407,7 @@ func _add_field(data: Dictionary) -> void:
 
 func _add_trees(data: Dictionary, fields: Array) -> void:
 	var transforms := _scatter(data, fields)
-	_add_multimesh(_fir_mesh(), transforms, 0.0, _tint_random(data))
+	_add_multimesh(_fir_mesh(TREE_TIERS, 9), transforms, 0.0, _tint_random(data), _fir_mesh(FAR_FIR_TIERS, FAR_FIR_SIDES))
 	_add_tree_collision(transforms)
 
 
@@ -441,6 +448,19 @@ func _leaf_tree_mesh() -> ArrayMesh:
 	_add_clump(surface, Vector3(2.2, 6.3, 0.7), Vector3(2.2, 1.7, 2.2), LEAF_COLOR, LEAF_TIP_COLOR, jitter)
 	_add_clump(surface, Vector3(-1.8, 6.5, 1.4), Vector3(2.1, 1.7, 2.1), LEAF_COLOR, LEAF_TIP_COLOR, jitter)
 	_add_clump(surface, Vector3(-0.6, 6.2, -2.1), Vector3(2.3, 1.6, 2.3), LEAF_COLOR, LEAF_TIP_COLOR, jitter)
+	surface.generate_normals()
+	return surface.commit()
+
+
+## The same tree as seen from far away: one big clump of leaves on a thin trunk.
+func _far_leaf_tree_mesh() -> ArrayMesh:
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	surface.set_smooth_group(-1)
+	var jitter := RandomNumberGenerator.new()
+	jitter.seed = 23
+	_add_cone(surface, LEAF_TRUNK_RADIUS, 0.14, 0.0, LEAF_TRUNK_HEIGHT, 3, TRUNK_COLOR, TRUNK_COLOR, jitter, 0.0)
+	_add_clump(surface, Vector3(0.0, 7.0, 0.0), Vector3(4.2, 3.1, 4.2), LEAF_COLOR, LEAF_TIP_COLOR, jitter)
 	surface.generate_normals()
 	return surface.commit()
 
@@ -490,20 +510,20 @@ func _add_clump(surface: SurfaceTool, center: Vector3, size: Vector3, bottom_col
 
 
 ## A fir tree built as one mesh: a trunk under overlapping tiers of drooping branches.
-func _fir_mesh() -> ArrayMesh:
+func _fir_mesh(tiers: int, sides: int) -> ArrayMesh:
 	var surface := SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	surface.set_smooth_group(-1)
 	var jitter := RandomNumberGenerator.new()
 	jitter.seed = 21
-	_add_cone(surface, TRUNK_RADIUS, 0.1, 0.0, TREE_HEIGHT * 0.6, 6, TRUNK_COLOR, TRUNK_COLOR, jitter, 0.0)
-	for tier in TREE_TIERS:
-		var progress := float(tier) / (TREE_TIERS - 1)
+	_add_cone(surface, TRUNK_RADIUS, 0.1, 0.0, TREE_HEIGHT * 0.6, mini(sides, 6), TRUNK_COLOR, TRUNK_COLOR, jitter, 0.0)
+	for tier in tiers:
+		var progress := float(tier) / (tiers - 1)
 		var radius := lerpf(CROWN_RADIUS, CROWN_RADIUS * 0.35, progress)
 		var bottom := lerpf(TRUNK_HEIGHT, TREE_HEIGHT * 0.72, progress)
 		var top := bottom + lerpf(TREE_HEIGHT * 0.32, TREE_HEIGHT * 0.28, progress)
 		var edge := CROWN_COLOR.lerp(CROWN_TIP_COLOR, progress)
-		_add_cone(surface, radius, 0.0, bottom, top, 9, edge.darkened(0.35), edge, jitter, radius * 0.18)
+		_add_cone(surface, radius, 0.0, bottom, top, sides, edge.darkened(0.35), edge, jitter, radius * 0.18)
 	surface.generate_normals()
 	return surface.commit()
 
@@ -558,7 +578,7 @@ func _is_tree_allowed(point: Vector2, data: Dictionary, fields: Array) -> bool:
 
 
 ## Splits the instances into chunks by area, so that Godot can skip the ones out of view.
-func _add_multimesh(mesh: Mesh, transforms: Array[Transform3D], height_offset: float, tint_random: RandomNumberGenerator = null) -> Node3D:
+func _add_multimesh(mesh: Mesh, transforms: Array[Transform3D], height_offset: float, tint_random: RandomNumberGenerator = null, far_mesh: Mesh = null) -> Node3D:
 	var chunks: Dictionary = {}
 	for transform in transforms:
 		var key := Vector2i((transform.origin / PLANT_CHUNK_SIZE).floor().x, (transform.origin / PLANT_CHUNK_SIZE).floor().z)
@@ -592,7 +612,20 @@ func _add_multimesh(mesh: Mesh, transforms: Array[Transform3D], height_offset: f
 		instance.multimesh = multimesh
 		instance.material_override = material
 		group.add_child(instance)
+		if far_mesh != null:
+			_add_far_version(instance, far_mesh)
 	return group
+
+
+## Beyond the distance, a chunk swaps to the simpler mesh. The copy keeps each plant's place and tint.
+func _add_far_version(near: MultiMeshInstance3D, far_mesh: Mesh) -> void:
+	near.visibility_range_end = PLANT_DETAIL_DISTANCE
+	var far := MultiMeshInstance3D.new()
+	far.multimesh = near.multimesh.duplicate()
+	far.multimesh.mesh = far_mesh
+	far.material_override = near.material_override
+	far.visibility_range_begin = PLANT_DETAIL_DISTANCE
+	near.add_child(far)
 
 
 ## Small plants don't cast shadows, and stop being drawn at this distance, where they are specks.

@@ -47,6 +47,18 @@ func best_weapon_damage() -> float:
 	return best
 
 
+## Returns the strongest carried weapon, or "" if there is none. Quality doesn't change how it looks.
+func best_weapon_id() -> String:
+	var best := ""
+	var best_damage := 0.0
+	for entry in entries():
+		var damage := CraftingData.weapon_damage(entry["id"], entry["quality"])
+		if damage > best_damage:
+			best = entry["id"]
+			best_damage = damage
+	return best
+
+
 ## Loses this share of each stack of materials, rounded up.
 func lose_materials(share: float) -> void:
 	for entry in entries():

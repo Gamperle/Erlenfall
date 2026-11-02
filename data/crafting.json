@@ -4,12 +4,29 @@
 		"iron_ore": { "name": "ITEM_IRON_ORE", "material": true },
 		"coal": { "name": "ITEM_COAL", "material": true },
 		"wood": { "name": "ITEM_WOOD", "material": true },
-		"iron_ingot": { "name": "ITEM_IRON_INGOT", "material": true },
-		"iron_nails": { "name": "ITEM_IRON_NAILS" },
+		"iron_ingot": { "name": "ITEM_IRON_INGOT", "material": true, "model": [
+			{ "size": [0.09, 0.05, 0.2], "at": [0, 0.025, 0], "color": "#6f7276" }
+		] },
+		"iron_nails": { "name": "ITEM_IRON_NAILS", "model": [
+			{ "size": [0.012, 0.012, 0.09], "at": [-0.03, 0.006, 0], "color": "#8a8d92" },
+			{ "size": [0.012, 0.012, 0.09], "at": [0.0, 0.006, 0.02], "color": "#8a8d92" },
+			{ "size": [0.012, 0.012, 0.09], "at": [0.03, 0.006, -0.01], "color": "#8a8d92" }
+		] },
 		"torch": { "name": "ITEM_TORCH" },
-		"iron_dagger": { "name": "ITEM_IRON_DAGGER", "damage": 10 },
-		"iron_sword": { "name": "ITEM_IRON_SWORD", "damage": 20 },
-		"iron_axe": { "name": "ITEM_IRON_AXE", "damage": 16 }
+		"iron_dagger": { "name": "ITEM_IRON_DAGGER", "damage": 10, "model": [
+			{ "size": [0.03, 0.14, 0.03], "at": [0, 0.07, 0], "color": "#3b3026" },
+			{ "size": [0.09, 0.02, 0.03], "at": [0, 0.15, 0], "color": "#6f7276" },
+			{ "size": [0.045, 0.32, 0.012], "at": [0, 0.32, 0], "color": "#a9acb0" }
+		] },
+		"iron_sword": { "name": "ITEM_IRON_SWORD", "damage": 20, "model": [
+			{ "size": [0.03, 0.18, 0.03], "at": [0, 0.09, 0], "color": "#3b3026" },
+			{ "size": [0.16, 0.025, 0.035], "at": [0, 0.19, 0], "color": "#6f7276" },
+			{ "size": [0.06, 0.75, 0.014], "at": [0, 0.575, 0], "color": "#a9acb0" }
+		] },
+		"iron_axe": { "name": "ITEM_IRON_AXE", "damage": 16, "model": [
+			{ "size": [0.03, 0.62, 0.03], "at": [0, 0.31, 0], "color": "#3b3026" },
+			{ "size": [0.17, 0.13, 0.02], "at": [0.09, 0.55, 0], "color": "#a9acb0" }
+		] }
 	},
 	"qualities": [
 		{ "id": "crude", "name": "QUALITY_CRUDE", "min_score": 0.0, "damage_multiplier": 0.8 },

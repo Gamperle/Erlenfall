@@ -96,7 +96,7 @@ func _run() -> void:
 		_check(kinds.size() >= 1 and _has_joypad(kinds), "%s has a controller binding" % action)
 
 	await _test_land_and_river(scene, player)
-	_test_hud(scene, player)
+	await _test_hud(scene, player)
 	_test_character_models(player)
 	_test_generated_props()
 	_test_feature_flags()
@@ -307,6 +307,7 @@ func _test_hud(scene: Node, player: Player) -> void:
 	_check(health_bar.offset_right < middle + compass.offset_left, "the compass clears the health bar at the base width")
 	_check(middle + compass.offset_right < 1152.0 + overlay.offset_left, "the compass clears the performance overlay at the base width")
 
+	await _test_item_models(scene)
 	await _test_interface_fit(scene)
 
 	overlay.refresh()
@@ -737,6 +738,36 @@ func _test_interface_fit(scene: Node) -> void:
 	window.size = old_size
 	await process_frame
 	await process_frame
+
+
+func _test_item_models(scene: Node) -> void:
+	var player: Player = scene.get_node("Player")
+	var weapon: Node3D = player._weapon
+	var carried := player.inventory.to_data()
+	player.inventory.load_data({})
+	await process_frame
+	_check(weapon.get_child_count() == 0, "empty hands hold no weapon")
+	player.inventory.add("iron_dagger")
+	await process_frame
+	_check(weapon.get_child_count() == 1, "a crafted weapon shows in the hand")
+	player.inventory.add("iron_sword", 1, "fine")
+	await process_frame
+	_check(weapon.get_child_count() == 1 and player.inventory.best_weapon_id() == "iron_sword", "the hand holds the strongest weapon")
+	player.inventory.load_data(carried)
+	await process_frame
+
+	var anvil: CraftingStation = scene.get_node("Village/anvil")
+	root.get_tree().call_group(CraftingStation.STATION_GROUP, "show_made", "anvil", "iron_axe")
+	_check(anvil._made_model != null and anvil._made_model.get_parent() == anvil, "a forged weapon lies on the anvil")
+	var axe := anvil._made_model
+	root.get_tree().call_group(CraftingStation.STATION_GROUP, "show_made", "furnace", "iron_ingot")
+	_check(anvil._made_model == axe, "things made elsewhere stay off the anvil")
+	root.get_tree().call_group(CraftingStation.STATION_GROUP, "show_made", "anvil", "iron_nails")
+	await process_frame
+	_check(not is_instance_valid(axe) and anvil._made_model != null, "the newest item replaces the last one")
+	anvil.show_made("anvil", "torch")
+	await process_frame
+	_check(anvil._made_model == null, "items with no model leave the anvil empty")
 
 
 func _check_contrast(theme: Theme, color_name: String, color_type: String, box_name: String, box_type: String, what: String) -> void:

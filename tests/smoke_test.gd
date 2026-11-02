@@ -122,6 +122,7 @@ func _run() -> void:
 	await _test_crafting(scene, player)
 	await _test_story(scene, player)
 	await _test_combat(scene, player)
+	await _test_enemy_navigation(scene, player)
 	await _test_gathering_collision(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
 	await _test_settings(scene, player)
@@ -669,6 +670,78 @@ func _test_combat(scene: Node, player: Player) -> void:
 	enemy._home = home
 	enemy.revive()
 	await _physics_frames(1)
+
+
+func _test_enemy_navigation(scene: Node, player: Player) -> void:
+	var enemy: Enemy = root.get_tree().get_first_node_in_group(Enemy.GROUP)
+	var home := enemy._home
+	var site := Vector3(home.x + 12.0, home.y, home.z + 12.0)
+
+	# A prop just off a wall, leaving a notch.
+	var obstacles := Node3D.new()
+	root.add_child(obstacles)
+	_add_test_box(obstacles, site, Vector3(14.0, 6.0, 1.0))
+	_add_test_box(obstacles, site + Vector3(-1.0, 0.0, -1.45), Vector3(1.2, 6.0, 1.0))
+	await _physics_frames(2)
+	_check(await _enemy_reaches(enemy, site + Vector3(0.0, 0.5, -5.0), site + Vector3(0.0, 0.5, 5.0), player, 900), "enemies get out of a notch a prop leaves against a wall")
+	obstacles.free()
+
+	# A dense stand of trunks, with gaps a little wider than a body and a grid cell together.
+	obstacles = Node3D.new()
+	root.add_child(obstacles)
+	for x in range(-6, 7):
+		for z in range(-6, 7):
+			_add_test_box(obstacles, site + Vector3(x * 1.6, 0.0, z * 1.6), Vector3(0.4, 6.0, 0.4))
+	await _physics_frames(2)
+	_check(await _enemy_reaches(enemy, site + Vector3(-1.0, 0.5, -12.0), site + Vector3(1.0, 0.5, 12.0), player, 1200), "enemies find their way through dense trees")
+	obstacles.free()
+
+	# With no way in, the enemy gets as near as it can.
+	obstacles = Node3D.new()
+	root.add_child(obstacles)
+	var ring := [[Vector3(0.0, 0.0, 4.0), Vector3(9.0, 6.0, 1.0)], [Vector3(0.0, 0.0, -4.0), Vector3(9.0, 6.0, 1.0)], [Vector3(4.0, 0.0, 0.0), Vector3(1.0, 6.0, 9.0)], [Vector3(-4.0, 0.0, 0.0), Vector3(1.0, 6.0, 9.0)]]
+	for part: Array in ring:
+		_add_test_box(obstacles, site + part[0], part[1])
+	await _physics_frames(2)
+	var reached := await _enemy_reaches(enemy, site + Vector3(0.0, 0.5, -9.0), site + Vector3(0.0, 0.5, 0.0), player, 300)
+	_check(not reached and enemy.global_position.distance_to(site) < 8.0, "enemies wait as near as they can get to a player they can't reach")
+	obstacles.free()
+
+	enemy._home = home
+	enemy.revive()
+	EnemyPath.forget_all()
+	await _physics_frames(1)
+
+	var door: Node = scene.get_node("Village/Props/door_3")
+	_check(door.get_children().any(func(child: Node) -> bool: return child is CollisionShape3D), "the inn's door is solid")
+
+
+func _add_test_box(parent: Node3D, at: Vector3, size: Vector3) -> void:
+	var body := StaticBody3D.new()
+	var collision := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	collision.shape = box
+	body.add_child(collision)
+	parent.add_child(body)
+	body.global_position = at
+
+
+func _enemy_reaches(enemy: Enemy, from: Vector3, to: Vector3, player: Player, frames: int) -> bool:
+	EnemyPath.forget_all()
+	enemy.revive()
+	enemy._home = from
+	enemy.position = from
+	player.health.restore()
+	player.position = to
+	enemy.state = Enemy.State.CHASE
+	for i in frames:
+		await physics_frame
+		player.position = to
+		player.health.restore()
+		if enemy.state == Enemy.State.WINDUP:
+			return true
+	return false
 
 
 func _test_gathering_collision(scene: Node, player: Player) -> void:

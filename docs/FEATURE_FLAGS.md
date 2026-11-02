@@ -81,3 +81,14 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `torch_burn_seconds` | `600` | How long one torch burns when burn time is on |
 | `interface_min_scale` | `0.9` | The smallest size the interface shrinks to in a small window, as a share of its full size |
 | `controls_hint_seconds` | `30` | How long the controls line stays on screen when play starts. It shows again in the pause menu. 0 keeps it on screen |
+
+## Enemy navigation values
+
+Enemies walk straight at their target until something blocks them, then search a small grid for a way around it.
+
+| Name | Default | Effect |
+|---|---|---|
+| `enemy_path_cell_size` | `0.5` | The size in meters of a grid cell. Smaller cells find narrower gaps but search more cells |
+| `enemy_path_max_nodes` | `1500` | How many cells one search looks at before it settles for the nearest point it found |
+| `enemy_path_budget_usec` | `1000` | How many microseconds all searches may use per physics frame. A search that runs out carries on in the next frame |
+| `enemy_path_cache_seconds` | `5` | How long enemies remember which cells are blocked before checking them again |

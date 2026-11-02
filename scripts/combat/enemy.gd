@@ -18,11 +18,19 @@ const BAR_HEIGHT := 0.08
 const KNOCKBACK_SPEED := 4.0
 const KNOCKBACK_DECAY := 14.0
 const SPARK_COLOR := Color(1.0, 0.75, 0.35)
-const FOLLOW_MAX_SECONDS := 15.0
-const FOLLOW_TURN_SPEED := 2.5
-const FOLLOW_LOST_WALL_SECONDS := 1.0
-const SIGHT_HEIGHT := 0.6
-const SIGHT_WIDTH := 0.95
+const WAYPOINT_REACHED := 0.35
+const WAYPOINT_LOOKAHEAD_PER_FRAME := 2
+const ARRIVE_FRACTION := 0.8
+const SEARCH_WAIT_SECONDS := 0.5
+const FAILED_SEARCH_WAIT_SECONDS := 2.0
+const CLEAR_WAY_CHECK_SECONDS := 0.25
+const GOAL_MOVED_DISTANCE := 2.0
+const STUCK_SECONDS := 0.6
+const STUCK_DISTANCE := 0.3
+const GOAL_LINE_SKIP := 0.75
+const STUCK_MARK_DISTANCE := 0.5
+const FORGET_DISTANCE := 1.5
+const SIDESTEP_SECONDS := 0.5
 
 static var _data: Dictionary = {}
 
@@ -35,10 +43,16 @@ var _timer := 0.0
 var _flash := 0.0
 var _knockback := Vector3.ZERO
 var _sparks: CPUParticles3D
-var _follow_left := 0.0
-var _follow_direction := Vector3.ZERO
-var _follow_side := 1.0
-var _since_wall := 0.0
+var _path: EnemyPath
+var _waypoint := 0
+var _following := false
+var _path_goal := Vector3.ZERO
+var _search_wait := 0.0
+var _clear_way_wait := 0.0
+var _stuck_left := STUCK_SECONDS
+var _stuck_from := Vector3.ZERO
+var _sidestep_left := 0.0
+var _sidestep_side := 1.0
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _body: Humanoid
 var _collision: CollisionShape3D
@@ -46,6 +60,8 @@ var _bar: MeshInstance3D
 
 
 func setup(enemy_type: String, home: Vector3) -> void:
+	# Walking almost straight into a wall still slides along it, so a body never stops dead at a corner.
+	wall_min_slide_angle = 0.0
 	_stats = _get_data()[enemy_type]
 	_home = home
 	position = home
@@ -110,7 +126,7 @@ func revive() -> void:
 	velocity = Vector3.ZERO
 	_knockback = Vector3.ZERO
 	state = State.IDLE
-	_follow_left = 0.0
+	_forget_path()
 	visible = true
 	_collision.set_deferred("disabled", false)
 
@@ -142,7 +158,7 @@ func _process_idle(player: Player) -> void:
 		state = State.CHASE
 		return
 	if _flat_distance(_home) > HOME_TOLERANCE:
-		_move_toward_point(_home)
+		_move_toward_point(_home, HOME_TOLERANCE)
 	else:
 		_stop()
 
@@ -157,7 +173,7 @@ func _process_chase(player: Player) -> void:
 		_body.play_action(ATTACK_ANIMATION)
 		_stop()
 	else:
-		_move_toward_point(player.global_position)
+		_move_toward_point(player.global_position, float(_stats["attack_range"]))
 
 
 func _process_windup(player: Player, delta: float) -> void:
@@ -207,61 +223,122 @@ func _flat_distance(point: Vector3) -> float:
 	return Vector2(global_position.x, global_position.z).distance_to(Vector2(point.x, point.z))
 
 
-func _move_toward_point(point: Vector3) -> void:
-	var offset := point - global_position
-	offset.y = 0.0
-	var direction := _steer_around_obstacles(offset.normalized(), point)
+## Walks straight toward the point until something is in the way, then along a path around it.
+## It's near enough at `reach`, which is how far the search for a path needs to get.
+func _move_toward_point(point: Vector3, reach: float) -> void:
+	var direction := _steer(point, reach)
 	var speed := float(_stats["speed"]) * (get_tree().get_first_node_in_group(Terrain.GROUP) as Terrain).wading_factor(global_position)
 	velocity.x = direction.x * speed
 	velocity.z = direction.z * speed
 	rotation.y = atan2(-direction.x, -direction.z)
 
 
-## Follows a blocking wall around its corners, keeping it on the same hand, until the way is clear.
-func _steer_around_obstacles(direction: Vector3, goal: Vector3) -> Vector3:
-	var following := _follow_left > 0.0
-	if following:
-		var delta := get_physics_process_delta_time()
-		_follow_left = maxf(_follow_left - delta, 0.0)
-		_since_wall += delta
-		# Without a wall nearby, a hill may be what hides the goal, so don't circle.
-		if _since_wall > FOLLOW_LOST_WALL_SECONDS or _has_clear_way(goal):
-			_follow_left = 0.0
-			following = false
-		else:
-			# With no wall to touch, turn toward where it went, which rounds outside corners.
-			_follow_direction = _follow_direction.rotated(Vector3.UP, _follow_side * FOLLOW_TURN_SPEED * delta)
-	if is_on_wall():
-		var along_wall := Vector3.UP.cross(get_wall_normal()).normalized()
-		if not following:
-			_follow_side = 1.0 if along_wall.dot(direction) >= 0.0 else -1.0
-			_follow_left = FOLLOW_MAX_SECONDS
-			following = true
-		_follow_direction = along_wall * _follow_side
-		_since_wall = 0.0
-	return _follow_direction if following else direction
+func _steer(goal: Vector3, reach: float) -> Vector3:
+	var delta := get_physics_process_delta_time()
+	_search_wait = maxf(_search_wait - delta, 0.0)
+	if _path == null:
+		_path = EnemyPath.new(self, _stats["radius"])
+	if _path.is_searching() and _path.advance():
+		_following = not _path.waypoints.is_empty()
+		_waypoint = 0
+		_clear_way_wait = CLEAR_WAY_CHECK_SECONDS
+		if not _path.reached:
+			_search_wait = FAILED_SEARCH_WAIT_SECONDS
+	_stuck_left -= delta
+	if _stuck_left <= 0.0:
+		var stuck := _flat_distance(_stuck_from) < STUCK_DISTANCE
+		_stuck_from = global_position
+		_stuck_left = STUCK_SECONDS
+		if stuck and is_on_wall() and not _touches_scenery():
+			_sidestep_left = SIDESTEP_SECONDS
+			_sidestep_side = -_sidestep_side
+		elif stuck and _search_wait <= 0.0:
+			_on_stuck(goal, reach)
+	if _sidestep_left > 0.0:
+		_sidestep_left -= delta
+		return _flat_direction(goal).rotated(Vector3.UP, _sidestep_side * PI / 2.0)
+	if _following:
+		_update_following(goal, reach, delta)
+	if _following:
+		return _flat_direction(_waypoint_position())
+	if _touches_scenery() and _search_wait <= 0.0 and not _path.is_searching():
+		_path.forget_around(global_position, FORGET_DISTANCE)
+		_start_search(goal, reach)
+	return _flat_direction(goal)
 
 
-## Checks both sides of the body as well as the middle, since a thin line could fit where the body can't.
-func _has_clear_way(point: Vector3) -> bool:
-	var side := (point - global_position).cross(Vector3.UP).normalized() * float(_stats["radius"]) * SIGHT_WIDTH
-	for offset: Vector3 in [Vector3.ZERO, side, -side]:
-		if not _can_see(point + offset, global_position + offset):
-			return false
-	return true
+func _update_following(goal: Vector3, reach: float, delta: float) -> void:
+	_clear_way_wait -= delta
+	if _clear_way_wait <= 0.0:
+		_clear_way_wait = CLEAR_WAY_CHECK_SECONDS
+		if _path.is_line_clear(global_position, goal, GOAL_LINE_SKIP):
+			_following = false
+			return
+	if _path_goal.distance_to(goal) > GOAL_MOVED_DISTANCE and _search_wait <= 0.0 and not _path.is_searching():
+		_start_search(goal, reach)
+	var last := _path.waypoints.size() - 1
+	for i in WAYPOINT_LOOKAHEAD_PER_FRAME:
+		if _waypoint >= last or not _path.is_line_clear(global_position, _waypoint_position(_waypoint + 1)):
+			break
+		_waypoint += 1
+	if _flat_distance(_waypoint_position()) < WAYPOINT_REACHED:
+		_waypoint += 1
+		if _waypoint > last:
+			_following = false
+
+
+## A path that doesn't fit avoids the spot just ahead from now on. Otherwise something new is in
+## the way, so what is known nearby is out of date.
+func _on_stuck(goal: Vector3, reach: float) -> void:
+	if _following:
+		var ahead := global_position + _flat_direction(_waypoint_position()) * STUCK_MARK_DISTANCE
+		_path.mark_blocked(Vector2(ahead.x, ahead.z))
+		_following = false
+	else:
+		_path.forget_around(global_position, FORGET_DISTANCE)
+	if not _path.is_searching():
+		_start_search(goal, reach)
+
+
+func _start_search(goal: Vector3, reach: float) -> void:
+	_path_goal = goal
+	_search_wait = SEARCH_WAIT_SECONDS
+	_path.begin(global_position, goal, reach * ARRIVE_FRACTION)
+
+
+func _waypoint_position(index := _waypoint) -> Vector3:
+	var point := _path.waypoints[index]
+	return Vector3(point.x, global_position.y, point.y)
+
+
+func _flat_direction(point: Vector3) -> Vector3:
+	var offset := point - global_position
+	offset.y = 0.0
+	return offset.normalized()
 
 
 ## Other characters don't count, since they move out of the way.
-func _can_see(point: Vector3, from: Vector3) -> bool:
-	var query := PhysicsRayQueryParameters3D.create(from + Vector3.UP * SIGHT_HEIGHT, point + Vector3.UP * SIGHT_HEIGHT)
-	query.exclude = [get_rid()]
-	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	return hit.is_empty() or hit["collider"] is CharacterBody3D
+func _touches_scenery() -> bool:
+	if not is_on_wall():
+		return false
+	for i in get_slide_collision_count():
+		if not get_slide_collision(i).get_collider() is CharacterBody3D:
+			return true
+	return false
+
+
+func _forget_path() -> void:
+	_following = false
+	_stuck_left = STUCK_SECONDS
+	_stuck_from = global_position
+	if _path != null:
+		_path.cancel()
 
 
 func _stop() -> void:
 	velocity.x = 0.0
 	velocity.z = 0.0
+	_forget_path()
 
 
 func _update_color(delta: float) -> void:

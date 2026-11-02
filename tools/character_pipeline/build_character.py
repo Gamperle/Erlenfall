@@ -13,6 +13,7 @@ import bmesh
 import bpy
 import mathutils
 import mathutils.bvhtree
+import numpy
 
 MPFB = "bl_ext.blender_org.mpfb"
 TEXTURE_SIZE = 512
@@ -20,7 +21,11 @@ ALPHA_CUTOFF = 0.25
 COVERED_DISTANCE = 0.035
 # Triangle budgets per kind of part.
 PART_BUDGETS = {"clothes": 1800, "hair": 700, "beard": 300, "brows": 400, "eyes": 180}
-BODY_BUDGET = 1800
+BODY_BUDGETS = {"rest": 900, "hands": 700, "head": 900}
+HAND_GROUPS = ("hand_", "index_", "middle_", "ring_", "pinky_", "thumb_")
+HEAD_GROUPS = ("head", "neck_")
+REGION_GROUPS = HAND_GROUPS + HEAD_GROUPS
+TUCK_DEPTH = 0.03
 
 
 def find_asset(folders, name):
@@ -64,6 +69,63 @@ def reduce_mesh(mesh_object, budget):
     modifier = mesh_object.modifiers.new("reduce", "DECIMATE")
     modifier.ratio = budget / count
     bpy.ops.object.modifier_apply(modifier="reduce")
+
+
+def vertices_in_groups(mesh_object, names):
+    indexes = {group.index for group in mesh_object.vertex_groups if any(group.name.startswith(name) for name in names)}
+    return {
+        vertex.index for vertex in mesh_object.data.vertices
+        if any(element.group in indexes and element.weight > 0.3 for element in vertex.groups)
+    }
+
+
+def reduce_region(mesh_object, names, budget):
+    """Reduces only the faces of the named bones' vertex groups, or everything else if names is None."""
+    region = vertices_in_groups(mesh_object, REGION_GROUPS)
+    if names is not None:
+        region = vertices_in_groups(mesh_object, names)
+    bpy.context.view_layer.objects.active = mesh_object
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_mode(type="FACE")
+    mesh = bmesh.from_edit_mesh(mesh_object.data)
+    count = 0
+    for face in mesh.faces:
+        inside = all(vertex.index in region for vertex in face.verts)
+        face.select_set(inside if names is not None else not inside)
+        if face.select:
+            count += len(face.verts) - 2
+    mesh.select_flush_mode()
+    bmesh.update_edit_mesh(mesh_object.data)
+    if count > budget:
+        bpy.ops.mesh.decimate(ratio=budget / count)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    print("REGION", names, count, "->", min(count, budget))
+
+
+def reduce_body(body):
+    """Keeps more detail in the face and hands, where reduction shows most."""
+    reduce_region(body, None, BODY_BUDGETS["rest"])
+    reduce_region(body, HAND_GROUPS, BODY_BUDGETS["hands"])
+    reduce_region(body, HEAD_GROUPS, BODY_BUDGETS["head"])
+
+
+def tuck_in(under, over):
+    """Cuts a layer off just below the top of the one over it, which hides the jagged overlap."""
+    top = max(vertex.co.z for vertex in over.data.vertices)
+    mesh = bmesh.new()
+    mesh.from_mesh(under.data)
+    bmesh.ops.delete(mesh, geom=[vertex for vertex in mesh.verts if vertex.co.z < top - TUCK_DEPTH], context="VERTS")
+    mesh.to_mesh(under.data)
+    mesh.free()
+
+
+def recolor_image(image, color):
+    """Repaints a texture in one color, keeping its light and dark strands and its alpha."""
+    pixels = numpy.array(image.pixels[:]).reshape(-1, image.channels)
+    brightness = pixels[:, :3].mean(axis=1, keepdims=True)
+    strands = brightness / max(brightness.max(), 0.01)
+    pixels[:, :3] = numpy.array([channel ** 2.2 for channel in color]) * (0.7 + strands * 0.6)
+    image.pixels = pixels.ravel().tolist()
 
 
 def calf_height(body):
@@ -174,7 +236,16 @@ def build(recipe, folders, output):
     for asset, _kind, _name in meshes.values():
         bake_modifiers(asset)
     remove_covered_skin(body, [item[0] for item in meshes.values() if item[1] == "clothes"])
-    reduce_mesh(body, BODY_BUDGET)
+    reduce_body(body)
+    named_parts = {item[2]: item[0] for item in meshes.values()}
+    for under, over in recipe.get("tucked", {}).items():
+        tuck_in(named_parts[under], named_parts[over])
+    if "hair_color" in recipe:
+        hair = named_parts[as_list(recipe["hair"])[0]]
+        for slot in hair.material_slots:
+            for node in slot.material.node_tree.nodes:
+                if node.type == "TEX_IMAGE" and "normal" not in node.image.name:
+                    recolor_image(node.image, recipe["hair_color"])
     # Parts of one kind share their budget in proportion to their detail.
     kind_totals = {}
     for asset, kind, _name in meshes.values():

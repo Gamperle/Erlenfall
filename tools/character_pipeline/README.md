@@ -41,6 +41,8 @@ The animation library is optional. With one, characters stand in the first frame
 | `colors` | Plain sRGB colors that replace a part's printed pattern |
 | `tucked` | Layers cut off where another layer covers them, as `{ "under": "over" }` |
 | `covered_by` | Parts removed where another part covers them, as `{ "hidden": "over" }` |
+| `under_hem` | Lower layers cut off under a top's hem, as `{ "under": "top" }` |
+| `trim_above` | Parts cut off above a height in meters, such as shoe shafts inside pants |
 | `hair`, `hair_color` | Hair, and an optional sRGB color to repaint it |
 | `brows`, `eyes` | Eyebrows and eyes |
 
@@ -53,7 +55,9 @@ Set these on the model's `Skeleton3D` in the import settings, for both the chara
 
 ## Things that went wrong
 
+To tell whether a flaw comes from the assets or this script, add `full` to the end of the build command. It skips removing hidden parts and all reduction.
+
 - **Severe stretching:** the bones didn't line up with the mesh. `stand_on_ground` keeps them aligned.
 - **Dark eyes, hidden eyebrows:** materials were exported as blended, which Godot can't sort. `finish_materials` makes them opaque or cut out.
-- **Skin through clothes:** `remove_covered` deletes the body under clothes before reducing it, but keeps a margin at cuffs, collars, and hems. Without the margin, there are gaps at the wrists and neck.
+- **Skin through clothes:** `remove_covered` deletes the body under clothes before reducing it, but keeps a margin at cuffs, collars, and hems. Without the margin, there are gaps at the wrists and neck. It also never removes the head or neck, because a hole there shows the red inside of the mouth.
 - **Spiky hands:** reducing the whole body at once destroys the fingers. `reduce_body` gives hands and the head their own budgets.

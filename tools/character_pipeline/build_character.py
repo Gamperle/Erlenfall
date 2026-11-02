@@ -1,7 +1,10 @@
 """Builds one rigged character from a recipe, using MPFB and CC0 MakeHuman assets.
 
 Run with:
-blender --background --python build_character.py -- <recipes.json> <id> <asset folders, comma-separated> <output.glb>
+blender --background --python build_character.py -- <recipes.json> <id> <asset folders, comma-separated> <output.glb> [full]
+
+With "full", it skips removing hidden parts and all reduction, for telling whether a flaw comes
+from those steps or from the assets.
 """
 import json
 import os
@@ -30,6 +33,8 @@ HEAD_GROUPS = ("head", "neck_")
 REGION_GROUPS = HAND_GROUPS + HEAD_GROUPS
 TUCK_DEPTH = 0.03
 LAYER_DISTANCE = 0.04
+HEM_WIDTH = 0.2
+HEM_OVERLAP = 0.05
 
 
 def find_asset(folders, name):
@@ -75,23 +80,6 @@ def reduce_mesh(mesh_object, budget):
     bpy.ops.object.modifier_apply(modifier="reduce")
 
 
-def split_texture_seams(mesh_object):
-    """Splits edges where the texture map jumps, so reduction can't smear one area's color across."""
-    mesh = bmesh.new()
-    mesh.from_mesh(mesh_object.data)
-    uv = mesh.loops.layers.uv.active
-    seams = []
-    for edge in mesh.edges:
-        if len(edge.link_loops) != 2:
-            continue
-        first, second = edge.link_loops
-        if (first[uv].uv - second.link_loop_next[uv].uv).length > 1e-4 or (first.link_loop_next[uv].uv - second[uv].uv).length > 1e-4:
-            seams.append(edge)
-    bmesh.ops.split_edges(mesh, edges=seams)
-    mesh.to_mesh(mesh_object.data)
-    mesh.free()
-
-
 def vertices_in_groups(mesh_object, names):
     indexes = {group.index for group in mesh_object.vertex_groups if any(group.name.startswith(name) for name in names)}
     return {
@@ -125,7 +113,6 @@ def reduce_region(mesh_object, names, budget):
 
 def reduce_body(body):
     """Keeps more detail in the face and hands, where reduction shows most."""
-    split_texture_seams(body)
     reduce_region(body, None, BODY_BUDGETS["rest"])
     reduce_region(body, HAND_GROUPS, BODY_BUDGETS["hands"])
     reduce_region(body, HEAD_GROUPS, BODY_BUDGETS["head"])
@@ -137,6 +124,26 @@ def tuck_in(under, over):
     mesh = bmesh.new()
     mesh.from_mesh(under.data)
     bmesh.ops.delete(mesh, geom=[vertex for vertex in mesh.verts if vertex.co.z < top - TUCK_DEPTH], context="VERTS")
+    mesh.to_mesh(under.data)
+    mesh.free()
+
+
+def trim_above(mesh_object, height):
+    """Cuts off everything above a height over the ground, such as a shoe's shaft inside pants."""
+    ground = min(vertex.co.z for vertex in mesh_object.data.vertices)
+    mesh = bmesh.new()
+    mesh.from_mesh(mesh_object.data)
+    bmesh.ops.delete(mesh, geom=[vertex for vertex in mesh.verts if vertex.co.z > ground + height], context="VERTS")
+    mesh.to_mesh(mesh_object.data)
+    mesh.free()
+
+
+def hide_under_hem(under, over):
+    """Cuts a layer off a little above the lower edge of the top over it, away from the sleeves."""
+    hem = min(vertex.co.z for vertex in over.data.vertices if abs(vertex.co.x) < HEM_WIDTH)
+    mesh = bmesh.new()
+    mesh.from_mesh(under.data)
+    bmesh.ops.delete(mesh, geom=[vertex for vertex in mesh.verts if vertex.co.z > hem + HEM_OVERLAP], context="VERTS")
     mesh.to_mesh(under.data)
     mesh.free()
 
@@ -199,12 +206,14 @@ def remove_covered(hidden, clothes, distance=COVERED_DISTANCE):
     for index, point in enumerate(edge_points):
         edges.insert(point, index)
     edges.balance()
+    # A hole in the head or neck would show the inside of the mouth.
+    protected = vertices_in_groups(hidden, HEAD_GROUPS)
     mesh = bmesh.new()
     mesh.from_mesh(hidden.data)
     covered = []
     kept = []
     for vertex in mesh.verts:
-        if edge_points and edges.find(vertex.co)[2] < EDGE_MARGIN:
+        if vertex.index in protected or (edge_points and edges.find(vertex.co)[2] < EDGE_MARGIN):
             kept.append(vertex)
             continue
         if any(tree.find_nearest(vertex.co, distance)[0] is not None for tree in trees):
@@ -250,7 +259,7 @@ def finish_materials(path, cutout_names, colors):
         file.write(rest)
 
 
-def build(recipe, folders, output):
+def build(recipe, folders, output, full_detail=False):
     from bl_ext.blender_org.mpfb.entities.objectproperties import HumanObjectProperties
     from bl_ext.blender_org.mpfb.services.humanservice import HumanService
     from bl_ext.blender_org.mpfb.services.targetservice import TargetService
@@ -274,13 +283,19 @@ def build(recipe, folders, output):
     body_calf = calf_height(body)
     for asset, _kind, _name in meshes.values():
         bake_modifiers(asset)
-    remove_covered(body, [item[0] for item in meshes.values() if item[1] == "clothes"])
-    reduce_body(body)
+    if not full_detail:
+        remove_covered(body, [item[0] for item in meshes.values() if item[1] == "clothes"])
+        reduce_body(body)
     named_parts = {item[2]: item[0] for item in meshes.values()}
-    for under, over in recipe.get("tucked", {}).items():
-        tuck_in(named_parts[under], named_parts[over])
-    for hidden, over in recipe.get("covered_by", {}).items():
-        remove_covered(named_parts[hidden], [named_parts[over]], LAYER_DISTANCE)
+    if not full_detail:
+        for under, over in recipe.get("tucked", {}).items():
+            tuck_in(named_parts[under], named_parts[over])
+        for under, over in recipe.get("under_hem", {}).items():
+            hide_under_hem(named_parts[under], named_parts[over])
+        for name, height in recipe.get("trim_above", {}).items():
+            trim_above(named_parts[name], height)
+        for hidden, over in recipe.get("covered_by", {}).items():
+            remove_covered(named_parts[hidden], [named_parts[over]], LAYER_DISTANCE)
     if "hair_color" in recipe:
         hair = named_parts[as_list(recipe["hair"])[0]]
         for slot in hair.material_slots:
@@ -292,7 +307,8 @@ def build(recipe, folders, output):
     for asset, kind, _name in meshes.values():
         kind_totals[kind] = kind_totals.get(kind, 0) + triangles(asset)
     for asset, kind, _name in meshes.values():
-        reduce_mesh(asset, PART_BUDGETS[kind] * triangles(asset) // kind_totals[kind])
+        if not full_detail:
+            reduce_mesh(asset, PART_BUDGETS[kind] * triangles(asset) // kind_totals[kind])
 
     all_meshes = [body] + [item[0] for item in meshes.values()]
     feet = [item[0] for item in meshes.values() if item[2] in recipe.get("footwear", [])]
@@ -317,12 +333,12 @@ def build(recipe, folders, output):
 
 def main():
     arguments = sys.argv[sys.argv.index("--") + 1:]
-    recipes_path, character_id, folders, output = arguments
+    recipes_path, character_id, folders, output = arguments[:4]
     with open(recipes_path, encoding="utf-8") as file:
         recipes = json.load(file)
     recipe = next(item for item in recipes if item["id"] == character_id)
     addon_utils.enable(MPFB, default_set=False)
-    build(recipe, folders.split(","), output)
+    build(recipe, folders.split(","), output, arguments[4:] == ["full"])
 
 
 main()

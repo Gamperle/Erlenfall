@@ -62,8 +62,11 @@
 		"hair": "short04",
 		"brows": "eyebrow005",
 		"eyes": "low-poly",
-		"tucked": {
-			"toigo_fisherman_sweater": "toigo_wool_pants"
+		"under_hem": {
+			"toigo_wool_pants": "toigo_fisherman_sweater"
+		},
+		"trim_above": {
+			"shoes03": 0.11
 		}
 	}
 ]

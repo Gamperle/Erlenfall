@@ -511,6 +511,13 @@ func _test_combat(scene: Node, player: Player) -> void:
 	player.attack()
 	await _physics_frames(20)
 	_check(enemy.health.current < before, "an attack hurts the goblin")
+	enemy.state = Enemy.State.RECOVER
+	enemy._timer = 1.0
+	var hit_from := enemy.global_position
+	enemy.take_hit(0.0, hit_from + Vector3(0.0, 0.0, 1.0))
+	_check(enemy._sparks.emitting, "a hit throws sparks")
+	await _physics_frames(10)
+	_check(enemy.global_position.z < hit_from.z - 0.1, "a hit pushes the goblin away")
 	while enemy.state != Enemy.State.DEAD:
 		enemy.take_hit(1000.0)
 	await _physics_frames(2)
@@ -530,6 +537,8 @@ func _test_combat(scene: Node, player: Player) -> void:
 	player.take_hit(1000.0, player.global_position)
 	await _physics_frames(2)
 	_check(player.health.current == 100.0, "death restores health")
+	_check(scene._fade_overlay.modulate.a > 0.9, "death fades from black")
+	_check(scene._hurt_overlay.modulate.a > 0.5, "being hit flashes the screen")
 	_check(player.global_position.distance_to(Vector3(-12.0, player.global_position.y, 30.0)) < 2.0, "death returns the player to the village")
 	_check(player.inventory.count("coal") < coal, "death costs some materials")
 	_check(enemy.visible and enemy.state != Enemy.State.DEAD, "enemies return after the player dies")

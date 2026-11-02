@@ -41,6 +41,7 @@ var _transforms: Array[Transform3D] = []
 ## For each tree: its batches, which draw it, and its place in them.
 var _batches: Array[Array] = []
 var _instance_index := PackedInt32Array()
+var _stumps: MultiMesh
 var _collisions: Array[CollisionShape3D] = []
 var _material: StandardMaterial3D
 var _lookup: Dictionary = {}
@@ -192,6 +193,7 @@ func _set_tree_shown(tree: int, shown: bool) -> void:
 	var transform := _transforms[tree] if shown else HIDDEN
 	for batch: MultiMesh in _batches[tree]:
 		batch.set_instance_transform(_instance_index[tree], transform)
+	_stumps.set_instance_transform(tree, HIDDEN if shown else _transforms[tree])
 	_collisions[tree].set_deferred("disabled", not shown)
 
 
@@ -235,8 +237,10 @@ func _build_batches(kinds: PackedByteArray, meshes: Array[Array], stump_mesh: Me
 		for n in trees.size():
 			_batches[trees[n]] = [near, far]
 			_instance_index[trees[n]] = n
-	# Stumps stand under every tree, so felling one only has to hide the tree.
-	_batch(PackedInt32Array(range(_transforms.size())), stump_mesh, tints, 0.0, STUMP_DISTANCE)
+	# Every tree has a place for its stump, hidden until it's felled.
+	_stumps = _batch(PackedInt32Array(range(_transforms.size())), stump_mesh, tints, 0.0, STUMP_DISTANCE)
+	for tree in _transforms.size():
+		_stumps.set_instance_transform(tree, HIDDEN)
 	(get_child(get_child_count() - 1) as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 

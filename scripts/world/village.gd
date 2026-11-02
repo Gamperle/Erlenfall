@@ -43,6 +43,9 @@ const BRIDGE_RISE := 0.9
 const BRIDGE_LIFT := 0.06
 const BOULDER_COLOR := Color(0.36, 0.33, 0.3)
 const BOULDER_LUMPINESS := 0.35
+const PROP_FOLDER := "res://assets/props/"
+## Smaller props have no collision, so they never block the player.
+const PROP_SOLID_SIZE := 0.6
 const PLANT_CHUNK_SIZE := 128.0
 const BUSH_DRAW_DISTANCE := 450.0
 const GRASS_DRAW_DISTANCE := 260.0
@@ -66,6 +69,7 @@ func _ready() -> void:
 			_busy_spots.append(Vector2(spot["x"], spot["z"]))
 	for field: Dictionary in layout["fields"]:
 		_add_field(field)
+	_add_props(layout["props"], layout["buildings"])
 	_add_roads(layout["roads"])
 	_add_trees(layout["trees"], layout["fields"])
 	var leaf_trees := _scatter(layout["leaf_trees"], layout["fields"])
@@ -149,7 +153,10 @@ func _add_box_interactable(node: Interactable, data: Dictionary) -> void:
 	add_child(node)
 
 	var size := Vector3(data["width"], data["height"], data["depth"])
-	node.add_child(ModelBuilder.prop(data.get("model", ""), size))
+	if data.has("asset"):
+		node.add_child(load(data["asset"]).instantiate())
+	else:
+		node.add_child(ModelBuilder.prop(data.get("model", ""), size))
 	var shape := BoxShape3D.new()
 	shape.size = size
 	var collision := CollisionShape3D.new()
@@ -336,6 +343,59 @@ func _add_building(data: Dictionary) -> void:
 		_repairs.append({ "flag": data["repaired_by_flag"], "repaired": full_roof, "damaged": damaged })
 	else:
 		body.add_child(ModelBuilder.chimney(width, depth, height))
+
+
+## Places the generated props. "building" makes x and z relative to that building, and "on"
+## sets a prop on top of an earlier one, with x and z as the offset from its center.
+## "solid": false skips collision where it would leave a notch against a wall that enemies get stuck in.
+func _add_props(props: Array, buildings: Array) -> void:
+	var building_transforms := {}
+	for building: Dictionary in buildings:
+		var angle := deg_to_rad(float(building["rotation"]))
+		building_transforms[building["id"]] = Transform2D(-angle, Vector2(building["x"], building["z"]))
+	var root := Node3D.new()
+	root.name = "Props"
+	add_child(root)
+	var placed := {}
+	for data: Dictionary in props:
+		var body := StaticBody3D.new()
+		body.name = data["model"]
+		var heading: float = data.get("rotation", 0.0)
+		var offset := Vector2(data["x"], data["z"])
+		var at: Vector3
+		if data.has("on"):
+			var below: Dictionary = placed[data["on"]]
+			at = below["position"] + Vector3(offset.x, below["height"], offset.y)
+		else:
+			var point := offset
+			if data.has("building"):
+				point = building_transforms[data["building"]] * offset
+				heading += _building_heading(buildings, data["building"])
+			at = _ground_position(point.x, point.y)
+		body.position = at + Vector3.UP * float(data.get("lift", 0.0))
+		body.rotation_degrees = Vector3(data.get("tilt", 0.0), heading, 0.0)
+		root.add_child(body)
+
+		var model: Node3D = load(PROP_FOLDER + data["model"] + ".glb").instantiate()
+		body.add_child(model)
+		var mesh: MeshInstance3D = model.find_children("*", "MeshInstance3D", true, false)[0]
+		var bounds: AABB = mesh.get_aabb()
+		placed[data["model"]] = { "position": at, "height": bounds.end.y }
+		_busy_spots.append(Vector2(at.x, at.z))
+		if data.get("solid", true) and not data.has("tilt") and not data.has("on") and bounds.get_longest_axis_size() >= PROP_SOLID_SIZE:
+			var shape := BoxShape3D.new()
+			shape.size = bounds.size
+			var collision := CollisionShape3D.new()
+			collision.shape = shape
+			collision.position = bounds.get_center()
+			body.add_child(collision)
+
+
+func _building_heading(buildings: Array, id: String) -> float:
+	for building: Dictionary in buildings:
+		if building["id"] == id:
+			return building["rotation"]
+	return 0.0
 
 
 func _add_field(data: Dictionary) -> void:

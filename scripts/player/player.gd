@@ -43,8 +43,11 @@ const INTERACT_FACING := 0.3
 const WEAPON_HAND_POSITION := Vector3(0.0, -0.58, -0.05)
 const WEAPON_FIRST_PERSON_POSITION := Vector3(0.3, -0.42, -0.7)
 const WEAPON_FIRST_PERSON_SCALE := 0.4
-const WEAPON_REST_ANGLE := 0.0
-const WEAPON_SWING_ANGLE := -1.4
+## Held forward and up from the hand, since the arm hangs down.
+const WEAPON_REST_ANGLE := -1.0
+const WEAPON_SWING_ANGLE := -2.2
+const WEAPON_FIRST_PERSON_REST_ANGLE := -0.35
+const WEAPON_FIRST_PERSON_SWING_ANGLE := -1.4
 const WEAPON_BLOCK_ANGLE := 1.3
 const TORCH_ITEM := "torch"
 const TORCH_ARM_RAISE := 1.2
@@ -291,7 +294,9 @@ func _update_combat(delta: float) -> void:
 
 	# Swing the placeholder weapon while the cooldown runs, and raise it to block.
 	var swing := _attack_cooldown / ATTACK_COOLDOWN
-	_weapon.rotation.x = lerpf(WEAPON_REST_ANGLE, WEAPON_SWING_ANGLE, swing)
+	var rest_angle := WEAPON_FIRST_PERSON_REST_ANGLE if first_person else WEAPON_REST_ANGLE
+	var swing_angle := WEAPON_FIRST_PERSON_SWING_ANGLE if first_person else WEAPON_SWING_ANGLE
+	_weapon.rotation.x = lerpf(rest_angle, swing_angle, swing)
 	if is_blocking():
 		_weapon.rotation = Vector3(0.0, 0.0, WEAPON_BLOCK_ANGLE)
 	else:

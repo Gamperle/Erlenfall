@@ -2,16 +2,16 @@
 	"arrival": {
 		"title": "QUEST_ARRIVAL",
 		"objectives": [
-			{ "id": "see_grandmother", "text": "OBJ_SEE_GRANDMOTHER" },
-			{ "id": "see_smith", "text": "OBJ_SEE_SMITH" }
+			{ "id": "see_grandmother", "text": "OBJ_SEE_GRANDMOTHER", "marker": [-18, -2] },
+			{ "id": "see_smith", "text": "OBJ_SEE_SMITH", "marker": [12.5, 21] }
 		]
 	},
 	"first_nails": {
 		"title": "QUEST_FIRST_NAILS",
 		"objectives": [
-			{ "id": "make_nails", "text": "OBJ_MAKE_NAILS", "item": "iron_nails", "count": 4 },
-			{ "id": "tell_mayor", "text": "OBJ_TELL_MAYOR" },
-			{ "id": "repair_roof", "text": "OBJ_REPAIR_ROOF" }
+			{ "id": "make_nails", "text": "OBJ_MAKE_NAILS", "item": "iron_nails", "count": 4, "marker": [40, -175], "marker_when_carrying": { "item": "iron_ingot", "marker": [16, 25] } },
+			{ "id": "tell_mayor", "text": "OBJ_TELL_MAYOR", "marker": [4, -19] },
+			{ "id": "repair_roof", "text": "OBJ_REPAIR_ROOF", "marker": [20.6, -11.5] }
 		]
 	}
 }

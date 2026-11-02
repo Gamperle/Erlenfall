@@ -106,6 +106,17 @@ func _test_hud(scene: Node, player: Player) -> void:
 	_check(compass.offset_of(0.0) == -1.0 and compass.offset_of(180.0) == 1.0, "north is to the left when facing east")
 	compass.heading = 350.0
 	_check(is_equal_approx(compass.offset_of(10.0), 20.0 / Compass.VISIBLE_DEGREES), "the compass wraps around north")
+	_check(is_equal_approx(Compass.bearing_between(Vector2.ZERO, Vector2(10.0, 0.0)), 90.0), "a place to the east has a bearing of 90 degrees")
+	var quests := QuestLog.new()
+	var carried := Inventory.new()
+	quests.start("first_nails")
+	var markers := quests.objective_markers(carried)
+	_check(markers.size() == 1 and markers[0] == Vector2(40.0, -175.0), "the compass points to the ore for the nails")
+	carried.add("iron_ingot")
+	_check(quests.objective_markers(carried)[0] == Vector2(16.0, 25.0), "the compass points to the anvil once there is iron")
+	compass.heading = 0.0
+	compass.objective_bearings = PackedFloat32Array([90.0])
+	compass.queue_redraw()
 	pivot.rotation = Vector3.ZERO
 
 	# Below the base width of 1152 the interface shrinks, so the top row never overlaps.

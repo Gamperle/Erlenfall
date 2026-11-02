@@ -73,11 +73,20 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_compass.heading = _player.heading_degrees()
+	_compass.objective_bearings = _objective_bearings()
 	_update_prompt()
 	if _playing:
 		_since_save += delta
 		if _since_save >= AUTOSAVE_SECONDS:
 			save_game()
+
+
+func _objective_bearings() -> PackedFloat32Array:
+	var bearings := PackedFloat32Array()
+	if FeatureFlags.enabled("compass_objectives"):
+		for marker in _player.quests.objective_markers(_player.inventory):
+			bearings.append(Compass.bearing_between(Vector2(_player.position.x, _player.position.z), marker))
+	return bearings
 
 
 func _update_prompt() -> void:

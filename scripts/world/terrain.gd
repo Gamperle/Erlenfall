@@ -49,6 +49,10 @@ const RIVER_FINE_MARGIN := 1.0
 const RIVER_FINE_RADIUS := 560.0
 const FINE_CELLS := 4
 const WATER_OVERLAP := 0.75
+const GROUP := "terrain"
+## The speed left when wading at this depth or deeper.
+const WADING_SPEED_FACTOR := 0.55
+const WADING_FULL_DEPTH := 0.6
 
 ## The roads in the layout file's order.
 var roads: Array[TerrainPath] = []
@@ -89,6 +93,10 @@ func _init() -> void:
 	_add_river(layout["river"])
 
 
+func _enter_tree() -> void:
+	add_to_group(GROUP)
+
+
 func _ready() -> void:
 	var count := int(SIZE / STEP) + 1
 	var heights := _sample_heights(count)
@@ -114,6 +122,14 @@ func river_clearance(x: float, z: float) -> float:
 func water_height(x: float, z: float) -> float:
 	var found := river.nearest(x, z)
 	return found.y if found.x < INF else -INF
+
+
+## How much water slows someone whose feet are at this point. Bridges are above the water.
+func wading_factor(feet: Vector3) -> float:
+	var depth := water_height(feet.x, feet.z) - feet.y
+	if depth <= 0.0:
+		return 1.0
+	return lerpf(1.0, WADING_SPEED_FACTOR, minf(depth / WADING_FULL_DEPTH, 1.0))
 
 
 func _natural_height(x: float, z: float) -> float:

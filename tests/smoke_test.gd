@@ -28,6 +28,11 @@ func _run() -> void:
 	_check(absf(terrain.height_at(0.0, -28.0)) < 2.0, "village site stays low")
 	_check(terrain.height_at(0.0, 600.0) > 60.0, "mountains surround the valley")
 	_check(player.is_on_floor(), "player lands on terrain")
+	_check(is_equal_approx(terrain.wading_factor(Vector3(0.0, terrain.height_at(0.0, 0.0), 0.0)), 1.0) or terrain.river_clearance(0.0, 0.0) < 0.0, "dry land doesn't slow anyone")
+	var in_river := terrain.river.positions[terrain.river.positions.size() / 2]
+	var river_floor := Vector3(in_river.x, terrain.height_at(in_river.x, in_river.y), in_river.y)
+	_check(terrain.wading_factor(river_floor) == Terrain.WADING_SPEED_FACTOR, "wading through the river slows people down")
+	_check(terrain.wading_factor(river_floor + Vector3.UP * 5.0) == 1.0, "a bridge over the river doesn't slow anyone")
 	_check(absf(player.position.y - terrain.height_at(player.position.x, player.position.z)) < 1.0, "collision matches terrain")
 	_check(village.get_node_or_null("forge") != null, "buildings load from data")
 	_check(village.get_node("Roads").get_child_count() == 2, "roads load from data")

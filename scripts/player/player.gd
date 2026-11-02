@@ -293,6 +293,9 @@ func _physics_process(delta: float) -> void:
 	var speed := SPRINT_SPEED if Input.is_action_pressed("sprint") else WALK_SPEED
 	if is_blocking():
 		speed = WALK_SPEED * BLOCK_SPEED_FACTOR
+	var terrain := get_tree().get_first_node_in_group(Terrain.GROUP) as Terrain
+	if terrain != null:
+		speed *= terrain.wading_factor(global_position)
 	var acceleration := ACCELERATION if is_on_floor() else AIR_ACCELERATION
 	var target := direction * speed
 	velocity.x = move_toward(velocity.x, target.x, acceleration * delta)

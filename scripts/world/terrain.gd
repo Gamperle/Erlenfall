@@ -49,6 +49,9 @@ const RIVER_FINE_MARGIN := 1.0
 const RIVER_FINE_RADIUS := 560.0
 const FINE_CELLS := 4
 const WATER_OVERLAP := 0.75
+const CHUNK_CELLS := 32
+## More vertices than any chunk has, so that each chunk can mark the ones it has used.
+const CHUNK_INDEX_RANGE := 1048576
 const GROUP := "terrain"
 ## The speed left when wading at this depth or deeper.
 const WADING_SPEED_FACTOR := 0.55
@@ -278,11 +281,9 @@ func _build_mesh(heights: PackedFloat32Array, count: int) -> void:
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
-	var indices := PackedInt32Array()
 	vertices.resize(heights.size())
 	normals.resize(heights.size())
 	colors.resize(heights.size())
-	indices.resize((count - 1) * (count - 1) * 6)
 
 	for j in count:
 		for i in count:
@@ -299,32 +300,74 @@ func _build_mesh(heights: PackedFloat32Array, count: int) -> void:
 			colors[index] = _color_at(x, z)
 
 	var fine_cells := _fine_cells(count)
-	var cursor := 0
-	for j in count - 1:
-		for i in count - 1:
-			if fine_cells[j * (count - 1) + i] == 1:
-				continue
-			var a := j * count + i
-			var b := a + 1
-			var c := a + count
-			var d := c + 1
-			for index in [a, b, c, b, d, c]:
-				indices[cursor] = index
-				cursor += 1
-	indices.resize(cursor)
-	_add_fine_cells(fine_cells, heights, count, vertices, normals, colors, indices)
+	var chunk_indices := _coarse_chunk_indices(fine_cells, count)
+	_add_fine_cells(fine_cells, heights, count, vertices, normals, colors, chunk_indices)
+
+	var material := _ground_material()
+	var used_as := PackedInt32Array()
+	used_as.resize(vertices.size())
+	used_as.fill(-1)
+	for chunk in chunk_indices.size():
+		var indices: PackedInt32Array = chunk_indices[chunk]
+		if indices.is_empty():
+			continue
+		_add_chunk_mesh(chunk, indices, vertices, normals, colors, used_as, material)
+
+
+## Sorts the triangles of the ordinary cells into one list per chunk, leaving out the marked cells.
+func _coarse_chunk_indices(fine_cells: PackedByteArray, count: int) -> Array[PackedInt32Array]:
+	var row := count - 1
+	var chunks_across := ceili(float(row) / CHUNK_CELLS)
+	var chunk_indices: Array[PackedInt32Array] = []
+	for chunk_z in chunks_across:
+		for chunk_x in chunks_across:
+			var indices := PackedInt32Array()
+			indices.resize(CHUNK_CELLS * CHUNK_CELLS * 6)
+			var cursor := 0
+			for j in range(chunk_z * CHUNK_CELLS, mini((chunk_z + 1) * CHUNK_CELLS, row)):
+				for i in range(chunk_x * CHUNK_CELLS, mini((chunk_x + 1) * CHUNK_CELLS, row)):
+					if fine_cells[j * row + i] == 1:
+						continue
+					var a := j * count + i
+					var b := a + 1
+					var c := a + count
+					var d := c + 1
+					indices[cursor] = a
+					indices[cursor + 1] = b
+					indices[cursor + 2] = c
+					indices[cursor + 3] = b
+					indices[cursor + 4] = d
+					indices[cursor + 5] = c
+					cursor += 6
+			indices.resize(cursor)
+			chunk_indices.append(indices)
+	return chunk_indices
+
+
+## Gives a chunk its own mesh with only the vertices it uses, so it can be culled on its own.
+func _add_chunk_mesh(chunk: int, indices: PackedInt32Array, vertices: PackedVector3Array, normals: PackedVector3Array, colors: PackedColorArray, used_as: PackedInt32Array, material: ShaderMaterial) -> void:
+	var chunk_vertices := PackedVector3Array()
+	var chunk_normals := PackedVector3Array()
+	var chunk_colors := PackedColorArray()
+	var first_of_chunk := chunk * CHUNK_INDEX_RANGE
+	for position_in_list in indices.size():
+		var index := indices[position_in_list]
+		if used_as[index] < first_of_chunk:
+			used_as[index] = first_of_chunk + chunk_vertices.size()
+			chunk_vertices.append(vertices[index])
+			chunk_normals.append(normals[index])
+			chunk_colors.append(colors[index])
+		indices[position_in_list] = used_as[index] - first_of_chunk
 
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = vertices
-	arrays[Mesh.ARRAY_NORMAL] = normals
-	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_VERTEX] = chunk_vertices
+	arrays[Mesh.ARRAY_NORMAL] = chunk_normals
+	arrays[Mesh.ARRAY_COLOR] = chunk_colors
 	arrays[Mesh.ARRAY_INDEX] = indices
-
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	mesh.surface_set_material(0, _ground_material())
-
+	mesh.surface_set_material(0, material)
 	var instance := MeshInstance3D.new()
 	instance.mesh = mesh
 	add_child(instance)
@@ -345,7 +388,7 @@ func _fine_cells(count: int) -> PackedByteArray:
 
 ## Gives each marked cell its own smaller grid. Where a cell meets a coarse one, its edge stays
 ## straight along the coarse cell's edge, so no crack opens between them.
-func _add_fine_cells(cells: PackedByteArray, heights: PackedFloat32Array, count: int, vertices: PackedVector3Array, normals: PackedVector3Array, colors: PackedColorArray, indices: PackedInt32Array) -> void:
+func _add_fine_cells(cells: PackedByteArray, heights: PackedFloat32Array, count: int, vertices: PackedVector3Array, normals: PackedVector3Array, colors: PackedColorArray, chunk_indices: Array[PackedInt32Array]) -> void:
 	var size := STEP / FINE_CELLS
 	var row := count - 1
 	# Neighboring vertices and cells ask for the same points, and working out a height is slow.
@@ -370,6 +413,7 @@ func _add_fine_cells(cells: PackedByteArray, heights: PackedFloat32Array, count:
 			var corner_sw := heights[(j + 1) * count + i]
 			var corner_se := heights[(j + 1) * count + i + 1]
 			var first := vertices.size()
+			var cell_indices := PackedInt32Array()
 			for sub_z in FINE_CELLS + 1:
 				for sub_x in FINE_CELLS + 1:
 					var x := i * STEP - SIZE / 2.0 + sub_x * size
@@ -396,7 +440,9 @@ func _add_fine_cells(cells: PackedByteArray, heights: PackedFloat32Array, count:
 					var b := a + 1
 					var c := a + FINE_CELLS + 1
 					var d := c + 1
-					indices.append_array(PackedInt32Array([a, b, c, b, d, c]))
+					cell_indices.append_array(PackedInt32Array([a, b, c, b, d, c]))
+			var chunk: int = j / CHUNK_CELLS * ceili(float(row) / CHUNK_CELLS) + i / CHUNK_CELLS
+			chunk_indices[chunk].append_array(cell_indices)
 
 
 func _ground_material() -> ShaderMaterial:

@@ -31,6 +31,7 @@ func _run() -> void:
 	_check(absf(terrain.height_at(0.0, -28.0)) < 2.0, "village site stays low")
 	_check(terrain.height_at(0.0, 600.0) > 60.0, "mountains surround the valley")
 	_check(player.is_on_floor(), "player lands on terrain")
+	_check(terrain.get_children().filter(func(child): return child is MeshInstance3D).size() > 100, "the terrain is split into chunks")
 	var slowed_on_land := 0
 	for z in range(-500, 500, 10):
 		for x in range(-500, 500, 10):

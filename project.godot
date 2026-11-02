@@ -41,3 +41,8 @@ locale/fallback="en"
 [rendering]
 
 renderer/rendering_method="forward_plus"
+
+[display]
+
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"

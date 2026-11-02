@@ -108,6 +108,13 @@ func _test_hud(scene: Node, player: Player) -> void:
 	_check(is_equal_approx(compass.offset_of(10.0), 20.0 / Compass.VISIBLE_DEGREES), "the compass wraps around north")
 	pivot.rotation = Vector3.ZERO
 
+	# Below the base width of 1152 the interface shrinks, so the top row never overlaps.
+	_check(ProjectSettings.get_setting("display/window/stretch/mode") == "canvas_items", "the interface scales with the window")
+	var health_bar: Control = scene.get_node("UI/HealthBar")
+	var middle := 1152.0 / 2.0
+	_check(health_bar.offset_right < middle + compass.offset_left, "the compass clears the health bar at the base width")
+	_check(middle + compass.offset_right < 1152.0 + overlay.offset_left, "the compass clears the performance overlay at the base width")
+
 	overlay.refresh()
 	_check(overlay.visible and overlay.text.contains("FPS"), "the performance overlay shows measurements")
 	TranslationServer.set_locale("de")

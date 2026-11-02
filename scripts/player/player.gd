@@ -190,7 +190,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		_look(event.relative * MOUSE_SENSITIVITY)
+		# Screen units, so the window's size and the interface scale don't change the sensitivity.
+		_look(event.screen_relative * MOUSE_SENSITIVITY)
 	elif event.is_action_pressed("attack"):
 		attack()
 	elif event.is_action_pressed("dodge"):

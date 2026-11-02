@@ -10,14 +10,21 @@ const DEATH_MATERIAL_LOSS := 0.25
 const MESSAGE_SECONDS := 5.0
 const AUTOSAVE_SECONDS := 60.0
 const WAKE_UP_HOUR := 7.0
+const HURT_COLOR := Color(0.6, 0.05, 0.02, 0.28)
+const HURT_FADE_SECONDS := 0.35
+const DEATH_BLACK_SECONDS := 0.5
+const DEATH_FADE_SECONDS := 1.5
 
 ## Tests turn the menu off and use their own save file.
 var show_menu := true
 var save_path := SaveGame.DEFAULT_PATH
+var slot_paths := SaveGame.slot_paths()
 
 var _playing := false
 var _since_save := 0.0
 var _ending_shown := false
+var _hurt_overlay: ColorRect
+var _fade_overlay: ColorRect
 
 @onready var _terrain: Terrain = $Terrain
 @onready var _village: Village = $Village
@@ -57,9 +64,13 @@ func _ready() -> void:
 	_player.health.died.connect(_on_player_died)
 	_player.notice.connect(_show_message)
 	_player.busy_changed.connect(_update_prompt)
+	_player.hurt.connect(_flash_hurt)
+	_hurt_overlay = _add_overlay(HURT_COLOR)
+	_fade_overlay = _add_overlay(Color.BLACK)
 
-	_menu.continue_chosen.connect(_continue_game)
-	_menu.new_game_chosen.connect(_start_new_game)
+	_menu.slot_paths = slot_paths
+	_menu.continue_chosen.connect(_on_continue_chosen)
+	_menu.new_game_chosen.connect(_on_new_game_chosen)
 	_menu.resume_chosen.connect(resume)
 	_menu.quit_chosen.connect(_save_and_quit)
 
@@ -68,7 +79,7 @@ func _ready() -> void:
 	_ui.visible = false
 	_player.visible = false
 	if show_menu:
-		_menu.open_title(SaveGame.exists(save_path))
+		_menu.open_title()
 	else:
 		_start_new_game()
 
@@ -144,6 +155,16 @@ func _spawn_position() -> Vector3:
 	return Vector3(SPAWN.x, _terrain.height_at(SPAWN.x, SPAWN.y) + 1.0, SPAWN.y)
 
 
+func _on_new_game_chosen(path: String) -> void:
+	save_path = path
+	_start_new_game()
+
+
+func _on_continue_chosen(path: String) -> void:
+	save_path = path
+	_continue_game()
+
+
 func _start_new_game() -> void:
 	_player.quests.start(FIRST_QUEST)
 	_begin_playing()
@@ -205,6 +226,27 @@ func _on_player_died() -> void:
 	_player.revive_at(Vector3(WAKE_UP_SPOT.x, height, WAKE_UP_SPOT.y))
 	get_tree().call_group(Enemy.GROUP, "revive")
 	_show_message("UI_WOKE_UP")
+	# The move back to the village happens behind the black screen.
+	_fade_overlay.modulate.a = 1.0
+	var tween := create_tween()
+	tween.tween_interval(DEATH_BLACK_SECONDS)
+	tween.tween_property(_fade_overlay, "modulate:a", 0.0, DEATH_FADE_SECONDS)
+
+
+func _flash_hurt() -> void:
+	_hurt_overlay.modulate.a = 1.0
+	create_tween().tween_property(_hurt_overlay, "modulate:a", 0.0, HURT_FADE_SECONDS)
+
+
+## A full-screen color for effects, hidden until needed, that doesn't catch the mouse.
+func _add_overlay(color: Color) -> ColorRect:
+	var overlay := ColorRect.new()
+	overlay.color = color
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.modulate.a = 0.0
+	_ui.add_child(overlay)
+	return overlay
 
 
 func _show_message(text_key: String) -> void:

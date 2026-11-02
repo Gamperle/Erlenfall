@@ -15,6 +15,9 @@ const HOME_TOLERANCE := 2.0
 const ATTACK_REACH_MARGIN := 0.5
 const BAR_WIDTH := 0.8
 const BAR_HEIGHT := 0.08
+const KNOCKBACK_SPEED := 4.0
+const KNOCKBACK_DECAY := 14.0
+const SPARK_COLOR := Color(1.0, 0.75, 0.35)
 const FOLLOW_MAX_SECONDS := 15.0
 const FOLLOW_TURN_SPEED := 2.5
 const FOLLOW_LOST_WALL_SECONDS := 1.0
@@ -30,6 +33,8 @@ var _stats: Dictionary = {}
 var _home := Vector3.ZERO
 var _timer := 0.0
 var _flash := 0.0
+var _knockback := Vector3.ZERO
+var _sparks: CPUParticles3D
 var _follow_left := 0.0
 var _follow_direction := Vector3.ZERO
 var _follow_side := 1.0
@@ -77,16 +82,24 @@ func _physics_process(delta: float) -> void:
 			_timer -= delta
 			if _timer <= 0.0:
 				state = State.CHASE
+	velocity += _knockback
 	move_and_slide()
+	velocity -= _knockback
+	_knockback = _knockback.move_toward(Vector3.ZERO, KNOCKBACK_DECAY * delta)
 	_body.animate(Vector2(velocity.x, velocity.z).length(), delta)
 	_update_color(delta)
 
 
-## Takes damage from an attack. Ignored once dead.
-func take_hit(amount: float) -> void:
+## Takes damage from an attack, and is pushed away from where it came from. Ignored once dead.
+func take_hit(amount: float, from_position := Vector3.INF) -> void:
 	if state == State.DEAD:
 		return
 	_flash = HIT_FLASH_SECONDS
+	_sparks.restart()
+	if from_position != Vector3.INF:
+		var away := global_position - from_position
+		away.y = 0.0
+		_knockback = away.normalized() * KNOCKBACK_SPEED
 	health.damage(amount)
 
 
@@ -95,6 +108,7 @@ func revive() -> void:
 	health.restore()
 	position = _home
 	velocity = Vector3.ZERO
+	_knockback = Vector3.ZERO
 	state = State.IDLE
 	_follow_left = 0.0
 	visible = true
@@ -288,6 +302,9 @@ func _build() -> void:
 	_collision.position.y = height / 2.0
 	add_child(_collision)
 
+	_sparks = _build_sparks(height * 0.65)
+	add_child(_sparks)
+
 	var bar_mesh := QuadMesh.new()
 	bar_mesh.size = Vector2(BAR_WIDTH, BAR_HEIGHT)
 	var bar_material := StandardMaterial3D.new()
@@ -302,6 +319,29 @@ func _build() -> void:
 	_bar.visible = false
 	_bar.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_bar)
+
+
+func _build_sparks(at_height: float) -> CPUParticles3D:
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2.ONE * 0.05
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	material.albedo_color = SPARK_COLOR
+	mesh.material = material
+	var sparks := CPUParticles3D.new()
+	sparks.mesh = mesh
+	sparks.position.y = at_height
+	sparks.emitting = false
+	sparks.one_shot = true
+	sparks.explosiveness = 1.0
+	sparks.amount = 14
+	sparks.lifetime = 0.35
+	sparks.spread = 180.0
+	sparks.initial_velocity_min = 1.5
+	sparks.initial_velocity_max = 3.5
+	sparks.gravity = Vector3.DOWN * 6.0
+	return sparks
 
 
 static func _get_data() -> Dictionary:

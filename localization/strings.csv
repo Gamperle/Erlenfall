@@ -106,6 +106,9 @@ UI_GAME_TITLE,Erlenfall,Erlenfall
 UI_CONTINUE_GAME,Continue,Fortsetzen
 UI_NEW_GAME,New game,Neues Spiel
 UI_QUIT,Quit,Beenden
+UI_LOAD_GAME,Load game,Spiel laden
+UI_SLOT,Slot %d: %s,Spielstand %d: %s
+UI_SLOT_EMPTY,empty,leer
 UI_SETTINGS,Settings,Einstellungen
 UI_LANGUAGE,Language,Sprache
 UI_LANGUAGE_SYSTEM,System language,Systemsprache

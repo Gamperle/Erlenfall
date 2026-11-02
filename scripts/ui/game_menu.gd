@@ -2,8 +2,8 @@ class_name GameMenu
 extends CanvasLayer
 ## The title and pause menus. The game world is paused while either is open.
 
-signal continue_chosen
-signal new_game_chosen
+signal continue_chosen(path: String)
+signal new_game_chosen(path: String)
 signal resume_chosen
 signal quit_chosen
 signal graphics_changed
@@ -11,13 +11,16 @@ signal graphics_changed
 const PANEL_WIDTH := 360.0
 const ASSET_LIST_URL := "https://github.com/Gamperle/Erlenfall/blob/main/ASSETS.md"
 
+## The save files to offer. Set before the title menu opens.
+var slot_paths: Array[String] = []
+
 var _panel: PanelContainer
 var _title: Label
 var _buttons: VBoxContainer
 var _asset_note: VBoxContainer
 var _message: Label
 var _confirming := false
-var _can_continue := false
+var _slot_screen := false
 var _settings_open := false
 var _leave_settings: Callable
 
@@ -32,19 +35,21 @@ func is_open() -> bool:
 	return _panel.visible
 
 
-func open_title(can_continue: bool) -> void:
-	_can_continue = can_continue
+func open_title() -> void:
 	_confirming = false
 	_settings_open = false
+	_slot_screen = false
 	_title.text = tr("UI_GAME_TITLE")
 	_message.visible = false
 	_clear_buttons()
-	if can_continue:
-		_add_button("UI_CONTINUE_GAME", continue_chosen)
-		_add_action("UI_NEW_GAME", _open_new_game_warning)
+	var latest := SaveGame.latest(slot_paths)
+	if latest != "":
+		_add_action("UI_CONTINUE_GAME", func() -> void: continue_chosen.emit(latest))
+		_add_action("UI_LOAD_GAME", _open_load_slots)
+		_add_action("UI_NEW_GAME", _open_new_game_slots)
 	else:
-		_add_button("UI_NEW_GAME", new_game_chosen)
-	_add_action("UI_SETTINGS", open_settings.bind(open_title.bind(can_continue)))
+		_add_action("UI_NEW_GAME", func() -> void: new_game_chosen.emit(slot_paths[0]))
+	_add_action("UI_SETTINGS", open_settings.bind(open_title))
 	_add_button("UI_QUIT", quit_chosen)
 	_asset_note.visible = true
 	_show()
@@ -53,6 +58,7 @@ func open_title(can_continue: bool) -> void:
 func open_pause() -> void:
 	_confirming = false
 	_settings_open = false
+	_slot_screen = false
 	_title.text = tr("UI_PAUSED")
 	_message.visible = false
 	_clear_buttons()
@@ -67,6 +73,7 @@ func open_pause() -> void:
 func open_settings(leave: Callable) -> void:
 	_leave_settings = leave
 	_confirming = false
+	_slot_screen = false
 	_settings_open = true
 	_title.text = tr("UI_SETTINGS")
 	_message.visible = false
@@ -112,8 +119,11 @@ func _input(event: InputEvent) -> void:
 		_close_settings()
 		get_viewport().set_input_as_handled()
 		return
-	if is_open() and _confirming and event.is_action_pressed("ui_cancel"):
-		open_title(_can_continue)
+	if is_open() and (_confirming or _slot_screen) and event.is_action_pressed("ui_cancel"):
+		if _confirming:
+			_open_new_game_slots()
+		else:
+			open_title()
 		get_viewport().set_input_as_handled()
 		return
 	if is_open() and _title.text == tr("UI_PAUSED") and event.is_action_pressed("pause"):
@@ -121,15 +131,57 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-## A new game overwrites the only save, so ask first. The safe choice has the focus.
-func _open_new_game_warning() -> void:
+func _open_load_slots() -> void:
+	_open_slots("UI_LOAD_GAME")
+	for i in slot_paths.size():
+		var path := slot_paths[i]
+		var button := _add_slot_button(i)
+		button.disabled = not SaveGame.exists(path)
+		button.pressed.connect(func() -> void: continue_chosen.emit(path))
+	_add_action("UI_BACK", open_title)
+	_show()
+
+
+func _open_new_game_slots() -> void:
+	_open_slots("UI_NEW_GAME")
+	for i in slot_paths.size():
+		var path := slot_paths[i]
+		var button := _add_slot_button(i)
+		if SaveGame.exists(path):
+			button.pressed.connect(_open_new_game_warning.bind(path))
+		else:
+			button.pressed.connect(func() -> void: new_game_chosen.emit(path))
+	_add_action("UI_BACK", open_title)
+	_show()
+
+
+func _open_slots(title_key: String) -> void:
+	_confirming = false
+	_slot_screen = true
+	_title.text = tr(title_key)
+	_message.visible = false
+	_asset_note.visible = false
+	_clear_buttons()
+
+
+func _add_slot_button(index: int) -> Button:
+	var state := SaveGame.saved_at_text(slot_paths[index]) if SaveGame.exists(slot_paths[index]) else tr("UI_SLOT_EMPTY")
+	var button := Button.new()
+	button.text = tr("UI_SLOT") % [index + 1, state]
+	_buttons.add_child(button)
+	return button
+
+
+## Starting over in a used slot overwrites it, so ask first. The safe choice has the focus.
+func _open_new_game_warning(path: String) -> void:
 	_confirming = true
+	_slot_screen = false
 	_title.text = tr("UI_NEW_GAME")
 	_message.text = tr("UI_NEW_GAME_WARNING")
 	_message.visible = true
 	_clear_buttons()
-	_add_action("UI_BACK", open_title.bind(_can_continue))
-	_add_button("UI_OVERWRITE_SAVE", new_game_chosen)
+	_add_action("UI_BACK", _open_new_game_slots)
+	_add_action("UI_OVERWRITE_SAVE", func() -> void: new_game_chosen.emit(path))
 	_asset_note.visible = false
 	_show()
 
@@ -177,8 +229,11 @@ func _show() -> void:
 
 
 func _first_focusable(parent: Node) -> Control:
-	var first := parent.get_child(0)
-	return first.get_child(1) if first is HBoxContainer else first
+	for child in parent.get_children():
+		var control: Control = child.get_child(1) if child is HBoxContainer else child
+		if not (control is Button and control.disabled):
+			return control
+	return parent.get_child(0)
 
 
 func _clear_buttons() -> void:

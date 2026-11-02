@@ -5,6 +5,32 @@ extends RefCounted
 const BELOW_GROUND_MARGIN := 1.5
 const DEFAULT_PATH := "user://save.json"
 const VERSION := 1
+const SLOTS := 3
+
+
+## The save files in slot order. The first is the file from before slots existed.
+static func slot_paths() -> Array[String]:
+	var paths: Array[String] = [DEFAULT_PATH]
+	for slot in range(2, SLOTS + 1):
+		paths.append("user://save_%d.json" % slot)
+	return paths
+
+
+## Returns the most recently saved of these files, or an empty string if none holds a save.
+static func latest(paths: Array[String]) -> String:
+	var found := ""
+	var newest := -1
+	for path in paths:
+		if exists(path) and FileAccess.get_modified_time(path) > newest:
+			found = path
+			newest = FileAccess.get_modified_time(path)
+	return found
+
+
+## Returns when this file was saved, in the player's local time.
+static func saved_at_text(path: String) -> String:
+	var local_time: int = FileAccess.get_modified_time(path) + int(Time.get_time_zone_from_system()["bias"]) * 60
+	return Time.get_datetime_string_from_unix_time(local_time, true).left(16)
 
 
 static func exists(path: String) -> bool:

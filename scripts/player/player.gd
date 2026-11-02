@@ -5,6 +5,7 @@ extends CharacterBody3D
 ## Asks the game to show the player a short message.
 signal notice(text_key: String)
 signal busy_changed
+signal hurt
 
 const WALK_SPEED := 3.5
 const SPRINT_SPEED := 6.5
@@ -228,6 +229,7 @@ func take_hit(amount: float, from_position: Vector3) -> void:
 	if is_blocking() and _forward().dot(offset.normalized()) > BLOCK_FACING:
 		amount *= BLOCK_DAMAGE_FACTOR
 	_since_hit = 0.0
+	hurt.emit()
 	health.damage(amount)
 
 
@@ -372,7 +374,7 @@ func _land_attack() -> void:
 		var offset := enemy.global_position - global_position
 		offset.y = 0.0
 		if offset.length() < ATTACK_RANGE and _forward().dot(offset.normalized()) > ATTACK_FACING:
-			enemy.take_hit(damage)
+			enemy.take_hit(damage, global_position)
 
 
 func _forward() -> Vector3:

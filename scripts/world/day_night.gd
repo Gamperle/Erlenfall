@@ -2,6 +2,7 @@ class_name DayNight
 extends Node
 ## Moves the sun and shifts sky, fog, and light through a 24-hour cycle.
 
+const GROUP := "day_night"
 const DAY_LENGTH_SECONDS := 600.0
 const FAST_FORWARD := 30.0
 const SUNRISE := 6.0
@@ -24,6 +25,10 @@ const MOON_ENERGY := 0.35
 @export var world_environment: WorldEnvironment
 @export var mist: Mist
 @export_range(0.0, 24.0) var hour := 9.0
+
+
+func _enter_tree() -> void:
+	add_to_group(GROUP)
 
 
 func _ready() -> void:

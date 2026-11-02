@@ -14,6 +14,7 @@ const HOME_TOLERANCE := 2.0
 const ATTACK_REACH_MARGIN := 0.5
 const BAR_WIDTH := 0.8
 const BAR_HEIGHT := 0.08
+const DETOUR_SECONDS := 1.2
 
 static var _data: Dictionary = {}
 
@@ -24,6 +25,9 @@ var _stats: Dictionary = {}
 var _home := Vector3.ZERO
 var _timer := 0.0
 var _flash := 0.0
+var _detour_left := 0.0
+var _detour_direction := Vector3.ZERO
+var _detour_side := 1.0
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _body: Humanoid
 var _collision: CollisionShape3D
@@ -51,6 +55,7 @@ func _physics_process(delta: float) -> void:
 			revive()
 		return
 
+	_detour_left = maxf(_detour_left - delta, 0.0)
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
 
@@ -172,10 +177,22 @@ func _flat_distance(point: Vector3) -> float:
 func _move_toward_point(point: Vector3) -> void:
 	var offset := point - global_position
 	offset.y = 0.0
-	var direction := offset.normalized()
+	var direction := _steer_around_obstacles(offset.normalized())
 	velocity.x = direction.x * float(_stats["speed"])
 	velocity.z = direction.z * float(_stats["speed"])
 	rotation.y = atan2(-direction.x, -direction.z)
+
+
+## Follows a wall that blocks the way for a moment, then tries the direct way again.
+func _steer_around_obstacles(direction: Vector3) -> Vector3:
+	if is_on_wall():
+		var along_wall := Vector3.UP.cross(get_wall_normal()).normalized()
+		# Pick a side once per detour, or it would turn back and forth along the wall.
+		if _detour_left == 0.0 and along_wall.dot(direction) * _detour_side < 0.0:
+			_detour_side = -_detour_side
+		_detour_direction = along_wall * _detour_side
+		_detour_left = DETOUR_SECONDS
+	return _detour_direction if _detour_left > 0.0 else direction
 
 
 func _stop() -> void:

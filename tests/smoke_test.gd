@@ -381,6 +381,24 @@ func _test_combat(scene: Node, player: Player) -> void:
 	_check(not root.get_tree().paused, "closing a menu resumes the world")
 	enemy.revive()
 
+	var wall := StaticBody3D.new()
+	var wall_shape := CollisionShape3D.new()
+	var wall_box := BoxShape3D.new()
+	wall_box.size = Vector3(10.0, 6.0, 1.0)
+	wall_shape.shape = wall_box
+	wall.add_child(wall_shape)
+	root.add_child(wall)
+	wall.global_position = enemy.global_position + Vector3(0.0, 2.0, 4.0)
+	player.health.restore()
+	player.position = enemy.position + Vector3(0.0, 0.5, 8.0)
+	for i in 480:
+		await physics_frame
+		player.health.restore()
+		if enemy.state == Enemy.State.WINDUP:
+			break
+	_check(enemy.state == Enemy.State.WINDUP, "enemies find their way around a wall")
+	wall.queue_free()
+	enemy.revive()
 	await _physics_frames(1)
 
 

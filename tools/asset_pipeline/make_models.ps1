@@ -22,7 +22,11 @@ foreach ($image in Get-ChildItem "$base\input\*.png" | Sort-Object Name) {
     # Runs sometimes crash at startup (issue #59), and retrying has worked.
     while (-not (Test-Path "$out\0\mesh.obj") -and $attempt -lt 8) {
         $attempt++
-        cmd /c "`"$py`" run.py $($image.FullName) --output-dir $out --mc-resolution 256 --bake-texture > $base\logs\$name.log 2>&1"
+        # Each attempt keeps its own log, numbered across reruns, so a crash's stack trace survives the retry.
+        $number = (Get-ChildItem "$base\logs\$name.attempt*.log" -ErrorAction SilentlyContinue | Measure-Object).Count + 1
+        $log = "$base\logs\$name.attempt$number.log"
+        cmd /c "`"$py`" $Root\run_triposr.py $($image.FullName) --output-dir $out --mc-resolution 256 --bake-texture > $log 2>&1"
+        "exit code: $LASTEXITCODE" | Add-Content $log
     }
     if (Test-Path "$out\0\mesh.obj") {
         $stats = (& $py "$Root\check_mesh.py" "$out\0\mesh.obj" 2>&1 | Select-Object -First 1)

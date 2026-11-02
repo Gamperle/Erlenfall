@@ -25,17 +25,11 @@ const BUSH_CLUMPS := 4
 const BUSH_SPREAD := 0.75
 const PLANT_BUILDING_CLEARANCE := 11.0
 const PLANT_SPOT_CLEARANCE := 4.0
-const GRASS_BLADES := 7
-const GRASS_BASE_COLOR := Color(0.17, 0.22, 0.1)
-const GRASS_TIP_COLOR := Color(0.36, 0.4, 0.2)
-const GRASS_ROAD_CLEARANCE := 3.0
-const GRASS_BUILDING_CLEARANCE := 8.0
 const MAX_TREE_HEIGHT := 90.0
 const MAX_PLACEMENT_ATTEMPTS := 10
 const ROAD_COLOR := Color(0.4, 0.32, 0.22)
 const ROAD_LIFT := 0.04
 const RIVER_TREE_CLEARANCE := 4.0
-const RIVER_GRASS_CLEARANCE := 0.5
 const SITE_TREE_CLEARANCE := 4.0
 const BRIDGE_OVERHANG := 1.5
 const BRIDGE_WIDTH_MARGIN := 0.8
@@ -48,7 +42,6 @@ const PROP_FOLDER := "res://assets/props/"
 const PROP_SOLID_SIZE := 0.6
 const PLANT_CHUNK_SIZE := 128.0
 const BUSH_DRAW_DISTANCE := 450.0
-const GRASS_DRAW_DISTANCE := 260.0
 const WOOD_PILE_SHAPE := Vector3(1.0, 0.9, 1.5)
 
 @export var terrain: Terrain
@@ -534,53 +527,10 @@ func _add_cone(surface: SurfaceTool, bottom_radius: float, top_radius: float, bo
 
 
 func _add_grass(data: Dictionary, fields: Array) -> void:
-	var random := RandomNumberGenerator.new()
-	random.seed = data["seed"]
-	var transforms: Array[Transform3D] = []
-	for i in int(data["count"]):
-		var point := Vector2.from_angle(random.randf() * TAU) * sqrt(random.randf()) * float(data["radius"])
-		if not _is_clear_ground(point, fields):
-			continue
-		var scale_factor := random.randf_range(0.7, 1.3)
-		var basis := Basis(Vector3.UP, random.randf() * TAU).scaled(Vector3.ONE * scale_factor)
-		transforms.append(Transform3D(basis, _ground_position(point.x, point.y)))
-
-	var grass := _add_multimesh(_grass_tuft_mesh(), transforms, 0.0, random)
+	var grass := GrassField.new()
 	grass.name = "Grass"
-	_set_small_plants(grass, GRASS_DRAW_DISTANCE)
-
-
-func _is_clear_ground(point: Vector2, fields: Array) -> bool:
-	if terrain.is_on_landslide(point.x, point.y) or terrain.river_clearance(point.x, point.y) < RIVER_GRASS_CLEARANCE:
-		return false
-	for samples in _road_samples:
-		for i in range(0, samples.size(), 4):
-			if point.distance_squared_to(samples[i]) < GRASS_ROAD_CLEARANCE * GRASS_ROAD_CLEARANCE:
-				return false
-	for building: Vector2 in _building_spots:
-		if point.distance_squared_to(building) < GRASS_BUILDING_CLEARANCE * GRASS_BUILDING_CLEARANCE:
-			return false
-	for field: Dictionary in fields:
-		if point.distance_to(Vector2(field["x"], field["z"])) < float(field["width"]) * 0.65:
-			return false
-	return true
-
-
-func _grass_tuft_mesh() -> ArrayMesh:
-	var surface := SurfaceTool.new()
-	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	surface.set_normal(Vector3.UP)
-	var jitter := RandomNumberGenerator.new()
-	jitter.seed = 22
-	for blade in GRASS_BLADES:
-		var direction := Vector3.RIGHT.rotated(Vector3.UP, jitter.randf() * TAU) + Vector3.FORWARD * jitter.randf_range(-0.2, 0.2)
-		surface.set_color(GRASS_BASE_COLOR)
-		surface.add_vertex(direction * -0.04)
-		surface.set_color(GRASS_BASE_COLOR)
-		surface.add_vertex(direction * 0.04)
-		surface.set_color(GRASS_TIP_COLOR)
-		surface.add_vertex(direction * jitter.randf_range(0.0, 0.15) + Vector3.UP * jitter.randf_range(0.18, 0.36))
-	return surface.commit()
+	grass.setup(terrain, data, fields, _road_samples, _building_spots)
+	add_child(grass)
 
 
 func _is_tree_allowed(point: Vector2, data: Dictionary, fields: Array) -> bool:

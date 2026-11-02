@@ -105,8 +105,18 @@
 	},
 	"grass": {
 		"seed": 13,
-		"count": 22000,
-		"radius": 130
+		"density": 1.0,
+		"thinning_height": 80,
+		"max_height": 110,
+		"riverside_distance": 6,
+		"species": [
+			{ "name": "meadow", "weight": 3, "dryness": 0.45, "blades": 9, "height": [0.2, 0.4], "width": 0.035, "lean": 0.14, "spread": 0.14, "base": "#2b3819", "tip": "#5c6633" },
+			{ "name": "lush", "weight": 2.5, "dryness": 0.15, "blades": 7, "height": [0.25, 0.45], "width": 0.06, "lean": 0.22, "spread": 0.16, "base": "#1f3314", "tip": "#46662a" },
+			{ "name": "tall", "weight": 1.2, "dryness": 0.4, "blades": 8, "height": [0.6, 0.95], "width": 0.024, "lean": 0.3, "spread": 0.14, "base": "#2a3a1a", "tip": "#6a7a3c" },
+			{ "name": "seeding", "weight": 1, "dryness": 0.65, "blades": 6, "height": [0.5, 0.8], "width": 0.018, "lean": 0.2, "spread": 0.12, "base": "#39401f", "tip": "#7f7d45", "seed_heads": true, "seed_color": "#a8975c" },
+			{ "name": "straw", "weight": 3, "dryness": 0.9, "blades": 9, "height": [0.18, 0.42], "width": 0.028, "lean": 0.2, "spread": 0.15, "base": "#4a4623", "tip": "#94854a" },
+			{ "name": "sedge", "weight": 8, "riverside": true, "blades": 10, "height": [0.6, 1.1], "width": 0.03, "lean": 0.16, "spread": 0.14, "base": "#1c3020", "tip": "#4a6a48" }
+		]
 	},
 	"boulders": {
 		"seed": 11,

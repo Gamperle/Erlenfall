@@ -46,3 +46,5 @@ renderer/rendering_method="forward_plus"
 
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+window/vsync/vsync_mode=0
+window/vsync/vsync_mode.release=1

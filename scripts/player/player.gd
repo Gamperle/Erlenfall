@@ -73,6 +73,7 @@ const TORCH_FIRST_PERSON_SCALE := 0.7
 
 var first_person := false
 var inventory := Inventory.new()
+var _shown_weapon := "-"
 var known_recipes: Dictionary = {}
 var quests := QuestLog.new()
 ## What pressing the use button would act on right now, if anything.
@@ -108,6 +109,8 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
+	inventory.changed.connect(_update_weapon_model)
+	_update_weapon_model()
 	if FeatureFlags.enabled("realistic_player"):
 		_replace_body()
 	else:
@@ -168,6 +171,19 @@ func is_blocking() -> bool:
 
 
 ## Gives the starting torch once per game, including to games saved before torches existed.
+## The weapon in hand is the one that attacks use. Empty hands show nothing.
+func _update_weapon_model() -> void:
+	var weapon_id := inventory.best_weapon_id()
+	if weapon_id == _shown_weapon:
+		return
+	_shown_weapon = weapon_id
+	for child in _weapon.get_children():
+		child.queue_free()
+	var model := CraftingData.item_model(weapon_id)
+	if model != null:
+		_weapon.add_child(model)
+
+
 func give_starting_items() -> void:
 	if not torch_given and FeatureFlags.enabled("torch_at_start"):
 		torch_given = true

@@ -257,6 +257,7 @@ func _finish_recipe(quality: String) -> void:
 	var is_new := not _player.known_recipes.has(_recipe["id"])
 	_player.known_recipes[_recipe["id"]] = true
 	_player.inventory.add(_recipe["result"], int(_recipe["count"]), quality)
+	get_tree().call_group(CraftingStation.STATION_GROUP, "show_made", _station, _recipe["result"])
 	var made := CraftingData.item_name(_recipe["result"])
 	if quality != "":
 		made = "%s (%s)" % [made, CraftingData.quality_name(quality)]

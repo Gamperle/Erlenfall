@@ -11,6 +11,35 @@ static func item_name(item_id: String) -> String:
 	return TranslationServer.translate(_get_data()["items"][item_id]["name"])
 
 
+## Builds the item's look from its "model" parts, or returns null if it has none. Weapons stand on their grip, pointing up.
+static func item_model(item_id: String) -> Node3D:
+	var parts: Array = _get_data()["items"].get(item_id, {}).get("model", [])
+	if parts.is_empty():
+		return null
+	var model := Node3D.new()
+	model.name = "ItemModel"
+	for part: Dictionary in parts:
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3(part["size"][0], part["size"][1], part["size"][2])
+		var material := StandardMaterial3D.new()
+		material.albedo_color = Color(part["color"])
+		material.roughness = 0.55
+		mesh.material = material
+		var instance := MeshInstance3D.new()
+		instance.mesh = mesh
+		instance.position = Vector3(part["at"][0], part["at"][1], part["at"][2])
+		model.add_child(instance)
+	return model
+
+
+## How far the item's model reaches up from its origin.
+static func item_length(item_id: String) -> float:
+	var length := 0.0
+	for part: Dictionary in _get_data()["items"][item_id].get("model", []):
+		length = maxf(length, float(part["at"][1]) + float(part["size"][1]) / 2.0)
+	return length
+
+
 static func is_material(item_id: String) -> bool:
 	return _get_data()["items"][item_id].get("material", false)
 

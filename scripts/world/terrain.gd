@@ -124,10 +124,11 @@ func water_height(x: float, z: float) -> float:
 	return found.y if found.x < INF else -INF
 
 
-## How much water slows someone whose feet are at this point. Bridges are above the water.
+## How much water slows someone whose feet are at this point. Bridges are above the water, and
+## land beside the river can lie below the nearest water without being wet.
 func wading_factor(feet: Vector3) -> float:
 	var depth := water_height(feet.x, feet.z) - feet.y
-	if depth <= 0.0:
+	if depth <= 0.0 or river_clearance(feet.x, feet.z) >= 0.0:
 		return 1.0
 	return lerpf(1.0, WADING_SPEED_FACTOR, minf(depth / WADING_FULL_DEPTH, 1.0))
 

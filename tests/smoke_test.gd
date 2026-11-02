@@ -31,7 +31,12 @@ func _run() -> void:
 	_check(absf(terrain.height_at(0.0, -28.0)) < 2.0, "village site stays low")
 	_check(terrain.height_at(0.0, 600.0) > 60.0, "mountains surround the valley")
 	_check(player.is_on_floor(), "player lands on terrain")
-	_check(is_equal_approx(terrain.wading_factor(Vector3(0.0, terrain.height_at(0.0, 0.0), 0.0)), 1.0) or terrain.river_clearance(0.0, 0.0) < 0.0, "dry land doesn't slow anyone")
+	var slowed_on_land := 0
+	for z in range(-500, 500, 10):
+		for x in range(-500, 500, 10):
+			if terrain.river_clearance(x, z) >= 0.0 and terrain.wading_factor(Vector3(x, terrain.height_at(x, z), z)) < 1.0:
+				slowed_on_land += 1
+	_check(slowed_on_land == 0, "dry land doesn't slow anyone")
 	var in_river := terrain.river.positions[terrain.river.positions.size() / 2]
 	var river_floor := Vector3(in_river.x, terrain.height_at(in_river.x, in_river.y), in_river.y)
 	_check(terrain.wading_factor(river_floor) == Terrain.WADING_SPEED_FACTOR, "wading through the river slows people down")

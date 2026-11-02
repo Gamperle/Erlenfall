@@ -308,6 +308,8 @@ func _test_hud(scene: Node, player: Player) -> void:
 	_check(middle + compass.offset_right < 1152.0 + overlay.offset_left, "the compass clears the performance overlay at the base width")
 
 	await _test_interface_fit(scene)
+	await _test_controls_hint(scene)
+	await _test_ground_dryness()
 
 	overlay.refresh()
 	_check(overlay.visible and overlay.text.contains("FPS"), "the performance overlay shows measurements")
@@ -737,6 +739,37 @@ func _test_interface_fit(scene: Node) -> void:
 	window.size = old_size
 	await process_frame
 	await process_frame
+
+
+func _test_controls_hint(scene: Node) -> void:
+	var label: Control = scene.get_node("UI/ControlsLabel")
+	_check(label.modulate.a == 1.0, "the controls show when play starts")
+	scene.open_pause_menu()
+	_check(label.modulate.a == 1.0, "the controls show in the pause menu")
+	scene.resume()
+	await create_timer(scene.FADE_SECONDS + 0.2).timeout
+	_check(is_zero_approx(label.modulate.a), "the controls fade after the pause menu")
+	scene.open_pause_menu()
+	_check(label.modulate.a == 1.0, "the controls come back in the pause menu")
+	scene.resume()
+
+
+func _test_ground_dryness() -> void:
+	var texture := Surfaces.noise_texture()
+	if texture.get_image() == null:
+		await texture.changed
+	var image := texture.get_image()
+	image.clear_mipmaps()
+	image.convert(Image.FORMAT_L8)
+	Surfaces.prepare_ground_dryness()
+	_check(image.get_data() == Surfaces._noise_values, "grass reads the same noise as the ground shader")
+	var dry := 0
+	var lush := 0
+	for i in 400:
+		var value := Surfaces.ground_dryness(i * 7.3, i * -11.1)
+		dry += 1 if value > 0.8 else 0
+		lush += 1 if value < 0.2 else 0
+	_check(dry > 20 and lush > 20, "the ground has dry and lush areas (%d, %d)" % [dry, lush])
 
 
 func _check_contrast(theme: Theme, color_name: String, color_type: String, box_name: String, box_type: String, what: String) -> void:

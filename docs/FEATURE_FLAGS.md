@@ -80,3 +80,4 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `torch_burns_out` | aggregate | `torches` and `torch_burn_time_enabled` |
 | `torch_burn_seconds` | `600` | How long one torch burns when burn time is on |
 | `interface_min_scale` | `0.9` | The smallest size the interface shrinks to in a small window, as a share of its full size |
+| `controls_hint_seconds` | `30` | How long the controls line stays on screen when play starts. It shows again in the pause menu. 0 keeps it on screen |

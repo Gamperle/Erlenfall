@@ -105,6 +105,9 @@ UI_GAME_TITLE,Erlenfall,Erlenfall
 UI_CONTINUE_GAME,Continue,Fortsetzen
 UI_NEW_GAME,New game,Neues Spiel
 UI_QUIT,Quit,Beenden
+UI_NEW_GAME_WARNING,Starting a new game overwrites your saved game.,Ein neues Spiel überschreibt deinen Spielstand.
+UI_OVERWRITE_SAVE,Start and overwrite,Starten und überschreiben
+UI_BACK,Back,Zurück
 UI_PAUSED,Paused,Pause
 UI_RESUME,Resume,Weiterspielen
 UI_SAVE_AND_QUIT,Save and quit,Speichern und beenden

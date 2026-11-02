@@ -435,6 +435,23 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	menu.open_title(true)
 	_check(menu._asset_note.is_visible_in_tree(), "the title menu notes AI-generated assets")
 	_check(menu.is_open(), "the title menu opens")
+	var chosen := [false]
+	var on_new_game := func() -> void: chosen[0] = true
+	menu.new_game_chosen.connect(on_new_game)
+	menu._buttons.get_child(1).pressed.emit()
+	_check(not chosen[0] and menu._confirming, "new game asks before overwriting a save")
+	menu._buttons.get_child(0).pressed.emit()
+	_check(not chosen[0] and not menu._confirming, "going back keeps the save")
+	menu._buttons.get_child(1).pressed.emit()
+	menu._buttons.get_child(1).pressed.emit()
+	_check(chosen[0], "confirming starts a new game")
+	menu.new_game_chosen.disconnect(on_new_game)
+	menu.open_title(false)
+	menu.new_game_chosen.connect(on_new_game)
+	chosen[0] = false
+	menu._buttons.get_child(0).pressed.emit()
+	_check(chosen[0], "with no save, new game starts at once")
+	menu.new_game_chosen.disconnect(on_new_game)
 	menu.close()
 	DirAccess.remove_absolute(TEST_SAVE)
 

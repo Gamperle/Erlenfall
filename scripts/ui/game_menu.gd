@@ -14,6 +14,9 @@ var _panel: PanelContainer
 var _title: Label
 var _buttons: VBoxContainer
 var _asset_note: VBoxContainer
+var _message: Label
+var _confirming := false
+var _can_continue := false
 
 
 func _ready() -> void:
@@ -27,18 +30,25 @@ func is_open() -> bool:
 
 
 func open_title(can_continue: bool) -> void:
+	_can_continue = can_continue
+	_confirming = false
 	_title.text = tr("UI_GAME_TITLE")
+	_message.visible = false
 	_clear_buttons()
 	if can_continue:
 		_add_button("UI_CONTINUE_GAME", continue_chosen)
-	_add_button("UI_NEW_GAME", new_game_chosen)
+		_add_action("UI_NEW_GAME", _open_new_game_warning)
+	else:
+		_add_button("UI_NEW_GAME", new_game_chosen)
 	_add_button("UI_QUIT", quit_chosen)
 	_asset_note.visible = true
 	_show()
 
 
 func open_pause() -> void:
+	_confirming = false
 	_title.text = tr("UI_PAUSED")
+	_message.visible = false
 	_clear_buttons()
 	_add_button("UI_RESUME", resume_chosen)
 	_add_button("UI_SAVE_AND_QUIT", quit_chosen)
@@ -52,9 +62,26 @@ func close() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if is_open() and _confirming and event.is_action_pressed("ui_cancel"):
+		open_title(_can_continue)
+		get_viewport().set_input_as_handled()
+		return
 	if is_open() and _title.text == tr("UI_PAUSED") and event.is_action_pressed("pause"):
 		resume_chosen.emit()
 		get_viewport().set_input_as_handled()
+
+
+## A new game overwrites the only save, so ask first. The safe choice has the focus.
+func _open_new_game_warning() -> void:
+	_confirming = true
+	_title.text = tr("UI_NEW_GAME")
+	_message.text = tr("UI_NEW_GAME_WARNING")
+	_message.visible = true
+	_clear_buttons()
+	_add_action("UI_BACK", open_title.bind(_can_continue))
+	_add_button("UI_OVERWRITE_SAVE", new_game_chosen)
+	_asset_note.visible = false
+	_show()
 
 
 func _show() -> void:
@@ -71,9 +98,13 @@ func _clear_buttons() -> void:
 
 
 func _add_button(text_key: String, chosen: Signal) -> void:
+	_add_action(text_key, func() -> void: chosen.emit())
+
+
+func _add_action(text_key: String, action: Callable) -> void:
 	var button := Button.new()
 	button.text = tr(text_key)
-	button.pressed.connect(func() -> void: chosen.emit())
+	button.pressed.connect(action)
 	_buttons.add_child(button)
 
 
@@ -98,6 +129,11 @@ func _build() -> void:
 	_title.add_theme_font_size_override("font_size", 32)
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_title)
+
+	_message = Label.new()
+	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_message)
 
 	_buttons = VBoxContainer.new()
 	_buttons.add_theme_constant_override("separation", 6)

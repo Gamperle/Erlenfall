@@ -1,6 +1,7 @@
 [
 	{
 		"id": "hedda",
+		"smooth_chest": ["toigo_fisherman_sweater"],
 		"shape": {
 			"gender": 0.0,
 			"age": 0.95,
@@ -26,6 +27,7 @@
 	},
 	{
 		"id": "greta",
+		"smooth_chest": ["toigo_fisherman_sweater"],
 		"shape": {
 			"gender": 0.0,
 			"age": 0.6,
@@ -50,6 +52,7 @@
 	},
 	{
 		"id": "mira",
+		"smooth_chest": ["toigo_fisherman_sweater"],
 		"shape": {
 			"gender": 0.0,
 			"age": 0.5,

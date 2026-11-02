@@ -20,7 +20,7 @@ TripoSR doesn't produce rigged models, so anything that walks or fights needs a 
 
 | Asset | Variants | Used for | Source | Faces |
 | --- | --- | --- | --- | --- |
-| Human body, rigged, with walk, idle, attack, block, and dodge | 2 | Player and villagers | CC0 | 5,000 |
+| Human body, rigged, with walk, idle, attack, block, and dodge | 2 | Player and villagers | CC0 | 15,000, with clothes and hair |
 | Clothes and hair sets | 5 | Hedda, Bertram, Mira, Greta, and Brandt | CC0 | Included |
 | Player clothes and hair | 1 | Player | CC0 | Included |
 | Goblin, rigged, with walk, attack, and death | 1 | Goblin camp | CC0 | 4,000 |

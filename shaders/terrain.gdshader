@@ -12,6 +12,9 @@ uniform vec3 rubble_color : source_color;
 uniform vec3 rock_color : source_color;
 uniform vec3 snow_color : source_color;
 uniform float snow_height = 165.0;
+// These tint the grass, so 1 leaves it as it is.
+uniform vec3 lush_grass_tint = vec3(0.7, 0.92, 0.62);
+uniform vec3 dry_grass_tint = vec3(1.4, 1.15, 0.6);
 
 varying vec3 world_position;
 varying vec3 world_normal;
@@ -42,6 +45,11 @@ void fragment() {
 
 	vec3 ground = pow(COLOR.rgb, vec3(2.2));
 	ground *= mix(vec3(1.0), mix(detail(grass_texture, flat_uv / 2.0), detail(grass_texture, flat_uv / 11.0), 0.5), 0.7);
+
+	// Whole meadows lean lush or dry, with smaller patches inside them.
+	float meadow = texture(detail_noise, world_position.xz * 0.0043).r;
+	float patches = texture(detail_noise, world_position.xz * 0.019).r;
+	ground *= mix(lush_grass_tint, dry_grass_tint, smoothstep(0.38, 0.62, meadow * 0.6 + patches * 0.4));
 
 	// Rock shows on steep ground and takes over high up.
 	float steep = smoothstep(0.86, 0.72, world_normal.y + (broad - 0.5) * 0.12);

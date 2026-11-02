@@ -110,7 +110,7 @@ func load_data(data: Dictionary) -> void:
 	position = Vector3(saved_position[0], saved_position[1], saved_position[2])
 	if data["health"] <= 0.0:
 		health.current = 0.0
-		_die()
+		_become_dead()
 		_timer = data["respawn_left"]
 	else:
 		health.current = data["health"]
@@ -152,8 +152,12 @@ func _process_windup(player: Player, delta: float) -> void:
 
 
 func _die() -> void:
-	state = State.DEAD
 	_give_drops()
+	_become_dead()
+
+
+func _become_dead() -> void:
+	state = State.DEAD
 	_timer = _stats["respawn_seconds"]
 	visible = false
 	_collision.set_deferred("disabled", true)

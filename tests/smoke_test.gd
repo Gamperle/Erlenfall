@@ -495,10 +495,12 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	while enemy.state != Enemy.State.DEAD:
 		enemy.take_hit(1000.0)
 	scene.save_game()
+	var saved_scrap := player.inventory.count("iron_scrap")
 	enemy.revive()
 	spot._respawn()
 
 	_check(SaveGame.apply(TEST_SAVE, player, day_night, village), "the world loads")
+	_check(player.inventory.count("iron_scrap") == saved_scrap, "loading doesn't repeat an enemy's drops")
 	_check(enemy.state == Enemy.State.DEAD and not enemy.visible, "a defeated enemy stays defeated after loading")
 	_check(enemy._timer > 0.0, "a defeated enemy still returns later")
 	_check(not spot.is_available() and spot._respawn_left > 0.0, "an emptied gathering spot stays empty after loading")

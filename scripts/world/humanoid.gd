@@ -50,6 +50,11 @@ func left_hand() -> Node3D:
 	return _left_arm
 
 
+## Plays a one-off animation, on figures that have them.
+func play_action(_animation_name: StringName, _duration := 0.0, _start := 0.0) -> void:
+	pass
+
+
 ## Swings the limbs to match a walking speed.
 func animate(speed: float, delta: float) -> void:
 	_phase += delta * STRIDE_RATE * speed

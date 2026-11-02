@@ -22,6 +22,7 @@ import numpy
 MPFB = "bl_ext.blender_org.mpfb"
 TEXTURE_SIZE = 1024
 ALPHA_CUTOFF = 0.25
+FINE_HAIR_CUTOFF = 0.2
 COVERED_DISTANCE = 0.035
 EDGE_MARGIN = 0.03
 EDGE_SINK = 0.012
@@ -31,10 +32,16 @@ BODY_BUDGETS = {"rest": 2000, "hands": 2500, "head": 3500}
 HAND_GROUPS = ("hand_", "index_", "middle_", "ring_", "pinky_", "thumb_")
 HEAD_GROUPS = ("head", "neck_")
 REGION_GROUPS = HAND_GROUPS + HEAD_GROUPS
-TUCK_DEPTH = 0.03
+TUCK_DEPTH = 0.07
 LAYER_DISTANCE = 0.04
+LAYER_PULL = 0.86
+WAIST_BAND = 0.1
+WAIST_PULL = 0.7
+PULL_MARGIN = 0.03
+CHEST_GROUPS = ("spine_03", "spine_02")
+CHEST_SMOOTHING = 12
 HEM_WIDTH = 0.2
-HEM_OVERLAP = 0.05
+HEM_OVERLAP = 0.1
 
 
 def find_asset(folders, name):
@@ -118,13 +125,38 @@ def reduce_body(body):
     reduce_region(body, HEAD_GROUPS, BODY_BUDGETS["head"])
 
 
+def pull_in(mesh, vertices):
+    """Pulls vertices toward the body's center, so a lower layer stays hidden under the one over it."""
+    if not vertices:
+        return
+    center_y = sum(vertex.co.y for vertex in vertices) / len(vertices)
+    for vertex in vertices:
+        vertex.co.x *= LAYER_PULL
+        vertex.co.y = center_y + (vertex.co.y - center_y) * LAYER_PULL
+
+
 def tuck_in(under, over):
-    """Cuts a layer off just below the top of the one over it, which hides the jagged overlap."""
+    """Cuts a layer off below the top of the one over it, and pulls in what overlaps."""
     top = max(vertex.co.z for vertex in over.data.vertices)
     mesh = bmesh.new()
     mesh.from_mesh(under.data)
+    pull_in(mesh, [vertex for vertex in mesh.verts if vertex.co.z < top + PULL_MARGIN and abs(vertex.co.x) < HEM_WIDTH])
     bmesh.ops.delete(mesh, geom=[vertex for vertex in mesh.verts if vertex.co.z < top - TUCK_DEPTH], context="VERTS")
     mesh.to_mesh(under.data)
+    mesh.free()
+
+
+def sink_waist(body, height):
+    """Pulls the body in around where two layers of clothes meet, so no skin shows between them."""
+    mesh = bmesh.new()
+    mesh.from_mesh(body.data)
+    band = [vertex for vertex in mesh.verts if abs(vertex.co.z - height) < WAIST_BAND and abs(vertex.co.x) < HEM_WIDTH]
+    if band:
+        center_y = sum(vertex.co.y for vertex in band) / len(band)
+        for vertex in band:
+            vertex.co.x *= WAIST_PULL
+            vertex.co.y = center_y + (vertex.co.y - center_y) * WAIST_PULL
+    mesh.to_mesh(body.data)
     mesh.free()
 
 
@@ -139,12 +171,26 @@ def trim_above(mesh_object, height):
 
 
 def hide_under_hem(under, over):
-    """Cuts a layer off a little above the lower edge of the top over it, away from the sleeves."""
+    """Cuts a layer off above the lower edge of the top over it, and pulls in what overlaps."""
     hem = min(vertex.co.z for vertex in over.data.vertices if abs(vertex.co.x) < HEM_WIDTH)
     mesh = bmesh.new()
     mesh.from_mesh(under.data)
+    pull_in(mesh, [vertex for vertex in mesh.verts if vertex.co.z > hem - PULL_MARGIN])
     bmesh.ops.delete(mesh, geom=[vertex for vertex in mesh.verts if vertex.co.z > hem + HEM_OVERLAP], context="VERTS")
     mesh.to_mesh(under.data)
+    mesh.free()
+
+
+def smooth_chest(mesh_object):
+    """Rounds the cloth over the chest, because tight clothes copy the body's shape too closely."""
+    region = vertices_in_groups(mesh_object, CHEST_GROUPS)
+    mesh = bmesh.new()
+    mesh.from_mesh(mesh_object.data)
+    mesh.verts.ensure_lookup_table()
+    verts = [mesh.verts[index] for index in region]
+    for _step in range(CHEST_SMOOTHING):
+        bmesh.ops.smooth_vert(mesh, verts=verts, factor=0.5, use_axis_x=False, use_axis_y=True, use_axis_z=True)
+    mesh.to_mesh(mesh_object.data)
     mesh.free()
 
 
@@ -240,7 +286,7 @@ def finish_materials(path, cutout_names, colors):
         material.pop("alphaCutoff", None)
         if any(name in material["name"] for name in cutout_names):
             material["alphaMode"] = "MASK"
-            material["alphaCutoff"] = ALPHA_CUTOFF
+            material["alphaCutoff"] = FINE_HAIR_CUTOFF if "eyebrow" in material["name"] or "beard" in material["name"] else ALPHA_CUTOFF
         else:
             material["alphaMode"] = "OPAQUE"
         for name, color in colors.items():
@@ -289,13 +335,17 @@ def build(recipe, folders, output, full_detail=False):
     named_parts = {item[2]: item[0] for item in meshes.values()}
     if not full_detail:
         for under, over in recipe.get("tucked", {}).items():
+            sink_waist(body, max(vertex.co.z for vertex in named_parts[over].data.vertices))
             tuck_in(named_parts[under], named_parts[over])
         for under, over in recipe.get("under_hem", {}).items():
+            sink_waist(body, min(vertex.co.z for vertex in named_parts[over].data.vertices if abs(vertex.co.x) < HEM_WIDTH))
             hide_under_hem(named_parts[under], named_parts[over])
         for name, height in recipe.get("trim_above", {}).items():
             trim_above(named_parts[name], height)
         for hidden, over in recipe.get("covered_by", {}).items():
             remove_covered(named_parts[hidden], [named_parts[over]], LAYER_DISTANCE)
+    for name in recipe.get("smooth_chest", []):
+        smooth_chest(named_parts[name])
     if "hair_color" in recipe:
         hair = named_parts[as_list(recipe["hair"])[0]]
         for slot in hair.material_slots:

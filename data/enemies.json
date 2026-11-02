@@ -1,6 +1,8 @@
 {
 	"goblin": {
 		"name": "ENEMY_GOBLIN",
+		"model": "res://assets/characters/goblin.glb",
+		"model_height": 1.76,
 		"color": "#5a4630",
 		"skin": "#5f7f35",
 		"height": 1.3,

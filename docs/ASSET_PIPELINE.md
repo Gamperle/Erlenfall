@@ -27,13 +27,14 @@ The scripts are in [tools/asset_pipeline](../tools/asset_pipeline):
 | --- | --- |
 | `setup_pc.ps1` | Installs everything into one folder |
 | `draw_pictures.py` | Holds the object list and prompts, and draws candidates |
-| `make_models.ps1` | Makes models and previews, with crash retries |
+| `make_models.ps1` | Makes models and previews, with crash retries and a log for each attempt in `<batch>\logs` |
+| `run_triposr.py` | Runs TripoSR with cuDNN off |
 | `render_preview.py` | Renders a model from the front and back |
 | `check_mesh.py` | Prints face count, watertightness, and volume |
 | `watchdog.ps1` | Stops hung runs during a batch |
 | `torchmcubes.py` | Replaces the `torchmcubes` package, which doesn't build here |
 
-`setup_pc.ps1` and `make_models.ps1` combine steps that were first run separately. They have not been run in this exact form, so expect to adjust them on first use.
+`setup_pc.ps1` combines steps that were first run separately. It has not been run in this exact form, so expect to adjust it on first use.
 
 ## Access
 
@@ -99,6 +100,7 @@ The picture matters more than anything else, because TripoSR sees only that one 
 | Problem | Current handling | Issue |
 | --- | --- | --- |
 | 34 of 77 first attempts across two batches crashed at startup in `MIOpen.dll` with `0xC0000005`. Crashes come in runs, and 5 models failed all 8 attempts before working in a later rerun | `make_models.ps1` retries, and running it again picks up failed models | [#59](https://github.com/Gamperle/Erlenfall/issues/59) |
+| TripoSR runs with cuDNN on took about 11 s longer per model | `run_triposr.py` turns it off. Output was practically unchanged across 6 models. It hasn't been shown to prevent the crash, so check the attempt logs after each batch | [#59](https://github.com/Gamperle/Erlenfall/issues/59) |
 | A run can also hang at "Initializing model" with no CPU use, which stops the batch | Run `watchdog.ps1` beside the batch. It stops a run after 5 idle minutes, and `make_models.ps1` retries it | [#59](https://github.com/Gamperle/Erlenfall/issues/59) |
 | The SDXL VAE crashes on the GPU with `hipErrorProfilerNotInitialized` | `AttnProcessor()` and `vae.enable_tiling()`. Check larger pictures for seams, because only small previews have been checked | [#47](https://github.com/Gamperle/Erlenfall/issues/47) |
 | `torchmcubes` can't build, because PyTorch's CMake files use an undefined `hip::host` target on Windows | Stand-in using scikit-image on the CPU | [#47](https://github.com/Gamperle/Erlenfall/issues/47) |

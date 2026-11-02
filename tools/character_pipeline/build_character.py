@@ -9,14 +9,18 @@ import struct
 import sys
 
 import addon_utils
+import bmesh
 import bpy
+import mathutils
+import mathutils.bvhtree
 
 MPFB = "bl_ext.blender_org.mpfb"
 TEXTURE_SIZE = 512
 ALPHA_CUTOFF = 0.25
+COVERED_DISTANCE = 0.035
 # Triangle budgets per kind of part.
-PART_BUDGETS = {"clothes": 2200, "hair": 700, "beard": 300, "brows": 400, "eyes": 180}
-BODY_BUDGET = 2800
+PART_BUDGETS = {"clothes": 1800, "hair": 700, "beard": 300, "brows": 400, "eyes": 180}
+BODY_BUDGET = 1800
 
 
 def find_asset(folders, name):
@@ -92,28 +96,32 @@ def stand_on_ground(rig, meshes, body_calf, ground):
     bpy.ops.object.mode_set(mode="OBJECT")
 
 
-def tint_material(mesh_object, color):
-    """Tints a part's base color, for telling villagers apart with the same clothes."""
-    for slot in mesh_object.material_slots:
-        if slot.material is None or not slot.material.use_nodes:
-            continue
-        nodes = slot.material.node_tree
-        shader = next((node for node in nodes.nodes if node.type == "BSDF_PRINCIPLED"), None)
-        base = shader.inputs["Base Color"] if shader else None
-        if base is None or not base.is_linked:
-            continue
-        source = base.links[0].from_socket
-        mix = nodes.nodes.new("ShaderNodeMix")
-        mix.data_type = "RGBA"
-        mix.blend_type = "MULTIPLY"
-        mix.inputs["Factor"].default_value = 1.0
-        nodes.links.new(source, mix.inputs["A"])
-        mix.inputs["B"].default_value = (*color, 1.0)
-        nodes.links.new(mix.outputs["Result"], base)
+def remove_covered_skin(body, clothes):
+    """Deletes body vertices just under clothes, so skin can't poke through once reduced."""
+    trees = []
+    for mesh_object in clothes:
+        vertices = [vertex.co.copy() for vertex in mesh_object.data.vertices]
+        polygons = [tuple(polygon.vertices) for polygon in mesh_object.data.polygons]
+        trees.append(mathutils.bvhtree.BVHTree.FromPolygons(vertices, polygons))
+    mesh = bmesh.new()
+    mesh.from_mesh(body.data)
+    covered = []
+    for vertex in mesh.verts:
+        for tree in trees:
+            location = tree.find_nearest(vertex.co, COVERED_DISTANCE)[0]
+            if location is not None:
+                covered.append(vertex)
+                break
+    bmesh.ops.delete(mesh, geom=covered, context="VERTS")
+    mesh.to_mesh(body.data)
+    mesh.free()
 
 
-def fix_transparency(path, cutout_names):
-    """Makes solid parts opaque and hair cut out, since blended layers sort wrongly in Godot."""
+def finish_materials(path, cutout_names, colors):
+    """Makes solid parts opaque and hair cut out, since blended layers sort wrongly in Godot.
+
+    A part listed in colors loses its printed pattern and takes that plain color instead.
+    """
     with open(path, "rb") as file:
         data = file.read()
     json_length = struct.unpack_from("<I", data, 12)[0]
@@ -125,6 +133,12 @@ def fix_transparency(path, cutout_names):
             material["alphaCutoff"] = ALPHA_CUTOFF
         else:
             material["alphaMode"] = "OPAQUE"
+        for name, color in colors.items():
+            if name in material["name"]:
+                shading = material["pbrMetallicRoughness"]
+                shading.pop("baseColorTexture", None)
+                # Recipes use the sRGB values a color picker shows, and glTF stores linear ones.
+                shading["baseColorFactor"] = [*(channel ** 2.2 for channel in color), 1.0]
     chunk = json.dumps(document, separators=(",", ":")).encode()
     chunk += b" " * (-len(chunk) % 4)
     rest = data[20 + json_length:]
@@ -157,18 +171,16 @@ def build(recipe, folders, output):
 
     bake_modifiers(body)
     body_calf = calf_height(body)
-    reduce_mesh(body, BODY_BUDGET)
-    tints = recipe.get("tints", {})
     for asset, _kind, _name in meshes.values():
         bake_modifiers(asset)
+    remove_covered_skin(body, [item[0] for item in meshes.values() if item[1] == "clothes"])
+    reduce_mesh(body, BODY_BUDGET)
     # Parts of one kind share their budget in proportion to their detail.
     kind_totals = {}
     for asset, kind, _name in meshes.values():
         kind_totals[kind] = kind_totals.get(kind, 0) + triangles(asset)
-    for asset, kind, name in meshes.values():
+    for asset, kind, _name in meshes.values():
         reduce_mesh(asset, PART_BUDGETS[kind] * triangles(asset) // kind_totals[kind])
-        if name in tints:
-            tint_material(asset, tints[name])
 
     all_meshes = [body] + [item[0] for item in meshes.values()]
     feet = [item[0] for item in meshes.values() if item[2] in recipe.get("footwear", [])]
@@ -186,7 +198,7 @@ def build(recipe, folders, output):
     bpy.context.view_layer.objects.active = rig
     bpy.ops.export_scene.gltf(filepath=output, use_selection=True, export_animations=False, export_morph=False, export_image_format="JPEG", export_jpeg_quality=85)
     cutouts = [name for kind in ("hair", "beard", "brows") for name in as_list(recipe.get(kind, []))]
-    fix_transparency(output, cutouts)
+    finish_materials(output, cutouts, recipe.get("colors", {}))
     print("PARTS", {mesh_object.name: triangles(mesh_object) for mesh_object in all_meshes})
     print("BUILT", recipe["id"], sum(triangles(mesh_object) for mesh_object in all_meshes), "triangles", os.path.getsize(output) // 1024, "KB")
 

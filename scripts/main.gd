@@ -54,6 +54,7 @@ func _ready() -> void:
 	_player.health.changed.connect(_update_health_bar)
 	_player.health.died.connect(_on_player_died)
 	_player.notice.connect(_show_message)
+	_player.busy_changed.connect(_update_prompt)
 
 	_menu.continue_chosen.connect(_continue_game)
 	_menu.new_game_chosen.connect(_start_new_game)
@@ -72,15 +73,18 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_compass.heading = _player.heading_degrees()
-	var target := _player.interact_target
-	_prompt_label.visible = target != null and not _player.is_busy()
-	if _prompt_label.visible:
-		_prompt_label.text = tr("UI_INTERACT_PROMPT") % target.prompt()
-
+	_update_prompt()
 	if _playing:
 		_since_save += delta
 		if _since_save >= AUTOSAVE_SECONDS:
 			save_game()
+
+
+func _update_prompt() -> void:
+	var target := _player.interact_target
+	_prompt_label.visible = target != null and not _player.is_busy()
+	if _prompt_label.visible:
+		_prompt_label.text = tr("UI_INTERACT_PROMPT") % target.prompt()
 
 
 func _notification(what: int) -> void:

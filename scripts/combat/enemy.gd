@@ -131,10 +131,10 @@ func _die() -> void:
 	_collision.set_deferred("disabled", true)
 
 
-## Enemies ignore a player who is dead or in a menu.
+## Enemies ignore a player who is dead.
 func _find_target() -> Player:
 	var player := get_tree().get_first_node_in_group(Player.GROUP) as Player
-	if player == null or player.is_busy() or not player.health.is_alive():
+	if player == null or not player.health.is_alive():
 		return null
 	return player
 

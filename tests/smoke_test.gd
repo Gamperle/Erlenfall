@@ -354,6 +354,21 @@ func _test_combat(scene: Node, player: Player) -> void:
 	_check(player.inventory.count("coal") < coal, "death costs some materials")
 	_check(enemy.visible and enemy.state != Enemy.State.DEAD, "enemies return after the player dies")
 
+	player.health.restore()
+	player.position = enemy.position + Vector3(0.0, 0.3, 4.0)
+	await _physics_frames(5)
+	var chasing := enemy.state
+	var screen: CraftingUI = scene.get_node("CraftingUI")
+	screen.open_inventory(player)
+	_check(root.get_tree().paused, "menus pause the world")
+	await _physics_frames(30)
+	_check(chasing != Enemy.State.IDLE and enemy.state == chasing, "enemies don't lose the player during a menu")
+	screen.close()
+	_check(not root.get_tree().paused, "closing a menu resumes the world")
+	var home := enemy._home
+	enemy.revive()
+	enemy.position = home
+
 
 func _test_gathering_collision(scene: Node, player: Player) -> void:
 	var spot: ResourceNode = null

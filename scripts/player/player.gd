@@ -4,6 +4,7 @@ extends CharacterBody3D
 
 ## Asks the game to show the player a short message.
 signal notice(text_key: String)
+signal busy_changed
 
 const WALK_SPEED := 3.5
 const SPRINT_SPEED := 6.5
@@ -90,9 +91,12 @@ func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
-## While busy, for example in a menu, the player stands still and the mouse is free.
+## While busy, in a menu or conversation, the world is paused and the mouse is free.
+## Enemies stay where they are, so a menu can't be used to escape a fight.
 func set_busy(busy: bool) -> void:
 	_busy = busy
+	get_tree().paused = busy
+	busy_changed.emit()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if busy else Input.MOUSE_MODE_CAPTURED
 
 

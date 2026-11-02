@@ -18,6 +18,7 @@ func _ready() -> void:
 	add_to_group(Npc.UI_GROUP)
 	_build()
 	_panel.visible = false
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
 func is_open() -> bool:

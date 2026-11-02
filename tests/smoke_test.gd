@@ -98,6 +98,7 @@ func _run() -> void:
 	await _test_land_and_river(scene, player)
 	_test_hud(scene, player)
 	_test_character_models(player)
+	_test_generated_props()
 	_test_feature_flags()
 	await _test_torch(player)
 	var torch: Torch = player._torch
@@ -280,6 +281,24 @@ func _test_hud(scene: Node, player: Player) -> void:
 func _test_character_models(player: Player) -> void:
 	_check(player.get_node("Body") is CharacterModel, "the player uses a rigged model")
 	_check(root.get_tree().get_first_node_in_group(Enemy.GROUP)._body is CharacterModel, "goblins use a rigged model")
+
+
+func _test_generated_props() -> void:
+	var files := DirAccess.get_files_at("res://assets/props")
+	var count := 0
+	for file in files:
+		if not file.ends_with(".glb"):
+			continue
+		count += 1
+		var scene: PackedScene = load("res://assets/props/" + file)
+		var prop := scene.instantiate()
+		var meshes := prop.find_children("*", "MeshInstance3D", true, false)
+		_check(meshes.size() == 1, file + " has one mesh")
+		var size: Vector3 = meshes[0].get_aabb().size
+		_check(size.length() > 0.2 and maxf(size.x, maxf(size.y, size.z)) < 2.6, file + " has a believable size")
+		_check(meshes[0].mesh.get_surface_count() == 1 and (meshes[0].mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture != null, file + " is textured")
+		prop.free()
+	_check(count == 40, "all generated props are present")
 
 
 func _test_feature_flags() -> void:

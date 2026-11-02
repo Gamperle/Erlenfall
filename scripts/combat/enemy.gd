@@ -14,7 +14,11 @@ const HOME_TOLERANCE := 2.0
 const ATTACK_REACH_MARGIN := 0.5
 const BAR_WIDTH := 0.8
 const BAR_HEIGHT := 0.08
-const DETOUR_SECONDS := 1.2
+const FOLLOW_MAX_SECONDS := 15.0
+const FOLLOW_TURN_SPEED := 2.5
+const FOLLOW_LOST_WALL_SECONDS := 1.0
+const SIGHT_HEIGHT := 0.6
+const SIGHT_WIDTH := 0.95
 
 static var _data: Dictionary = {}
 
@@ -25,9 +29,10 @@ var _stats: Dictionary = {}
 var _home := Vector3.ZERO
 var _timer := 0.0
 var _flash := 0.0
-var _detour_left := 0.0
-var _detour_direction := Vector3.ZERO
-var _detour_side := 1.0
+var _follow_left := 0.0
+var _follow_direction := Vector3.ZERO
+var _follow_side := 1.0
+var _since_wall := 0.0
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _body: Humanoid
 var _collision: CollisionShape3D
@@ -55,7 +60,6 @@ func _physics_process(delta: float) -> void:
 			revive()
 		return
 
-	_detour_left = maxf(_detour_left - delta, 0.0)
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
 
@@ -91,6 +95,7 @@ func revive() -> void:
 	position = _home
 	velocity = Vector3.ZERO
 	state = State.IDLE
+	_follow_left = 0.0
 	visible = true
 	_collision.set_deferred("disabled", false)
 
@@ -189,22 +194,52 @@ func _flat_distance(point: Vector3) -> float:
 func _move_toward_point(point: Vector3) -> void:
 	var offset := point - global_position
 	offset.y = 0.0
-	var direction := _steer_around_obstacles(offset.normalized())
+	var direction := _steer_around_obstacles(offset.normalized(), point)
 	velocity.x = direction.x * float(_stats["speed"])
 	velocity.z = direction.z * float(_stats["speed"])
 	rotation.y = atan2(-direction.x, -direction.z)
 
 
-## Follows a wall that blocks the way for a moment, then tries the direct way again.
-func _steer_around_obstacles(direction: Vector3) -> Vector3:
+## Follows a blocking wall around its corners, keeping it on the same hand, until the way is clear.
+func _steer_around_obstacles(direction: Vector3, goal: Vector3) -> Vector3:
+	var following := _follow_left > 0.0
+	if following:
+		var delta := get_physics_process_delta_time()
+		_follow_left = maxf(_follow_left - delta, 0.0)
+		_since_wall += delta
+		# Without a wall nearby, a hill may be what hides the goal, so don't circle.
+		if _since_wall > FOLLOW_LOST_WALL_SECONDS or _has_clear_way(goal):
+			_follow_left = 0.0
+			following = false
+		else:
+			# With no wall to touch, turn toward where it went, which rounds outside corners.
+			_follow_direction = _follow_direction.rotated(Vector3.UP, _follow_side * FOLLOW_TURN_SPEED * delta)
 	if is_on_wall():
 		var along_wall := Vector3.UP.cross(get_wall_normal()).normalized()
-		# Pick a side once per detour, or it would turn back and forth along the wall.
-		if _detour_left == 0.0 and along_wall.dot(direction) * _detour_side < 0.0:
-			_detour_side = -_detour_side
-		_detour_direction = along_wall * _detour_side
-		_detour_left = DETOUR_SECONDS
-	return _detour_direction if _detour_left > 0.0 else direction
+		if not following:
+			_follow_side = 1.0 if along_wall.dot(direction) >= 0.0 else -1.0
+			_follow_left = FOLLOW_MAX_SECONDS
+			following = true
+		_follow_direction = along_wall * _follow_side
+		_since_wall = 0.0
+	return _follow_direction if following else direction
+
+
+## Checks both sides of the body as well as the middle, since a thin line could fit where the body can't.
+func _has_clear_way(point: Vector3) -> bool:
+	var side := (point - global_position).cross(Vector3.UP).normalized() * float(_stats["radius"]) * SIGHT_WIDTH
+	for offset: Vector3 in [Vector3.ZERO, side, -side]:
+		if not _can_see(point + offset, global_position + offset):
+			return false
+	return true
+
+
+## Other characters don't count, since they move out of the way.
+func _can_see(point: Vector3, from: Vector3) -> bool:
+	var query := PhysicsRayQueryParameters3D.create(from + Vector3.UP * SIGHT_HEIGHT, point + Vector3.UP * SIGHT_HEIGHT)
+	query.exclude = [get_rid()]
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	return hit.is_empty() or hit["collider"] is CharacterBody3D
 
 
 func _stop() -> void:

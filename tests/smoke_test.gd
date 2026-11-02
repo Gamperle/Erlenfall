@@ -408,6 +408,7 @@ func _test_combat(scene: Node, player: Player) -> void:
 	_check(not root.get_tree().paused, "closing a menu resumes the world")
 	enemy.revive()
 
+	var home := enemy._home
 	var wall := StaticBody3D.new()
 	var wall_shape := CollisionShape3D.new()
 	var wall_box := BoxShape3D.new()
@@ -425,6 +426,19 @@ func _test_combat(scene: Node, player: Player) -> void:
 			break
 	_check(enemy.state == Enemy.State.WINDUP, "enemies find their way around a wall")
 	wall.queue_free()
+	var inn: Node3D = scene.get_node("Village/inn")
+	enemy.revive()
+	enemy._home = inn.position + Vector3(-9.0, 0.5, 0.0)
+	enemy.position = enemy._home
+	player.position = inn.position + Vector3(9.0, 0.5, 0.0)
+	enemy.state = Enemy.State.CHASE
+	for i in 900:
+		await physics_frame
+		player.health.restore()
+		if enemy.state == Enemy.State.WINDUP:
+			break
+	_check(enemy.state == Enemy.State.WINDUP, "enemies find their way around a building")
+	enemy._home = home
 	enemy.revive()
 	await _physics_frames(1)
 

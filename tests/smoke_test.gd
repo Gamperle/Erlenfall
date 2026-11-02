@@ -32,6 +32,7 @@ func _run() -> void:
 	_check(village.get_node_or_null("forge") != null, "buildings load from data")
 	_check(village.get_node("Roads").get_child_count() == 2, "roads load from data")
 	_check(village.get_node("Boulders").get_child_count() > 0, "boulders have collision")
+	_check(village.get_node("Boulders").get_child(0).shape is ConvexPolygonShape3D, "boulders collide with their real shape")
 	_check(terrain.is_on_landslide(40.0, -300.0) and not terrain.is_on_landslide(0.0, 0.0), "landslide stays out of the village")
 
 	var start := player.position
@@ -84,6 +85,7 @@ func _run() -> void:
 	await _test_crafting(scene, player)
 	await _test_story(scene, player)
 	await _test_combat(scene, player)
+	await _test_gathering_collision(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
 	_test_translations()
 
@@ -344,6 +346,28 @@ func _test_combat(scene: Node, player: Player) -> void:
 	_check(player.global_position.distance_to(Vector3(-12.0, player.global_position.y, 30.0)) < 2.0, "death returns the player to the village")
 	_check(player.inventory.count("coal") < coal, "death costs some materials")
 	_check(enemy.visible and enemy.state != Enemy.State.DEAD, "enemies return after the player dies")
+
+
+func _test_gathering_collision(scene: Node, player: Player) -> void:
+	var spot: ResourceNode = null
+	for node in scene.get_node("Village").get_children():
+		if node is ResourceNode and node.item_id == "wood":
+			spot = node
+			break
+	var saved_position := player.position
+	var toward_spot := Vector3(0.0, 0.0, 1.0)
+	player.position = spot.position - toward_spot * 2.0 + Vector3.UP * 0.2
+	await _physics_frames(1)
+	_check(player.test_move(player.global_transform, toward_spot * 2.0), "a gathering spot blocks the player")
+	for i in spot.uses:
+		spot.interact(player)
+	await _physics_frames(2)
+	_check(not player.test_move(player.global_transform, toward_spot * 2.0), "a used-up gathering spot doesn't block the player")
+	spot._respawn()
+	await _physics_frames(2)
+	_check(player.test_move(player.global_transform, toward_spot * 2.0), "a regrown gathering spot blocks the player again")
+	player.position = saved_position
+	await _physics_frames(1)
 
 
 func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> void:

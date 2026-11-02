@@ -70,6 +70,6 @@
 		"count": 500,
 		"min_size": 0.5,
 		"max_size": 6.0,
-		"solid_size": 1.5
+		"solid_size": 0.8
 	}
 }

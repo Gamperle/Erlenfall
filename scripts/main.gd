@@ -85,7 +85,7 @@ func _objective_bearings() -> PackedFloat32Array:
 	var bearings := PackedFloat32Array()
 	if FeatureFlags.enabled("compass_objectives"):
 		for marker in _player.quests.objective_markers(_player.inventory):
-			bearings.append(Compass.bearing_between(Vector2(_player.position.x, _player.position.z), marker))
+			bearings.append(Compass.bearing_between(Vector2(_player.position.x, _player.position.z), _village.marker_position(marker)))
 	return bearings
 
 

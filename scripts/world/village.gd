@@ -93,6 +93,7 @@ func _ready() -> void:
 	for site: Dictionary in layout["repair_sites"]:
 		var repair_site := RepairSite.new()
 		repair_site.setup(site)
+		repair_site.name = site["flag"]
 		_add_box_interactable(repair_site, site)
 	for bed_data: Dictionary in layout["beds"]:
 		_add_box_interactable(Bed.new(), bed_data)
@@ -123,6 +124,14 @@ func load_data(data: Dictionary) -> void:
 				child.position.y = ground
 		elif child is ResourceNode and not resources.is_empty():
 			child.load_data(resources.pop_front())
+
+
+## Returns the x and z of a quest marker: a villager, station, or repair site by name, or a pair of numbers.
+func marker_position(marker: Variant) -> Vector2:
+	if marker is String:
+		var place: Node3D = get_node(marker)
+		return Vector2(place.position.x, place.position.z)
+	return Vector2(marker[0], marker[1])
 
 
 ## Shows or hides repairs to match the story flags.

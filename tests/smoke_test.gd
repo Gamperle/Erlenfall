@@ -210,9 +210,19 @@ func _test_hud(scene: Node, player: Player) -> void:
 	var carried := Inventory.new()
 	quests.start("first_nails")
 	var markers := quests.objective_markers(carried)
-	_check(markers.size() == 1 and markers[0] == Vector2(40.0, -175.0), "the compass points to the ore for the nails")
+	var village: Village = scene.get_node("Village")
+	_check(markers.size() == 1 and village.marker_position(markers[0]) == Vector2(40.0, -175.0), "the compass points to the ore for the nails")
 	carried.add("iron_ingot")
-	_check(quests.objective_markers(carried)[0] == Vector2(16.0, 25.0), "the compass points to the anvil once there is iron")
+	var anvil: Node3D = village.get_node("anvil")
+	_check(village.marker_position(quests.objective_markers(carried)[0]) == Vector2(anvil.position.x, anvil.position.z), "the compass points to the anvil once there is iron")
+	var all_quests: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(QuestLog.DATA_PATH))
+	var unknown := PackedStringArray()
+	for quest: Dictionary in all_quests.values():
+		for objective: Dictionary in quest["objectives"]:
+			for marker: Variant in [objective.get("marker"), objective.get("marker_when_carrying", {}).get("marker")]:
+				if marker is String and village.get_node_or_null(marker) == null:
+					unknown.append(marker)
+	_check(unknown.is_empty(), "every quest marker names a real place %s" % ", ".join(unknown))
 	compass.heading = 0.0
 	compass.objective_bearings = PackedFloat32Array([90.0])
 	compass.queue_redraw()

@@ -3,6 +3,8 @@
 		"compass": true,
 		"compass_objectives": true,
 		"realistic_villagers": true,
+		"realistic_enemies": true,
+		"realistic_player": true,
 		"performance_overlay": true,
 		"torches": true,
 		"torch_crafting_enabled": true,

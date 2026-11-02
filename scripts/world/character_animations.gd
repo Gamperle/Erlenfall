@@ -3,7 +3,7 @@ extends RefCounted
 ## The animations shared by all character models, prepared once.
 
 const SOURCE := preload("res://assets/animations/humanoid.glb")
-const LOOPING: Array[StringName] = [&"Idle", &"Walk"]
+const LOOPING: Array[StringName] = [&"Idle", &"Idle_Torch", &"Sword_Idle", &"Walk", &"Sprint"]
 ## Transferred animations lean these bodies too far forward, so both back bones turn back this much.
 const BACK_CORRECTION_DEGREES := 8.0
 

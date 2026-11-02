@@ -7,6 +7,9 @@ const LIGHT_RANGE := 12.0
 const FLICKER_AMOUNT := 0.2
 const FLICKER_SPEED := 9.0
 
+## Stays vertical however the hand holding it moves.
+var keep_upright := false
+
 var _light: OmniLight3D
 var _time := 0.0
 
@@ -27,6 +30,8 @@ func set_lit(lit: bool) -> void:
 
 
 func _process(delta: float) -> void:
+	if keep_upright:
+		global_basis = Basis.IDENTITY.scaled(global_basis.get_scale())
 	_time += delta * FLICKER_SPEED
 	var flicker := sin(_time) * 0.6 + sin(_time * 2.3) * 0.4
 	_light.light_energy = LIGHT_ENERGY * (1.0 + flicker * FLICKER_AMOUNT)

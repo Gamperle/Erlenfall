@@ -63,6 +63,8 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 |---|---|---|
 | `compass` | `true` | Shows the compass at the top of the screen |
 | `realistic_villagers` | `true` | Uses the MakeHuman models for villagers who have one, instead of the simple figures |
+| `realistic_enemies` | `true` | Uses rigged models for enemies who have one |
+| `realistic_player` | `true` | Uses a rigged model for the player |
 | `performance_overlay` | `true` | Shows the performance measurements at the top right |
 
 ## Torch flags

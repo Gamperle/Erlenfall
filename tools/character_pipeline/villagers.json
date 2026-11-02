@@ -18,7 +18,7 @@
 			"toigo_fisherman_sweater": [0.75, 0.68, 0.55]
 		},
 		"hair": "braid01",
-		"brows": "eyebrow005",
+		"brows": "eyebrow001",
 		"eyes": "low-poly",
 		"tucked": {
 			"toigo_fisherman_sweater": "toigo_long_full_skirt"
@@ -44,7 +44,7 @@
 			"toigo_fisherman_sweater": [0.55, 0.3, 0.22]
 		},
 		"hair": "ponytail01",
-		"brows": "eyebrow005",
+		"brows": "eyebrow001",
 		"eyes": "low-poly",
 		"tucked": {
 			"toigo_fisherman_sweater": "toigo_long_full_skirt"
@@ -69,7 +69,7 @@
 			"toigo_fisherman_sweater": [0.4, 0.5, 0.42]
 		},
 		"hair": "short04",
-		"brows": "eyebrow005",
+		"brows": "eyebrow001",
 		"eyes": "low-poly",
 		"under_hem": {
 			"toigo_wool_pants": "toigo_fisherman_sweater"
@@ -90,8 +90,11 @@
 		"clothes": ["rehmanpolanski_viking_tunic", "rehmanpolanski_viking_pants", "rehmanpolanski_viking_boots"],
 		"footwear": ["rehmanpolanski_viking_boots"],
 		"hair": "short02",
-		"beard": "rehmanpolanski_beard_viking",
-		"brows": "eyebrow005",
+		"beard": "grinsegold_beard_sigmund_wip",
+		"colors": {
+			"grinsegold_beard_sigmund_wip": [0.3, 0.2, 0.13]
+		},
+		"brows": "eyebrow009",
 		"eyes": "low-poly"
 	},
 	{
@@ -110,7 +113,32 @@
 		},
 		"hair": "short01",
 		"hair_color": [0.68, 0.66, 0.63],
-		"brows": "eyebrow005",
+		"brows": "eyebrow009",
+		"eyes": "low-poly"
+	},
+	{
+		"id": "player",
+		"shape": {
+			"gender": 1.0,
+			"age": 0.55,
+			"muscle": 0.55,
+			"weight": 0.45
+		},
+		"skin": "young_caucasian_male",
+		"clothes": ["toigo_wool_pants", "toigo_fisherman_sweater", "shoes03"],
+		"footwear": ["shoes03"],
+		"colors": {
+			"toigo_wool_pants": [0.33, 0.27, 0.2],
+			"toigo_fisherman_sweater": [0.5, 0.36, 0.24]
+		},
+		"under_hem": {
+			"toigo_wool_pants": "toigo_fisherman_sweater"
+		},
+		"trim_above": {
+			"shoes03": 0.11
+		},
+		"hair": "short04",
+		"brows": "eyebrow009",
 		"eyes": "low-poly"
 	}
 ]

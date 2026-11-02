@@ -81,6 +81,7 @@ func _run() -> void:
 
 	await _test_land_and_river(scene, player)
 	_test_hud(scene, player)
+	_test_character_models(player)
 	_test_feature_flags()
 	await _test_torch(player)
 	await _test_crafting(scene, player)
@@ -211,6 +212,11 @@ func _test_hud(scene: Node, player: Player) -> void:
 	TranslationServer.set_locale("de")
 	_check(tr("UI_COMPASS_E") == "O", "east is translated on the compass")
 	TranslationServer.set_locale("en")
+
+
+func _test_character_models(player: Player) -> void:
+	_check(player.get_node("Body") is CharacterModel, "the player uses a rigged model")
+	_check(root.get_tree().get_first_node_in_group(Enemy.GROUP)._body is CharacterModel, "goblins use a rigged model")
 
 
 func _test_feature_flags() -> void:
@@ -353,12 +359,12 @@ func _test_story(scene: Node, player: Player) -> void:
 	_check(quests.tracker_lines(player.inventory).size() == 1, "the tracker shows the active quest")
 
 	var hedda: Npc = village.get_node("hedda")
-	var hedda_model: Node3D = hedda.get_node("Model")
+	var hedda_model: Node3D = hedda.find_child("Model", true, false)
 	var hedda_player: AnimationPlayer = hedda_model.get_node("Animations")
 	_check(hedda_player.is_playing() and hedda_player.current_animation == "Idle", "a villager with a model plays its idle animation")
 	_check(hedda_model.find_child("GeneralSkeleton", true, false) != null, "the model's skeleton is set up for shared animations")
 	for villager: String in ["bertram", "mira", "greta", "brandt"]:
-		_check(village.get_node(villager).get_node_or_null("Model") != null, "%s has a model" % villager)
+		_check(village.get_node(villager).find_child("Model", true, false) != null, "%s has a model" % villager)
 	var pivot: Node3D = player.get_node("CameraPivot")
 	pivot.rotation = Vector3.ZERO
 	player.position = hedda.position + Vector3(0.0, 0.5, 2.0)

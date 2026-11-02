@@ -4,6 +4,7 @@ extends CharacterBody3D
 
 enum State { IDLE, CHASE, WINDUP, RECOVER, DEAD }
 
+const ATTACK_ANIMATION := &"Punch_Jab"
 const DATA_PATH := "res://data/enemies.json"
 const GROUP := "enemy"
 const TURN_SPEED := 8.0
@@ -139,6 +140,7 @@ func _process_chase(player: Player) -> void:
 	if _distance_to(player) < float(_stats["attack_range"]):
 		state = State.WINDUP
 		_timer = _stats["windup_seconds"]
+		_body.play_action(ATTACK_ANIMATION)
 		_stop()
 	else:
 		_move_toward_point(player.global_position)
@@ -266,9 +268,15 @@ func _build() -> void:
 	var height: float = _stats["height"]
 	var radius: float = _stats["radius"]
 
-	_body = Humanoid.new()
-	_body.setup(Color(_stats["color"]), Color(_stats["skin"]), Color.BLACK, false, true)
-	_body.scale = Vector3.ONE * (height / Npc.BODY_HEIGHT)
+	if _stats.has("model") and FeatureFlags.enabled("realistic_enemies"):
+		var model := CreatureModel.new()
+		model.load_model(_stats["model"])
+		model.scale = Vector3.ONE * (height / float(_stats["model_height"]))
+		_body = model
+	else:
+		_body = Humanoid.new()
+		_body.setup(Color(_stats["color"]), Color(_stats["skin"]), Color.BLACK, false, true)
+		_body.scale = Vector3.ONE * (height / Npc.BODY_HEIGHT)
 	add_child(_body)
 
 	var shape := CapsuleShape3D.new()

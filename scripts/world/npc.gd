@@ -5,7 +5,6 @@ extends Interactable
 const UI_GROUP := "dialogue_ui"
 const BODY_RADIUS := 0.35
 const BODY_HEIGHT := 1.75
-const IDLE_ANIMATION := &"Idle"
 
 var npc_id := ""
 
@@ -16,7 +15,9 @@ func setup(data: Dictionary) -> void:
 	name = npc_id
 
 	if data.has("model") and FeatureFlags.enabled("realistic_villagers"):
-		_add_model(data["model"])
+		var model := CharacterModel.new()
+		model.load_model(data["model"])
+		add_child(model)
 	else:
 		var figure := Humanoid.new()
 		figure.setup(Color(data["color"]), Humanoid.DEFAULT_SKIN, Color(data.get("hair", Humanoid.DEFAULT_HAIR.to_html())))
@@ -37,15 +38,6 @@ func setup(data: Dictionary) -> void:
 	label.pixel_size = 0.006
 	label.outline_size = 8
 	add_child(label)
-
-
-func _add_model(path: String) -> void:
-	var model: Node3D = (load(path) as PackedScene).instantiate()
-	model.name = "Model"
-	# Models face +Z, and the simple figures they replace face -Z.
-	model.rotation.y = PI
-	add_child(model)
-	CharacterAnimations.play(model, IDLE_ANIMATION)
 
 
 func prompt() -> String:

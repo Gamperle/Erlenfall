@@ -2,7 +2,7 @@
 
 Builds rigged villagers from short recipes. Everything used is CC0, so the results can be stored in this repository under [ASSETS.md](../../ASSETS.md).
 
-**Status: experimental.** All five villagers are in the game, behind the `realistic_villagers` flag. See [#76](https://github.com/Gamperle/Erlenfall/issues/76).
+**Status: experimental.** The villagers, the player, and goblins are in the game, behind the `realistic_villagers`, `realistic_player`, and `realistic_enemies` flags. See [#76](https://github.com/Gamperle/Erlenfall/issues/76).
 
 ## Setup
 
@@ -49,6 +49,7 @@ The animation library is optional. With one, characters stand in the first frame
 | `trim_above` | Parts cut off above a height in meters, such as shoe shafts inside pants |
 | `hair`, `hair_color` | Hair, and an optional sRGB color to repaint it |
 | `beard` | Beard or moustache |
+| `smooth_chest` | Tight clothes whose chest area is smoothed |
 | `brows`, `eyes` | Eyebrows and eyes |
 
 ## Importing into Godot
@@ -59,6 +60,10 @@ Set these on the model's `Skeleton3D` in the import settings, for both the chara
 - **Silhouette fix:** turn it on, with a threshold of 3 degrees, since the bodies rest in an A-pose.
 
 - **Back correction:** transferred animations lean these bodies about 5 to 6 degrees further forward than the animations' own figure. Rotate the `Spine` and `Chest` rotation tracks back by 8 degrees each, as `_straightened` in `turntable.gd` and `scripts/world/character_animations.gd` do.
+
+## Goblin
+
+`build_goblin.py` exports the OpenGameArt goblin. Its proportions don't work with the human animations, so `scripts/world/creature_model.gd` poses its bones in code.
 
 ## Things that went wrong
 

@@ -49,6 +49,15 @@ const WEAPON_SWING_ANGLE := -2.2
 const WEAPON_FIRST_PERSON_REST_ANGLE := -0.35
 const WEAPON_FIRST_PERSON_SWING_ANGLE := -1.4
 const WEAPON_BLOCK_ANGLE := 1.3
+const MODEL_PATH := "res://assets/characters/player.glb"
+const ATTACK_ANIMATION := &"Sword_Attack"
+const DODGE_ANIMATION := &"Roll"
+const BLOCK_ANIMATION := &"Sword_Idle"
+const TORCH_ANIMATION := &"Idle_Torch"
+const WEAPON_GRIP_POSITION := Vector3(0.0, 0.08, 0.02)
+const WEAPON_GRIP_ROTATION := Vector3(-PI / 2.0, 0.0, 0.0)
+const TORCH_GRIP_POSITION := Vector3(0.0, 0.08, 0.02)
+const TORCH_GRIP_SCALE := 0.75
 const TORCH_ITEM := "torch"
 const TORCH_ARM_RAISE := 1.2
 const TORCH_HAND_POSITION := Vector3(0.0, -0.58, -0.05)
@@ -90,7 +99,10 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
-	_body_mesh.setup(PLAYER_CLOTH_COLOR)
+	if FeatureFlags.enabled("realistic_player"):
+		_replace_body()
+	else:
+		_body_mesh.setup(PLAYER_CLOTH_COLOR)
 	_spring_arm.add_excluded_object(get_rid())
 	# Conversations pause the world, and the arm still has to keep the camera out of walls.
 	_spring_arm.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -173,6 +185,7 @@ func attack() -> void:
 	if _attack_cooldown <= 0.0 and not is_blocking() and not is_dodging():
 		_attack_cooldown = ATTACK_COOLDOWN
 		_attack_windup = ATTACK_WINDUP
+		_body_mesh.play_action(ATTACK_ANIMATION)
 		_body_mesh.rotation.y = _pivot.rotation.y
 
 
@@ -186,6 +199,7 @@ func dodge() -> void:
 	_dodge_direction = Vector3(move.x, 0.0, move.y).normalized().rotated(Vector3.UP, _pivot.rotation.y)
 	_dodge_time = DODGE_SECONDS
 	_dodge_cooldown = DODGE_COOLDOWN
+	_body_mesh.play_action(DODGE_ANIMATION)
 
 
 ## Takes damage from an attack that came from the given position.
@@ -292,6 +306,17 @@ func _update_combat(delta: float) -> void:
 	if _since_hit >= REGEN_DELAY and health.is_alive() and health.current < health.maximum:
 		health.heal(REGEN_PER_SECOND * delta)
 
+	if _body_mesh is CharacterModel:
+		var idle: StringName = &""
+		if is_blocking():
+			idle = BLOCK_ANIMATION
+		elif torch_lit:
+			idle = TORCH_ANIMATION
+		(_body_mesh as CharacterModel).idle_override = idle
+		# In third person, the model's own animations move the weapon.
+		if not first_person:
+			return
+
 	# Swing the placeholder weapon while the cooldown runs, and raise it to block.
 	var swing := _attack_cooldown / ATTACK_COOLDOWN
 	var rest_angle := WEAPON_FIRST_PERSON_REST_ANGLE if first_person else WEAPON_REST_ANGLE
@@ -356,6 +381,17 @@ func _keep_inside_world() -> void:
 		position.z = flat.y
 
 
+func _replace_body() -> void:
+	var old_body := _body_mesh
+	remove_child(old_body)
+	old_body.free()
+	var model := CharacterModel.new()
+	model.name = "Body"
+	model.load_model(MODEL_PATH)
+	add_child(model)
+	_body_mesh = model
+
+
 func _apply_camera_mode() -> void:
 	_spring_arm.spring_length = 0.0 if first_person else THIRD_PERSON_DISTANCE
 	_spring_arm.position.x = 0.0 if first_person else SHOULDER_OFFSET
@@ -369,3 +405,9 @@ func _apply_camera_mode() -> void:
 	_torch.position = TORCH_FIRST_PERSON_POSITION if first_person else TORCH_HAND_POSITION
 	_torch.rotation.x = 0.0 if first_person else -TORCH_ARM_RAISE
 	_torch.scale = Vector3.ONE * (TORCH_FIRST_PERSON_SCALE if first_person else 1.0)
+	if _body_mesh is CharacterModel and not first_person:
+		_weapon.position = WEAPON_GRIP_POSITION
+		_weapon.rotation = WEAPON_GRIP_ROTATION
+		_torch.position = TORCH_GRIP_POSITION
+		_torch.scale = Vector3.ONE * TORCH_GRIP_SCALE
+	_torch.keep_upright = _body_mesh is CharacterModel and not first_person

@@ -66,6 +66,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `realistic_enemies` | `true` | Uses rigged models for enemies who have one |
 | `realistic_player` | `true` | Uses a rigged model for the player |
 | `performance_overlay` | `true` | Shows the performance measurements at the top right |
+| `river_fine_collision` | `true` | Makes the ground near the river collide exactly where it is drawn, using the mesh's own triangles. Off leaves the coarser collision for the whole map, which costs less to load and to simulate |
 
 ## Torch flags
 
@@ -82,6 +83,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `torch_burn_seconds` | `600` | How long one torch burns when burn time is on |
 | `interface_min_scale` | `0.9` | The smallest size the interface shrinks to in a small window, as a share of its full size |
 | `controls_hint_seconds` | `30` | How long the controls line stays on screen when play starts. It shows again in the pause menu. 0 keeps it on screen |
+| `river_fine_margin` | `3.0` | How many meters past the river's banks the terrain mesh, and its collision, stay finer. Below 3 some banks end up in coarse cells, where the ground is less exact |
 
 ## Grass values
 

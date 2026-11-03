@@ -117,3 +117,9 @@ Enemies walk straight at their target until something blocks them, then search a
 | `grass_draw_scale_low` | `0.6` | How far grass reaches on low graphics, as a share of the full 220 meters |
 | `grass_draw_scale_medium` | `0.8` | The same on medium graphics |
 | `grass_draw_scale_high` | `1.0` | The same on high graphics |
+
+## Village values
+
+| Name | Default | Effect |
+|---|---|---|
+| `small_prop_draw_distance` | `80` | How many meters away props smaller than 0.6 m, such as bowls and hammers, stop being drawn, along with their shadows. At 80 m they are a few pixels across |

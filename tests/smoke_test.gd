@@ -46,6 +46,13 @@ func _run() -> void:
 	_check(terrain.wading_factor(river_floor + Vector3.UP * 5.0) == 1.0, "a bridge over the river doesn't slow anyone")
 	_check(absf(player.position.y - terrain.height_at(player.position.x, player.position.z)) < 1.0, "collision matches terrain")
 	_check(village.get_node_or_null("forge") != null, "buildings load from data")
+	# Every part is a draw call, and another for each shadow, so a building is one mesh per material.
+	var building_parts := village.get_node("forge").find_children("*", "MeshInstance3D", true, false)
+	var bridge_parts := village.get_node("Bridge").find_children("*", "MeshInstance3D", true, false)
+	_check(building_parts.size() == 1 and building_parts[0].mesh.get_surface_count() <= 6 and bridge_parts.size() == 1, "buildings and bridges are joined into one mesh each")
+	var bowl: MeshInstance3D = village.get_node("Props/bowl_1").find_children("*", "MeshInstance3D", true, false)[0]
+	var door: MeshInstance3D = village.get_node("Props/door_3").find_children("*", "MeshInstance3D", true, false)[0]
+	_check(bowl.visibility_range_end > 0.0 and door.visibility_range_end == 0.0, "only small props stop being drawn far away")
 	_check(village.get_node("Roads").get_child_count() == 3, "roads load from data")
 	_check(village.get_node("Boulders").get_child_count() > 0, "boulders have collision")
 	_check(village.get_node("Boulders").get_child(0).shape is ConvexPolygonShape3D, "boulders collide with their real shape")

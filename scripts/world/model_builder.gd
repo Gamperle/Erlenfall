@@ -35,6 +35,47 @@ static func box(size: Vector3, pattern: Surfaces.Pattern, color: Color, at := Ve
 	return instance
 
 
+## Joins the model's parts into one mesh with a surface for each material, since each part
+## is a draw call of its own, and once more for every shadow it casts. The materials are
+## mapped to the world, so the joined mesh looks the same. Parts that aren't meshes, or that
+## don't cast shadows, stay as they are.
+static func merged(model: Node3D) -> Node3D:
+	var surfaces: Dictionary = {}
+	for part: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
+		if part.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_ON:
+			continue
+		var to_model := _transform_in(model, part)
+		for i in part.mesh.get_surface_count():
+			var material: Material = part.get_active_material(i)
+			if not surfaces.has(material):
+				var surface := SurfaceTool.new()
+				surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+				surfaces[material] = surface
+			surfaces[material].append_from(part.mesh, i, to_model)
+		part.get_parent().remove_child(part)
+		part.free()
+	var mesh := ArrayMesh.new()
+	for material: Material in surfaces:
+		surfaces[material].commit(mesh)
+		mesh.surface_set_material(mesh.get_surface_count() - 1, material)
+	var instance := MeshInstance3D.new()
+	instance.name = "Mesh"
+	instance.mesh = mesh
+	model.add_child(instance)
+	return model
+
+
+## Where the part sits relative to the model, which may not be in the scene tree yet.
+static func _transform_in(model: Node3D, part: Node3D) -> Transform3D:
+	var result := Transform3D.IDENTITY
+	var node: Node = part
+	while node != model:
+		if node is Node3D:
+			result = (node as Node3D).transform * result
+		node = node.get_parent()
+	return result
+
+
 ## Plastered walls with a timber frame, a stone base, a door, and windows.
 static func house_walls(size: Vector3, wall_color: Color, ruined: bool) -> Node3D:
 	var house := Node3D.new()
@@ -102,13 +143,13 @@ static func damaged_roof(width: float, depth: float, wall_height: float) -> Node
 static func prop(model: String, size: Vector3) -> Node3D:
 	match model:
 		"furnace":
-			return _furnace(size)
+			return merged(_furnace(size))
 		"anvil":
-			return _anvil(size)
+			return merged(_anvil(size))
 		"ladder":
-			return _ladder(size)
+			return merged(_ladder(size))
 		"bed":
-			return _bed(size)
+			return merged(_bed(size))
 	return box(size, Surfaces.Pattern.WOOD, WOOD_COLOR, Vector3.UP * size.y / 2.0)
 
 
@@ -139,7 +180,7 @@ static func bridge(length: float, width: float, rise: float) -> StaticBody3D:
 		var at := _arch_point(progress, length, rise)
 		var pier_height := at.y + BRIDGE_PIER_DEPTH - BRIDGE_DECK_THICKNESS
 		body.add_child(box(Vector3(width, pier_height, 0.8), Surfaces.Pattern.STONE, STONE_COLOR, Vector3(0.0, at.y - BRIDGE_DECK_THICKNESS - pier_height / 2.0, at.z)))
-	return body
+	return merged(body)
 
 
 ## The top of the deck, from one end at 0 to the other at 1. Both ends are at height 0.
@@ -176,7 +217,7 @@ static func wood_pile(size: float) -> Node3D:
 			log_mesh.position = Vector3(column * spacing, 0.16 * size + row * spacing * 0.85, 0.0)
 			log_mesh.rotation.x = PI / 2.0
 			pile.add_child(log_mesh)
-	return pile
+	return merged(pile)
 
 
 ## A stick with a wrapped head and a flame. Its origin is where the hand grips it.

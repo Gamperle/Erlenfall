@@ -47,10 +47,17 @@ const FLOOR_MASK := (1 << FLOOR_BITS) - 1
 ## for what it is part of (0 for the terrain).
 const FLOOR_STRIDE := 3
 const DIAGONAL_COST := 1.4142
-const NEIGHBORS: Array[Vector2i] = [
-	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
-	Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1),
+const KEY_X := 1 << KEY_SHIFT
+## The four straight steps come first. A neighbor's key is the cell's key plus its offset's key.
+const NEIGHBOR_KEYS: Array[int] = [
+	KEY_X, -KEY_X, 1, -1,
+	KEY_X + 1, KEY_X - 1, -KEY_X + 1, -KEY_X - 1,
 ]
+## The two straight steps beside each diagonal one, which both need to be free.
+const DIAGONAL_SIDES: Array[int] = [0, 2, 0, 3, 1, 2, 1, 3]
+
+## What walking along a straight line runs into first.
+enum Line { CLEAR, BLOCKED, WET }
 
 static var _grids: Dictionary = {}
 static var _surfaces: Dictionary = {}
@@ -76,6 +83,11 @@ var _diagonal_slope_step := WALKABLE_SLOPE * _cell_size * DIAGONAL_COST + SLOPE_
 var _straight := PackedInt32Array([-1, -1, -1, -1])
 var _crowd := PackedVector3Array()
 var _crowd_clearance := PackedFloat32Array()
+## The heights of those in the crowd that keep each cell clear, by the cell's key. Worked out when
+## first needed, since a crowd is often set without a search following.
+var _crowded: Dictionary = {}
+var _crowded_known := true
+var _line_end := Line.CLEAR
 
 var _searching := false
 var _goal := Vector2.ZERO
@@ -119,6 +131,8 @@ func cancel() -> void:
 func set_crowd(points: PackedVector3Array, clearances: PackedFloat32Array) -> void:
 	_crowd = points
 	_crowd_clearance = clearances
+	_crowded.clear()
+	_crowded_known = points.is_empty()
 
 
 func crowd_size() -> int:
@@ -128,6 +142,7 @@ func crowd_size() -> int:
 ## Starts a search that ends within `arrive_distance` of the goal. Call `advance` until it's done.
 func begin(from: Vector3, goal: Vector3, arrive_distance: float) -> void:
 	_refresh_grids()
+	_know_crowd()
 	_goal = Vector2(goal.x, goal.z)
 	_arrive_distance = arrive_distance
 	_open_scores.clear()
@@ -142,7 +157,7 @@ func begin(from: Vector3, goal: Vector3, arrive_distance: float) -> void:
 	var start := _cell_of(Vector2(from.x, from.z))
 	var floor_index := _floor_near(start, from.y, false)
 	if floor_index >= 0:
-		_add_open(start, floor_index, -1, 0.0)
+		_add_open(_node_key(start, floor_index), -1, 0.0)
 		return
 	# The middle of the body's own cell can be inside something when it's pressed against it. A cell
 	# two away only counts when the one between is free, so a start isn't on the far side of a wall
@@ -154,14 +169,16 @@ func begin(from: Vector3, goal: Vector3, arrive_distance: float) -> void:
 			floor_index = _floor_near(cell, from.y)
 			var between := start + offset / 2
 			if floor_index >= 0 and (between == start or _floor_near(between, from.y) >= 0):
-				_add_open(cell, floor_index, -1, Vector2(offset).length())
+				_add_open(_node_key(cell, floor_index), -1, Vector2(offset).length())
 
 
 ## Does search work until it finishes, which returns true, or the frame's budget runs out.
 func advance() -> bool:
 	var budget: int = FeatureFlags.value("enemy_path_budget_steps")
-	while _spend(0) < budget:
-		_spend(1)
+	_spend(0)
+	_know_crowd()
+	while _budget_used < budget:
+		_budget_used += 1
 		if _expand():
 			_searching = false
 			return true
@@ -172,15 +189,45 @@ func advance() -> bool:
 ## start is skipped, because something the body is pressed against can reach into its cell, and
 ## `skip_end` does the same for a goal.
 func is_line_clear(from: Vector3, to: Vector3, skip_end := 0.0) -> bool:
+	if Vector2(from.x, from.z).distance_to(Vector2(to.x, to.z)) > LINE_MAX_LENGTH:
+		return false
+	_walk_line(from, to, skip_end)
+	return _line_end == Line.CLEAR
+
+
+## How far the body would walk straight toward a point, looking at most `max_length` ahead, before it
+## got wet, or INF when it doesn't or something else is in the way first, which is left to be found
+## by bumping into it.
+func wet_distance(from: Vector3, to: Vector3, max_length: float) -> float:
+	var offset := Vector2(to.x - from.x, to.z - from.z).limit_length(max_length)
+	var length := offset.length()
+	# The river is the only water, and most of the time it's too far away to reach.
+	var clearance := _terrain.river_clearance(from.x, from.z)
+	if length <= 0.0 or clearance > length:
+		return INF
+	# Nothing nearer than the river's banks is wet, so the line is only checked from a little before
+	# them, which keeps the cells to check, each a ray and a shape query, few.
+	var end := from + Vector3(offset.x, 0.0, offset.y)
+	var skip := maxf(clearance - _cell_size, 0.0)
+	var start := from.lerp(end, skip / length)
+	if skip > 0.0:
+		start.y = _terrain.height_at(start.x, start.z)
+	var along := _walk_line(start, end, 0.0)
+	return skip + along if _line_end == Line.WET else INF
+
+
+## Walks along a straight line until it ends or something is in the way, which is kept in
+## `_line_end`, and returns how far it got.
+func _walk_line(from: Vector3, to: Vector3, skip_end: float) -> float:
 	_refresh_grids()
+	_know_crowd()
 	var start := Vector2(from.x, from.z)
 	var end := Vector2(to.x, to.z)
 	var length := start.distance_to(end)
-	if length > LINE_MAX_LENGTH:
-		return false
 	var cell := _cell_of(start)
 	var floor_index := _floor_near(cell, from.y, false)
 	var along := LINE_SKIP_AT_START
+	_line_end = Line.CLEAR
 	while along < length - skip_end:
 		var next := _cell_of(start.lerp(end, along / length))
 		if floor_index < 0:
@@ -188,20 +235,17 @@ func is_line_clear(from: Vector3, to: Vector3, skip_end := 0.0) -> bool:
 			floor_index = _floor_near(next, from.y)
 		elif next != cell:
 			var here := _floors(cell)
-			floor_index = _step_to(here[floor_index * FLOOR_STRIDE], here[floor_index * FLOOR_STRIDE + 2], cell, next)
+			var diagonal := next.x != cell.x and next.y != cell.y
+			floor_index = _step_to(here[floor_index * FLOOR_STRIDE], here[floor_index * FLOOR_STRIDE + 2], _floors(next), _key(next), diagonal)
 		cell = next
-		if floor_index < 0 or _floors(cell)[floor_index * FLOOR_STRIDE + 1] > 1.0:
-			return false
+		if floor_index < 0:
+			_line_end = Line.BLOCKED
+			break
+		if _floors(cell)[floor_index * FLOOR_STRIDE + 1] > 1.0:
+			_line_end = Line.WET
+			break
 		along += _cell_size / 2.0
-	return true
-
-
-## Whether the floor at a point, the one nearest its height, is water.
-func is_wet(point: Vector3) -> bool:
-	_refresh_grids()
-	var cell := _cell_of(Vector2(point.x, point.z))
-	var floor_index := _floor_near(cell, point.y, false, INF)
-	return floor_index >= 0 and _floors(cell)[floor_index * FLOOR_STRIDE + 1] > 1.0
+	return along
 
 
 ## Forgets what is known about the cells around a point, where the body ran into something.
@@ -224,14 +268,14 @@ func _expand() -> bool:
 		return true
 	var score := _open_scores[0]
 	var node := _pop_open()
-	var cell := _cell_from_key(node >> FLOOR_BITS)
+	var key := node >> FLOOR_BITS
 	var floor_index := node & FLOOR_MASK
 	var cost: float = _costs[node]
-	var distance := _center_of(cell).distance_to(_goal)
+	var distance := _distance_to_goal(key)
 	if score > cost + distance * HEURISTIC_WEIGHT / _cell_size + 0.001:
 		return false
 	# Another body can have marked the cell blocked since it was added.
-	var here := _floors(cell)
+	var here := _floors_at(key)
 	if floor_index * FLOOR_STRIDE >= here.size():
 		return false
 	var height := here[floor_index * FLOOR_STRIDE]
@@ -243,25 +287,30 @@ func _expand() -> bool:
 	if distance <= _arrive_distance:
 		_finish(node)
 		return true
-	# The four straight steps come first, and a diagonal step needs both of the ones beside it.
-	for i in NEIGHBORS.size():
-		var offset := NEIGHBORS[i]
-		var next := cell + offset
-		var step_cost := 1.0
+	# The four straight steps come first, and a diagonal step needs both of the ones beside it. Most
+	# cells have one floor, and most searches no crowd, so that case is worked out here.
+	var crowded := not _crowded.is_empty()
+	for i in NEIGHBOR_KEYS.size():
+		var diagonal := i >= 4
+		if diagonal and (_straight[DIAGONAL_SIDES[i * 2 - 8]] < 0 or _straight[DIAGONAL_SIDES[i * 2 - 7]] < 0):
+			continue
+		var next_key := key + NEIGHBOR_KEYS[i]
+		var there := _floors_at(next_key)
 		var next_floor := -1
-		if i < 4:
-			next_floor = _step_to(height, surface, cell, next)
+		if there.size() == FLOOR_STRIDE:
+			var allowed := (_diagonal_slope_step if diagonal else _slope_step) if there[2] == surface else LEDGE_HEIGHT
+			if absf(there[0] - height) <= allowed and not (crowded and _is_crowded(next_key, there[0])):
+				next_floor = 0
+		elif not there.is_empty():
+			next_floor = _step_to(height, surface, there, next_key, diagonal)
+		if not diagonal:
 			_straight[i] = next_floor
-		else:
-			if _straight[0 if offset.x > 0 else 1] < 0 or _straight[2 if offset.y > 0 else 3] < 0:
-				continue
-			step_cost = DIAGONAL_COST
-			next_floor = _step_to(height, surface, cell, next)
 		if next_floor < 0:
 			continue
-		var next_cost := cost + step_cost * _floors(next)[next_floor * FLOOR_STRIDE + 1]
-		if next_cost < _costs.get(_node_key(next, next_floor), INF):
-			_add_open(next, next_floor, node, next_cost)
+		var next_cost := cost + (DIAGONAL_COST if diagonal else 1.0) * there[next_floor * FLOOR_STRIDE + 1]
+		var next_node := (next_key << FLOOR_BITS) | next_floor
+		if next_cost < _costs.get(next_node, INF):
+			_add_open(next_node, node, next_cost)
 	return false
 
 
@@ -275,56 +324,76 @@ func _finish(end_key: int) -> void:
 	waypoints.reverse()
 
 
-## The floor of the next cell, beside this one, that the body can walk onto from a floor at this
-## height and of this surface, or -1.
-func _step_to(height: float, surface: float, cell: Vector2i, next: Vector2i) -> int:
-	var slope_step := _diagonal_slope_step if next.x != cell.x and next.y != cell.y else _slope_step
-	var there := _floors(next)
-	# Most cells have one floor, and most searches no crowd, so that case is kept short.
-	if there.size() == FLOOR_STRIDE:
-		if absf(there[0] - height) > (slope_step if there[2] == surface else LEDGE_HEIGHT):
-			return -1
-		return -1 if not _crowd.is_empty() and _is_crowded(next, there[0]) else 0
+## Which of the floors of a cell beside this one, at `next_key`, the body can walk onto from a floor
+## at this height and of this surface, or -1.
+func _step_to(height: float, surface: float, there: PackedFloat64Array, next_key: int, diagonal: bool) -> int:
+	var slope_step := _diagonal_slope_step if diagonal else _slope_step
+	var crowded := not _crowded.is_empty()
 	var best := -1
 	var best_rise := INF
 	for i in there.size() / FLOOR_STRIDE:
 		var rise := absf(there[i * FLOOR_STRIDE] - height)
 		var allowed := slope_step if there[i * FLOOR_STRIDE + 2] == surface else LEDGE_HEIGHT
-		if rise <= allowed and rise < best_rise and not _is_crowded(next, there[i * FLOOR_STRIDE]):
+		if rise <= allowed and rise < best_rise and not (crowded and _is_crowded(next_key, there[i * FLOOR_STRIDE])):
 			best = i
 			best_rise = rise
 	return best
 
 
 ## The floor of a cell nearest a body's feet at this height, or -1.
-func _floor_near(cell: Vector2i, height: float, avoid_crowd := true, tolerance := START_HEIGHT_TOLERANCE) -> int:
+func _floor_near(cell: Vector2i, height: float, avoid_crowd := true) -> int:
 	var floors := _floors(cell)
 	var best := -1
-	var best_offset := tolerance
+	var best_offset := START_HEIGHT_TOLERANCE
 	for i in floors.size() / FLOOR_STRIDE:
 		var offset := absf(floors[i * FLOOR_STRIDE] - height)
-		if offset <= best_offset and not (avoid_crowd and _is_crowded(cell, floors[i * FLOOR_STRIDE])):
+		if offset <= best_offset and not (avoid_crowd and _is_crowded(_key(cell), floors[i * FLOOR_STRIDE])):
 			best = i
 			best_offset = offset
 	return best
 
 
-func _is_crowded(cell: Vector2i, height: float) -> bool:
-	var center := _center_of(cell)
-	for i in _crowd.size():
-		var other := _crowd[i]
-		if absf(other.y - height) < PROBE_HEIGHT and center.distance_squared_to(Vector2(other.x, other.z)) < _crowd_clearance[i] * _crowd_clearance[i]:
+func _is_crowded(key: int, height: float) -> bool:
+	var heights: Variant = _crowded.get(key)
+	if heights == null:
+		return false
+	for other: float in heights:
+		if absf(other - height) < PROBE_HEIGHT:
 			return true
 	return false
 
 
+## Works out which cells the crowd keeps clear: those whose middle is nearer one of them than its
+## clearance.
+func _know_crowd() -> void:
+	if _crowded_known:
+		return
+	_crowded_known = true
+	for i in _crowd.size():
+		var other := Vector2(_crowd[i].x, _crowd[i].z)
+		var clearance := _crowd_clearance[i]
+		var low := _cell_of(other - Vector2.ONE * clearance)
+		var high := _cell_of(other + Vector2.ONE * clearance)
+		for x in range(low.x, high.x + 1):
+			for z in range(low.y, high.y + 1):
+				var cell := Vector2i(x, z)
+				if _center_of(cell).distance_squared_to(other) < clearance * clearance:
+					var key := _key(cell)
+					var heights: PackedFloat64Array = _crowded.get(key, PackedFloat64Array())
+					heights.append(_crowd[i].y)
+					_crowded[key] = heights
+
+
 func _floors(cell: Vector2i) -> PackedFloat64Array:
-	var key := _key(cell)
+	return _floors_at(_key(cell))
+
+
+func _floors_at(key: int) -> PackedFloat64Array:
 	var known: Variant = _cells.get(key)
 	if known != null:
 		return known
 	_spend(PROBE_COST)
-	var floors := _probe(_center_of(cell))
+	var floors := _probe(_center_of(_cell_from_key(key)))
 	_cells[key] = floors
 	return floors
 
@@ -383,11 +452,10 @@ func _add_floor(floors: PackedFloat64Array, point: Vector2, height: float, surfa
 	floors.append(surface)
 
 
-func _add_open(cell: Vector2i, floor_index: int, from_key: int, cost: float) -> void:
-	var key := _node_key(cell, floor_index)
+func _add_open(key: int, from_key: int, cost: float) -> void:
 	_costs[key] = cost
 	_came_from[key] = from_key
-	var score := cost + _center_of(cell).distance_to(_goal) * HEURISTIC_WEIGHT / _cell_size
+	var score := cost + _distance_to_goal(key >> FLOOR_BITS) * HEURISTIC_WEIGHT / _cell_size
 	_open_scores.append(score)
 	_open_keys.append(key)
 	var at := _open_keys.size() - 1
@@ -408,9 +476,12 @@ func _pop_open() -> int:
 	var at := 0
 	while true:
 		var smallest := at
-		for child: int in [at * 2 + 1, at * 2 + 2]:
-			if child < last and _open_scores[child] < _open_scores[smallest]:
-				smallest = child
+		var child := at * 2 + 1
+		if child < last and _open_scores[child] < _open_scores[smallest]:
+			smallest = child
+		child += 1
+		if child < last and _open_scores[child] < _open_scores[smallest]:
+			smallest = child
 		if smallest == at:
 			break
 		_swap_open(at, smallest)
@@ -441,6 +512,12 @@ func _key(cell: Vector2i) -> int:
 
 func _node_key(cell: Vector2i, floor_index: int) -> int:
 	return (_key(cell) << FLOOR_BITS) | floor_index
+
+
+func _distance_to_goal(key: int) -> float:
+	var x := ((key >> KEY_SHIFT) - KEY_OFFSET + 0.5) * _cell_size - _goal.x
+	var z := ((key & KEY_MASK) - KEY_OFFSET + 0.5) * _cell_size - _goal.y
+	return sqrt(x * x + z * z)
 
 
 func _cell_from_key(key: int) -> Vector2i:

@@ -46,6 +46,13 @@ func _run() -> void:
 	_check(terrain.wading_factor(river_floor + Vector3.UP * 5.0) == 1.0, "a bridge over the river doesn't slow anyone")
 	_check(absf(player.position.y - terrain.height_at(player.position.x, player.position.z)) < 1.0, "collision matches terrain")
 	_check(village.get_node_or_null("forge") != null, "buildings load from data")
+	# Every part is a draw call, and another for each shadow, so a building is one mesh per material.
+	var building_parts := village.get_node("forge").find_children("*", "MeshInstance3D", true, false)
+	var bridge_parts := village.get_node("Bridge").find_children("*", "MeshInstance3D", true, false)
+	_check(building_parts.size() == 1 and building_parts[0].mesh.get_surface_count() <= 6 and bridge_parts.size() == 1, "buildings and bridges are joined into one mesh each")
+	var bowl: MeshInstance3D = village.get_node("Props/bowl_1").find_children("*", "MeshInstance3D", true, false)[0]
+	var door: MeshInstance3D = village.get_node("Props/door_3").find_children("*", "MeshInstance3D", true, false)[0]
+	_check(bowl.visibility_range_end > 0.0 and door.visibility_range_end == 0.0, "only small props stop being drawn far away")
 	_check(village.get_node("Roads").get_child_count() == 3, "roads load from data")
 	_check(village.get_node("Boulders").get_child_count() > 0, "boulders have collision")
 	_check(village.get_node("Boulders").get_child(0).shape is ConvexPolygonShape3D, "boulders collide with their real shape")
@@ -126,6 +133,7 @@ func _run() -> void:
 	await _test_combat(scene, player)
 	await _test_enemy_navigation(scene, player)
 	await _test_enemy_crowds_and_bridges(scene, player)
+	await _test_enemies_make_way(player)
 	await _test_gathering_collision(scene, player)
 	await _test_forest(scene, player)
 	await _test_player_fixes(scene, player)
@@ -995,6 +1003,30 @@ func _test_enemy_crowds_and_bridges(scene: Node, player: Player) -> void:
 			break
 	_check(enemy.state == Enemy.State.WINDUP and wading == 0, "enemies cross the river by the bridge (%d frames wading)" % wading)
 
+	# Walking straight at the player, 8 m beside the bridge, it turns to the bridge before the river (#141).
+	EnemyPath.forget_all()
+	var beside_a: Vector3 = on_ground.call(-11.0, 8.0)
+	var beside_b: Vector3 = on_ground.call(11.0, 8.0)
+	enemy.revive()
+	enemy._home = beside_a
+	enemy.position = beside_a
+	enemy.state = Enemy.State.CHASE
+	player.position = beside_b
+	wading = 0
+	var nearest := INF
+	for i in 1200:
+		await physics_frame
+		player.position = beside_b
+		player.health.restore()
+		var at := enemy.global_position
+		if terrain.wading_factor(at) < 1.0:
+			wading += 1
+		if absf((at - bridge.global_position).dot(side)) > 3.0:
+			nearest = minf(nearest, terrain.river_clearance(at.x, at.z))
+		if enemy.state == Enemy.State.WINDUP:
+			break
+	_check(enemy.state == Enemy.State.WINDUP and wading == 0 and nearest > 0.5, "enemies turn to a bridge before they reach the river (%d frames wading, %.1f m from the river)" % [wading, nearest])
+
 	# The blocker stands in a gap as if it were attacking. A disabled body would leave the physics world.
 	var site := Vector3(home.x + 12.0, home.y, home.z + 12.0)
 	blocker.disable_mode = CollisionObject3D.DISABLE_MODE_KEEP_ACTIVE
@@ -1054,6 +1086,54 @@ func _test_enemy_crowds_and_bridges(scene: Node, player: Player) -> void:
 	for other: Enemy in enemies:
 		other.process_mode = Node.PROCESS_MODE_INHERIT
 		other.revive()
+	EnemyPath.forget_all()
+	await _physics_frames(1)
+
+
+## The camp's three goblins walk side by side at a wall with one 1.2 m gap, and let each other through
+## rather than push (#140).
+func _test_enemies_make_way(player: Player) -> void:
+	var enemies := root.get_tree().get_nodes_in_group(Enemy.GROUP)
+	var home: Vector3 = enemies[0]._home
+	var homes: Array[Vector3] = []
+	var site := Vector3(home.x + 12.0, home.y, home.z + 12.0)
+	var walls := Node3D.new()
+	root.add_child(walls)
+	_add_test_box(walls, site + Vector3(-7.8, 0.0, 0.0), Vector3(14.4, 6.0, 0.4))
+	_add_test_box(walls, site + Vector3(7.8, 0.0, 0.0), Vector3(14.4, 6.0, 0.4))
+	await _physics_frames(2)
+	EnemyPath.forget_all()
+	for i in enemies.size():
+		var enemy: Enemy = enemies[i]
+		homes.append(enemy._home)
+		enemy.revive()
+		enemy._home = site + Vector3((i - 1) * 1.2, 0.5, -4.5 if i == 1 else -4.0)
+		enemy.position = enemy._home
+		enemy.state = Enemy.State.CHASE
+	var goal := site + Vector3(0.0, 0.5, 6.0)
+	player.health.restore()
+	player.position = goal
+	var touching := 0
+	var arrived := {}
+	for i in 600:
+		await physics_frame
+		player.position = goal
+		player.health.restore()
+		for enemy: Enemy in enemies:
+			if enemy.state != Enemy.State.CHASE:
+				arrived[enemy] = true
+			for c in enemy.get_slide_collision_count():
+				var other := enemy.get_slide_collision(c).get_collider() as Enemy
+				if other != null and other._moving and enemy._moving:
+					touching += 1
+					break
+		if arrived.size() == enemies.size():
+			break
+	_check(arrived.size() == enemies.size() and touching <= 10, "goblins let each other through a gap (%d of %d through, %d frames touching)" % [arrived.size(), enemies.size(), touching])
+	walls.free()
+	for i in enemies.size():
+		enemies[i]._home = homes[i]
+		enemies[i].revive()
 	EnemyPath.forget_all()
 	await _physics_frames(1)
 
@@ -1578,7 +1658,7 @@ func _check(condition: bool, label: String) -> void:
 		_failures += 1
 
 
-## The axe shows while chopping (#121), and a player inside the ground comes back up (#125).
+## The axe shows while chopping (#121) and hits with its own damage (#134), and a player inside the ground comes back up (#125).
 func _test_player_fixes(scene: Node, player: Player) -> void:
 	var terrain: Terrain = scene.get_node("Terrain")
 	var village: Village = scene.get_node("Village")
@@ -1595,11 +1675,13 @@ func _test_player_fixes(scene: Node, player: Player) -> void:
 	var seconds: float = FeatureFlags.value("axe_in_hand_seconds")
 	await _physics_frames(ceili(seconds * Engine.physics_ticks_per_second) + 5)
 	_check(player.item_in_hand() == "iron_sword", "the strongest weapon is in hand")
+	_check(player.swing_damage() == 20.0, "a swing hits with the sword in hand")
 	player.position = forest.tree_position(0) + player.facing_direction() * -2.5 + Vector3.UP * 0.2
 	await _physics_frames(3)
 	player._attack_cooldown = 0.0
 	player.interact()
 	_check(player.item_in_hand() == Forest.AXE_ITEM, "chopping puts the axe in hand, even with a sword carried")
+	_check(player.swing_damage() == 16.0, "a chopping swing hits with the axe, not the sword")
 	await _physics_frames(ceili(seconds * Engine.physics_ticks_per_second) + 5)
 	_check(player.item_in_hand() == "iron_sword", "after chopping the sword comes back")
 	forest.load_data(saved_forest)

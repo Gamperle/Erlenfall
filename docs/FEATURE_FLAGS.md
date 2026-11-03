@@ -82,3 +82,13 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `torch_burn_seconds` | `600` | How long one torch burns when burn time is on |
 | `interface_min_scale` | `0.9` | The smallest size the interface shrinks to in a small window, as a share of its full size |
 | `controls_hint_seconds` | `30` | How long the controls line stays on screen when play starts. It shows again in the pause menu. 0 keeps it on screen |
+
+## Grass values
+
+| Name | Default | Effect |
+|---|---|---|
+| `grass_far_distance` | `60` | From this many meters away, a cell of grass uses simpler tufts |
+| `grass_far_blade_share` | `0.5` | The share of a tuft's blades that simpler tufts keep. Each is one wider triangle instead of three |
+| `grass_draw_scale_low` | `0.6` | How far grass reaches on low graphics, as a share of the full 220 meters |
+| `grass_draw_scale_medium` | `0.8` | The same on medium graphics |
+| `grass_draw_scale_high` | `1.0` | The same on high graphics |

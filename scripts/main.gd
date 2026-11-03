@@ -139,6 +139,8 @@ func _apply_graphics() -> void:
 	var sun: DirectionalLight3D = $Sun
 	sun.shadow_enabled = Settings.shadows()
 	sun.directional_shadow_mode = Settings.shadow_splits()
+	var grass: GrassField = _village.get_node("Grass")
+	grass.set_draw_scale(Settings.grass_draw_scale())
 
 
 func save_game() -> void:

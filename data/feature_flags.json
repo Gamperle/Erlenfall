@@ -18,6 +18,11 @@
 	"values": {
 		"torch_burn_seconds": 600,
 		"interface_min_scale": 0.9,
-		"controls_hint_seconds": 30
+		"controls_hint_seconds": 30,
+		"grass_far_distance": 60,
+		"grass_far_blade_share": 0.5,
+		"grass_draw_scale_low": 0.6,
+		"grass_draw_scale_medium": 0.8,
+		"grass_draw_scale_high": 1.0
 	}
 }

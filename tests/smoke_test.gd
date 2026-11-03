@@ -125,6 +125,7 @@ func _run() -> void:
 	await _test_gathering_collision(scene, player)
 	await _test_forest(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
+	await _test_grass_cost(scene)
 	await _test_settings(scene, player)
 	_test_translations()
 
@@ -1036,6 +1037,41 @@ func _talk(ui: DialogueUI, npc_id: String, player: Player, answers: Array) -> vo
 	ui.open_conversation(npc_id, npc_id, player)
 	for answer: int in answers:
 		ui.choose(answer)
+
+
+func _test_grass_cost(scene: Node) -> void:
+	var grass: GrassField = scene.get_node("Village/Grass")
+	var menu: GameMenu = scene.get_node("GameMenu")
+	await _physics_frames(30)
+	var cell: Vector2i = grass._planted.keys()[0]
+	var planted: GrassField.PlantedCell = grass._planted[cell]
+	var cell_center := (Vector2(cell) + Vector2(0.5, 0.5)) * GrassField.CELL_SIZE
+
+	var whole_tris := 0
+	var far_tris := 0
+	for species in grass._meshes.size():
+		whole_tris += grass._meshes[species].surface_get_array_len(0) / 3
+		far_tris += grass._far_meshes[species].surface_get_array_len(0) / 3
+	_check(far_tris * 3 < whole_tris, "distant grass tufts cost far less (%d against %d triangles)" % [far_tris, whole_tris])
+
+	grass._fit_detail(cell, cell_center)
+	var multimesh := planted.multimeshes[0]
+	_check(multimesh.visible_instance_count == multimesh.instance_count and multimesh.mesh == grass._meshes[planted.species[0]], "grass around the camera is drawn whole")
+	grass._fit_detail(cell, cell_center + Vector2(160.0, 0.0))
+	_check(multimesh.visible_instance_count < multimesh.instance_count and multimesh.mesh == grass._far_meshes[planted.species[0]], "distant grass draws fewer, simpler tufts")
+	grass._fit_detail(cell, cell_center + Vector2(600.0, 0.0))
+	_check(not planted.group.visible, "grass beyond the draw distance isn't drawn")
+	grass._fit_detail(cell, cell_center)
+	_check(planted.group.visible and multimesh.mesh == grass._meshes[planted.species[0]], "grass returns when the camera comes back")
+
+	var distances: Array[float] = []
+	for level in 3:
+		menu._choose_graphics(level)
+		distances.append(grass._draw_distance)
+		_check(grass.tuft_share(GrassField.DRAW_DISTANCE * GrassField.EARLY_FADE - 1.0) == 1.0, "%s graphics keep all the grass nearby" % Settings.graphics)
+		_check(grass.tuft_share(grass._draw_distance) == 0.0, "%s graphics draw no grass past the draw distance" % Settings.graphics)
+	_check(distances[0] < distances[1] and distances[1] < distances[2], "lower graphics draw grass less far (%s)" % str(distances))
+	_check(distances[2] == GrassField.DRAW_DISTANCE, "high graphics draw grass at full distance")
 
 
 func _test_settings(scene: Node, player: Player) -> void:

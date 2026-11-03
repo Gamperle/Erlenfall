@@ -8,6 +8,7 @@
 		"realistic_player": true,
 		"performance_overlay": true,
 		"river_fine_collision": true,
+		"terrain_seam_cells": true,
 		"torches": true,
 		"torch_crafting_enabled": true,
 		"torch_starting_item_enabled": true,

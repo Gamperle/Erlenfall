@@ -97,6 +97,7 @@ func _run() -> void:
 
 	await _test_land_and_river(scene, player)
 	await _test_river_collision(terrain, player)
+	_test_terrain_seams(terrain)
 	await _test_hud(scene, player)
 	_test_character_models(player)
 	_test_generated_props()
@@ -312,6 +313,106 @@ func _visible_height(cells: Dictionary, at: Vector2) -> float:
 		if u >= -0.0001 and v >= -0.0001 and u + v <= 1.0001:
 			return u * a.y + v * b.y + (1.0 - u - v) * c.y
 	return NAN
+
+
+## Where fine cells meet coarser ones, the ground follows its true height and bends little more than
+## the true ground does, and the collision there still matches what is drawn.
+func _test_terrain_seams(terrain: Terrain) -> void:
+	var count := int(Terrain.SIZE / Terrain.STEP) + 1
+	var row := count - 1
+	var cells: PackedByteArray = terrain._fine_cells(count)
+	var edge_points := PackedVector2Array()
+	var crossings := PackedVector2Array()
+	var inside_seam_cells := PackedVector2Array()
+	for j in range(1, row - 1):
+		for i in range(1, row - 1):
+			var here := cells[j * row + i]
+			var corner := Vector2(i * Terrain.STEP - Terrain.SIZE / 2.0, j * Terrain.STEP - Terrain.SIZE / 2.0)
+			if corner.length() > 500.0:
+				continue
+			if here == Terrain.SEAM_CELL:
+				for offset: Vector2 in [Vector2(0.6, 1.3), Vector2(2.1, 2.7), Vector2(3.4, 0.9)]:
+					inside_seam_cells.append(corner + offset)
+			for side: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+				var there := cells[(j + side.y) * row + i + side.x]
+				if (here == Terrain.FINE_CELL) == (there == Terrain.FINE_CELL):
+					continue
+				var across := Vector2(side)
+				var start := corner + across * Terrain.STEP
+				for step in range(1, 8):
+					edge_points.append(start + across.orthogonal().abs() * step * 0.5)
+					crossings.append(across)
+	var probes := PackedVector2Array()
+	for k in edge_points.size():
+		probes.append(edge_points[k] - crossings[k] * 0.5)
+		probes.append(edge_points[k] + crossings[k] * 0.5)
+	probes.append_array(inside_seam_cells)
+	var ground := _seam_triangles(terrain, probes)
+	var worst_error := 0.0
+	var worst_bend := 0.0
+	var true_normal := func(at: Vector2) -> Vector3:
+		var h := 0.05
+		return Vector3(terrain.height_at(at.x - h, at.y) - terrain.height_at(at.x + h, at.y), 2.0 * h, terrain.height_at(at.x, at.y - h) - terrain.height_at(at.x, at.y + h)).normalized()
+	for k in edge_points.size():
+		var at := edge_points[k]
+		worst_error = maxf(worst_error, absf(_visible_height(ground, at) - terrain.height_at(at.x, at.y)))
+		var before := _visible_normal(ground, at - crossings[k] * 0.5)
+		var after := _visible_normal(ground, at + crossings[k] * 0.5)
+		var true_bend: float = true_normal.call(at - crossings[k] * 0.5).angle_to(true_normal.call(at + crossings[k] * 0.5))
+		worst_bend = maxf(worst_bend, rad_to_deg(before.angle_to(after) - true_bend))
+	_check(edge_points.size() > 1000 and worst_error < 0.15, "fine terrain meets coarser terrain at the true height (%d points, %.3f m off)" % [edge_points.size(), worst_error])
+	# Main bent up to 25 degrees more than the true ground at these seams, and coarse cells up to 108.
+	_check(worst_bend < 18.0, "fine terrain bends little more than the true ground where it meets coarser terrain (%.1f degrees)" % worst_bend)
+	var space := terrain.get_world_3d().direct_space_state
+	var worst_collision := 0.0
+	for at in inside_seam_cells:
+		var height := _visible_height(ground, at)
+		var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(Vector3(at.x, height + 20.0, at.y), Vector3(at.x, height - 20.0, at.y)))
+		if not hit.is_empty() and hit["collider"] == terrain:
+			worst_collision = maxf(worst_collision, absf(hit["position"].y - height))
+	_check(inside_seam_cells.size() > 300 and worst_collision < 0.01, "collision matches the visible ground beside the fine terrain (%.3f m off)" % worst_collision)
+
+
+## Like _visible_triangles, for many points: reads each chunk the points fall in.
+func _seam_triangles(terrain: Terrain, points: PackedVector2Array) -> Dictionary:
+	var chunk_size := Terrain.CHUNK_CELLS * Terrain.STEP
+	var chunks := {}
+	for point in points:
+		chunks[Vector2i(floori((point.x + Terrain.SIZE / 2.0) / chunk_size), floori((point.y + Terrain.SIZE / 2.0) / chunk_size))] = true
+	var cells := {}
+	for child in terrain.get_children():
+		if not child is MeshInstance3D or child.name == "Water":
+			continue
+		var middle: Vector3 = child.mesh.get_aabb().get_center()
+		if not chunks.has(Vector2i(floori((middle.x + Terrain.SIZE / 2.0) / chunk_size), floori((middle.z + Terrain.SIZE / 2.0) / chunk_size))):
+			continue
+		var arrays: Array = child.mesh.surface_get_arrays(0)
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+		for t in range(0, indices.size(), 3):
+			var a := vertices[indices[t]]
+			var b := vertices[indices[t + 1]]
+			var c := vertices[indices[t + 2]]
+			var key := _ground_cell((a.x + b.x + c.x) / 3.0, (a.z + b.z + c.z) / 3.0)
+			if not cells.has(key):
+				cells[key] = PackedVector3Array()
+			cells[key].append_array(PackedVector3Array([a, b, c]))
+	return cells
+
+
+func _visible_normal(cells: Dictionary, at: Vector2) -> Vector3:
+	var triangles: PackedVector3Array = cells.get(_ground_cell(at.x, at.y), PackedVector3Array())
+	for t in range(0, triangles.size(), 3):
+		var a := triangles[t]
+		var b := triangles[t + 1]
+		var c := triangles[t + 2]
+		var area := (b.z - c.z) * (a.x - c.x) + (c.x - b.x) * (a.z - c.z)
+		var u := ((b.z - c.z) * (at.x - c.x) + (c.x - b.x) * (at.y - c.z)) / area
+		var v := ((c.z - a.z) * (at.x - c.x) + (a.x - c.x) * (at.y - c.z)) / area
+		if u >= -0.0001 and v >= -0.0001 and u + v <= 1.0001:
+			var normal := (b - a).cross(c - a).normalized()
+			return -normal if normal.y < 0.0 else normal
+	return Vector3.UP
 
 
 func _test_grass(terrain: Terrain, grass: GrassField, layout: Dictionary) -> void:

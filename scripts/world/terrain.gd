@@ -46,6 +46,11 @@ const RIVER_SPACING := 8.0
 ## Past this distance from the village the river can only be seen from afar.
 const RIVER_FINE_RADIUS := 560.0
 const FINE_CELLS := 4
+## How the cell list marks each 4 m cell: an ordinary one, a fine one, and a coarse one that shares
+## an edge with a fine one.
+const COARSE_CELL := 0
+const FINE_CELL := 1
+const SEAM_CELL := 2
 ## How far the height map sinks under the fine collision, which is further than a cell's own ground
 ## can lie below the height map's.
 const COVERED_GRID_DROP := 4.0
@@ -329,7 +334,7 @@ func _coarse_chunk_indices(fine_cells: PackedByteArray, count: int) -> Array[Pac
 			var cursor := 0
 			for j in range(chunk_z * CHUNK_CELLS, mini((chunk_z + 1) * CHUNK_CELLS, row)):
 				for i in range(chunk_x * CHUNK_CELLS, mini((chunk_x + 1) * CHUNK_CELLS, row)):
-					if fine_cells[j * row + i] == 1:
+					if fine_cells[j * row + i] != COARSE_CELL:
 						continue
 					var a := j * count + i
 					var b := a + 1
@@ -376,22 +381,35 @@ func _add_chunk_mesh(chunk: int, indices: PackedInt32Array, vertices: PackedVect
 	add_child(instance)
 
 
-## Marks the cells near the river. Each row of the result holds count - 1 cells.
+## Marks the cells near the river, and the coarse cells beside them that meet them along an edge.
+## Each row of the result holds count - 1 cells.
 func _fine_cells(count: int) -> PackedByteArray:
 	var margin: float = FeatureFlags.value("river_fine_margin")
+	var row := count - 1
 	var cells := PackedByteArray()
-	cells.resize((count - 1) * (count - 1))
-	for j in count - 1:
-		for i in count - 1:
+	cells.resize(row * row)
+	for j in row:
+		for i in row:
 			var x := (i + 0.5) * STEP - SIZE / 2.0
 			var z := (j + 0.5) * STEP - SIZE / 2.0
 			if river_clearance(x, z) < margin and Vector2(x, z).length() < RIVER_FINE_RADIUS:
-				cells[j * (count - 1) + i] = 1
+				cells[j * row + i] = FINE_CELL
+	if not FeatureFlags.enabled("terrain_seam_cells"):
+		return cells
+	for j in row:
+		for i in row:
+			if cells[j * row + i] != FINE_CELL:
+				continue
+			for side: Vector2i in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]:
+				var near := Vector2i(i, j) + side
+				if near.x >= 0 and near.y >= 0 and near.x < row and near.y < row and cells[near.y * row + near.x] == COARSE_CELL:
+					cells[near.y * row + near.x] = SEAM_CELL
 	return cells
 
 
-## Gives each marked cell its own smaller grid. Where a cell meets a coarse one, its edge stays
-## straight along the coarse cell's edge, so no crack opens between them. Returns their triangles.
+## Gives each fine cell its own smaller grid, and returns the triangles of the fine and seam cells.
+## A fine cell's edge follows the true ground where it meets a seam cell, which bends to meet it. With
+## seam cells off, the edge stays straight along the coarse cell instead, so no crack opens there.
 func _add_fine_cells(cells: PackedByteArray, heights: PackedFloat32Array, count: int, vertices: PackedVector3Array, normals: PackedVector3Array, colors: PackedColorArray, chunk_indices: Array[PackedInt32Array]) -> PackedVector3Array:
 	var faces := PackedVector3Array()
 	var size := STEP / FINE_CELLS
@@ -403,16 +421,20 @@ func _add_fine_cells(cells: PackedByteArray, heights: PackedFloat32Array, count:
 		if not known_heights.has(key):
 			known_heights[key] = height_at(fine_x * size - SIZE / 2.0, fine_z * size - SIZE / 2.0)
 		return known_heights[key]
-	var is_fine := func(i: int, j: int) -> bool:
-		return i >= 0 and j >= 0 and i < row and j < row and cells[j * row + i] == 1
+	var fine_normal := func(fine_x: int, fine_z: int) -> Vector3:
+		return Vector3(fine_height.call(fine_x - 1, fine_z) - fine_height.call(fine_x + 1, fine_z), 2.0 * size, fine_height.call(fine_x, fine_z - 1) - fine_height.call(fine_x, fine_z + 1)).normalized()
+	var follows_ground := func(i: int, j: int) -> bool:
+		return i >= 0 and j >= 0 and i < row and j < row and cells[j * row + i] != COARSE_CELL
 	for j in row:
 		for i in row:
-			if cells[j * row + i] == 0:
+			if cells[j * row + i] == SEAM_CELL:
+				_add_seam_cell(i, j, cells, count, vertices, normals, colors, chunk_indices, faces, fine_height, fine_normal)
+			if cells[j * row + i] != FINE_CELL:
 				continue
-			var near_north: bool = is_fine.call(i, j - 1)
-			var near_south: bool = is_fine.call(i, j + 1)
-			var near_west: bool = is_fine.call(i - 1, j)
-			var near_east: bool = is_fine.call(i + 1, j)
+			var near_north: bool = follows_ground.call(i, j - 1)
+			var near_south: bool = follows_ground.call(i, j + 1)
+			var near_west: bool = follows_ground.call(i - 1, j)
+			var near_east: bool = follows_ground.call(i + 1, j)
 			var corner_nw := heights[j * count + i]
 			var corner_ne := heights[j * count + i + 1]
 			var corner_sw := heights[(j + 1) * count + i]
@@ -437,7 +459,7 @@ func _add_fine_cells(cells: PackedByteArray, heights: PackedFloat32Array, count:
 					elif sub_x == FINE_CELLS and not near_east:
 						height = lerpf(corner_ne, corner_se, down)
 					vertices.append(Vector3(x, height, z))
-					normals.append(Vector3(fine_height.call(fine_x - 1, fine_z) - fine_height.call(fine_x + 1, fine_z), 2.0 * size, fine_height.call(fine_x, fine_z - 1) - fine_height.call(fine_x, fine_z + 1)).normalized())
+					normals.append(fine_normal.call(fine_x, fine_z))
 					colors.append(_color_at(x, z))
 			for sub_z in FINE_CELLS:
 				for sub_x in FINE_CELLS:
@@ -451,6 +473,80 @@ func _add_fine_cells(cells: PackedByteArray, heights: PackedFloat32Array, count:
 			for index in cell_indices:
 				faces.append(vertices[index])
 	return faces
+
+
+## Gives a coarse cell beside fine ones a fine grid too. Along an edge it shares with a fine cell it
+## meets each of the fine cell's vertices on the true ground, and its other edges stay straight, like
+## the coarse cells' they meet. Inside, the straight edges' distance from the true ground fades out
+## towards the fine cells, so the cell bends evenly across its width instead of at one edge.
+func _add_seam_cell(i: int, j: int, cells: PackedByteArray, count: int, vertices: PackedVector3Array, normals: PackedVector3Array, colors: PackedColorArray, chunk_indices: Array[PackedInt32Array], faces: PackedVector3Array, fine_height: Callable, fine_normal: Callable) -> void:
+	var row := count - 1
+	var size := STEP / FINE_CELLS
+	var first_x := i * FINE_CELLS
+	var first_z := j * FINE_CELLS
+	var corners := PackedInt32Array([j * count + i, j * count + i + 1, (j + 1) * count + i, (j + 1) * count + i + 1])
+	# North, south, west and east: the cell beside each edge, the corners it runs between, and where
+	# it starts in the fine grid.
+	var sides := [
+		[Vector2i(i, j - 1), 0, 1, Vector2i(0, 0), Vector2i(1, 0)],
+		[Vector2i(i, j + 1), 2, 3, Vector2i(0, FINE_CELLS), Vector2i(1, 0)],
+		[Vector2i(i - 1, j), 0, 2, Vector2i(0, 0), Vector2i(0, 1)],
+		[Vector2i(i + 1, j), 1, 3, Vector2i(FINE_CELLS, 0), Vector2i(0, 1)],
+	]
+	var straight: Array[bool] = []
+	# How far each edge lies from the true ground at each step along it. Shared edges follow it.
+	var errors: Array[PackedFloat32Array] = []
+	for side: Array in sides:
+		var near: Vector2i = side[0]
+		var is_straight := near.x < 0 or near.y < 0 or near.x >= row or near.y >= row or cells[near.y * row + near.x] != FINE_CELL
+		straight.append(is_straight)
+		var error := PackedFloat32Array()
+		error.resize(FINE_CELLS + 1)
+		if is_straight:
+			var from := vertices[corners[side[1]]].y
+			var to := vertices[corners[side[2]]].y
+			for step in range(1, FINE_CELLS):
+				var sub: Vector2i = side[3] + side[4] * step
+				error[step] = lerpf(from, to, float(step) / FINE_CELLS) - fine_height.call(first_x + sub.x, first_z + sub.y)
+		errors.append(error)
+	var first := vertices.size()
+	for sub_z in FINE_CELLS + 1:
+		for sub_x in FINE_CELLS + 1:
+			var across := float(sub_x) / FINE_CELLS
+			var down := float(sub_z) / FINE_CELLS
+			# The four edges' errors all vanish at the corners, so this blend keeps each edge's own.
+			var error := (1.0 - down) * errors[0][sub_x] + down * errors[1][sub_x] + (1.0 - across) * errors[2][sub_z] + across * errors[3][sub_z]
+			var fine_x := first_x + sub_x
+			var fine_z := first_z + sub_z
+			var x := fine_x * size - SIZE / 2.0
+			var z := fine_z * size - SIZE / 2.0
+			vertices.append(Vector3(x, fine_height.call(fine_x, fine_z) + error, z))
+			colors.append(_color_at(x, z))
+			# On a straight edge, shading matches the coarse cell beside it.
+			var normal: Vector3
+			if sub_z == 0 and straight[0]:
+				normal = normals[corners[0]].lerp(normals[corners[1]], across).normalized()
+			elif sub_z == FINE_CELLS and straight[1]:
+				normal = normals[corners[2]].lerp(normals[corners[3]], across).normalized()
+			elif sub_x == 0 and straight[2]:
+				normal = normals[corners[0]].lerp(normals[corners[2]], down).normalized()
+			elif sub_x == FINE_CELLS and straight[3]:
+				normal = normals[corners[1]].lerp(normals[corners[3]], down).normalized()
+			else:
+				normal = fine_normal.call(fine_x, fine_z)
+			normals.append(normal)
+	var cell_indices := PackedInt32Array()
+	for sub_z in FINE_CELLS:
+		for sub_x in FINE_CELLS:
+			var a := first + sub_z * (FINE_CELLS + 1) + sub_x
+			var b := a + 1
+			var c := a + FINE_CELLS + 1
+			var d := c + 1
+			cell_indices.append_array(PackedInt32Array([a, b, c, b, d, c]))
+	var chunk: int = j / CHUNK_CELLS * ceili(float(row) / CHUNK_CELLS) + i / CHUNK_CELLS
+	chunk_indices[chunk].append_array(cell_indices)
+	for index in cell_indices:
+		faces.append(vertices[index])
 
 
 func _ground_material() -> ShaderMaterial:
@@ -501,16 +597,16 @@ func _build_collision(heights: PackedFloat32Array, count: int, fine_cells: Packe
 	add_child(collision)
 
 
-## Near the river the visible ground itself becomes the collision. A higher height map would still
-## win over it, so the height map sinks there, and the coarse triangles that sink along with it join
-## the fine ones. Sinking leaves solid ground underneath, which holes in the height map would not.
+## Near the river the visible ground itself becomes the collision, in fine and seam cells alike. A
+## higher height map would still win over it, so the height map sinks there, and the coarse triangles
+## that sink along with it join the fine ones. Sinking leaves solid ground underneath, which holes in the height map would not.
 func _cover_grid_with_fine_collision(scaled_heights: PackedFloat32Array, heights: PackedFloat32Array, count: int, fine_cells: PackedByteArray, fine_faces: PackedVector3Array) -> void:
 	var row := count - 1
 	var sunk := PackedByteArray()
 	sunk.resize(heights.size())
 	for j in row:
 		for i in row:
-			if fine_cells[j * row + i] == 1:
+			if fine_cells[j * row + i] != COARSE_CELL:
 				var a := j * count + i
 				for corner: int in [a, a + 1, a + count, a + count + 1]:
 					if sunk[corner] == 0:
@@ -521,7 +617,7 @@ func _cover_grid_with_fine_collision(scaled_heights: PackedFloat32Array, heights
 		return Vector3((index % count) * STEP - SIZE / 2.0, heights[index], (index / count) * STEP - SIZE / 2.0)
 	for j in row:
 		for i in row:
-			if fine_cells[j * row + i] == 1:
+			if fine_cells[j * row + i] != COARSE_CELL:
 				continue
 			var a := j * count + i
 			var b := a + 1

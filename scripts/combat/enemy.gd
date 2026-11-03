@@ -35,11 +35,25 @@ const SIDESTEP_SECONDS := 0.5
 const CROWD_RANGE := 15.0
 ## Room left between this body and one standing still that is planned around.
 const CROWD_MARGIN := 0.3
-## How far ahead an enemy walking straight looks for water, which it would rather walk around.
-const WATER_LOOKAHEAD := 2.0
+## An enemy walking straight looks for water on the way now and then, and plans a path at most
+## this often when there is some, since it would rather walk around.
 const WATER_SEARCH_WAIT_SECONDS := 2.0
+## While it plans a way around water, it walks on until it's this near.
+const WATER_STOP_DISTANCE := 2.5
 ## A waiting enemy looks again at once when one of those in the way moves this far.
 const CROWD_MOVED_DISTANCE := 0.3
+## Other moving enemies this near are watched, so as not to walk into them.
+const MAKE_WAY_RANGE := 2.5
+## How far ahead, in seconds, it looks for walking into one of them.
+const MAKE_WAY_LOOKAHEAD := 0.5
+## Room left between the two.
+const MAKE_WAY_MARGIN := 0.15
+## The longest it lets another go first before it walks on for a while.
+const MAKE_WAY_SECONDS := 1.5
+const MAKE_WAY_COOLDOWN_SECONDS := 1.0
+## Two walking at each other at least this straight meet head on.
+const HEAD_ON_DOT := -0.7
+const MAKE_WAY_STEP := 1.0
 
 static var _data: Dictionary = {}
 
@@ -67,6 +81,9 @@ var _waiting := false
 var _wait_left := 0.0
 var _wait_after_path := false
 var _water_wait := 0.0
+var _water_ahead := Vector3.INF
+var _make_way_left := MAKE_WAY_SECONDS
+var _make_way_cooldown := 0.0
 var _searched_crowd := PackedVector3Array()
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _body: Humanoid
@@ -256,10 +273,63 @@ func _move_toward_point(point: Vector3, reach: float) -> void:
 			rotation.y = atan2(-direction.x, -direction.z)
 		return
 	_moving = true
+	rotation.y = atan2(-direction.x, -direction.z)
 	var speed := float(_stats["speed"]) * (get_tree().get_first_node_in_group(Terrain.GROUP) as Terrain).wading_factor(global_position)
+	direction = _make_way(direction, speed)
 	velocity.x = direction.x * speed
 	velocity.z = direction.z * speed
-	rotation.y = atan2(-direction.x, -direction.z)
+
+
+## Lets another moving enemy go first rather than walk into it: one ahead, or the one that has
+## right of way when both are ahead of each other. It waits while the other passes or walks on, and
+## steps to its right when they meet head on. It counts as moving while it waits, so the other one
+## doesn't plan a way around it, unless they meet head on with no room to step aside.
+func _make_way(direction: Vector3, speed: float) -> Vector3:
+	var delta := get_physics_process_delta_time()
+	_make_way_cooldown = maxf(_make_way_cooldown - delta, 0.0)
+	var other := _enemy_in_the_way(direction * speed)
+	if other == null or _make_way_cooldown > 0.0:
+		_make_way_left = MAKE_WAY_SECONDS
+		return direction
+	# Waiting can go on for good when the other doesn't get anywhere either, so it gives up after a
+	# while and walks on, for the old sidestep to sort out.
+	_make_way_left -= delta
+	if _make_way_left <= 0.0:
+		_make_way_cooldown = MAKE_WAY_COOLDOWN_SECONDS
+	_stuck_left = STUCK_SECONDS
+	_stuck_from = global_position
+	var their_direction := -other.global_basis.z
+	if direction.dot(their_direction) < HEAD_ON_DOT:
+		var right := direction.cross(Vector3.UP).normalized()
+		if _path.is_line_clear(global_position, global_position + right * MAKE_WAY_STEP):
+			return right
+		# With no room to step aside, such as in a narrow passage, the other one has to find a way
+		# around it, or wait.
+		_moving = false
+	return Vector3.ZERO
+
+
+## The moving enemy this one would walk into soon at this velocity, if it should let it go first.
+func _enemy_in_the_way(mine: Vector3) -> Enemy:
+	var direction := mine.normalized()
+	for other: Enemy in get_tree().get_nodes_in_group(GROUP):
+		if other == self or not other._moving or other.state == State.DEAD:
+			continue
+		var offset := other.global_position - global_position
+		offset.y = 0.0
+		if offset.length_squared() > MAKE_WAY_RANGE * MAKE_WAY_RANGE or offset.dot(direction) <= 0.0:
+			continue
+		# Where they'd be nearest each other in the next moments, at the velocities they have now.
+		var closing := Vector3(other.velocity.x, 0.0, other.velocity.z) - mine
+		var soon := clampf(-offset.dot(closing) / maxf(closing.length_squared(), 0.0001), 0.0, MAKE_WAY_LOOKAHEAD)
+		var room := float(_stats["radius"]) + float(other._stats["radius"]) + MAKE_WAY_MARGIN
+		if (offset + closing * soon).length_squared() >= room * room:
+			continue
+		# When each is ahead of the other, as when their ways cross, the older one goes first.
+		var their_direction := -other.global_basis.z
+		if -offset.dot(their_direction) <= 0.0 or other.get_instance_id() < get_instance_id():
+			return other
+	return null
 
 
 func _steer(goal: Vector3, reach: float) -> Vector3:
@@ -269,6 +339,7 @@ func _steer(goal: Vector3, reach: float) -> Vector3:
 	if _path == null:
 		_path = EnemyPath.new(self, _stats["radius"])
 	if _path.is_searching() and _path.advance():
+		_water_ahead = Vector3.INF
 		_following = not _path.waypoints.is_empty()
 		_waypoint = 0
 		_clear_way_wait = CLEAR_WAY_CHECK_SECONDS
@@ -303,7 +374,9 @@ func _steer(goal: Vector3, reach: float) -> Vector3:
 	if _following:
 		return _flat_direction(_waypoint_position())
 	var direction := _flat_direction(goal)
-	if _path.is_searching() and _touches_still_enemy():
+	if _path.is_searching() and (_touches_still_enemy() or _flat_distance(_water_ahead) < WATER_STOP_DISTANCE):
+		_stuck_left = STUCK_SECONDS
+		_stuck_from = global_position
 		return Vector3.ZERO
 	if _search_wait > 0.0 or _path.is_searching():
 		return direction
@@ -312,10 +385,14 @@ func _steer(goal: Vector3, reach: float) -> Vector3:
 		_start_search(goal, reach)
 	elif _touches_still_enemy():
 		_start_search(goal, reach)
-	elif _water_wait <= 0.0 and _path.is_wet(global_position + direction * WATER_LOOKAHEAD):
-		# A bridge nearby can be quicker than wading.
-		_water_wait = WATER_SEARCH_WAIT_SECONDS
-		_start_search(goal, reach)
+	elif _water_wait <= 0.0:
+		# A bridge nearby can be quicker than wading, and it should turn to it before the river.
+		_water_wait = CLEAR_WAY_CHECK_SECONDS
+		var wet := _path.wet_distance(global_position, goal)
+		if wet < INF:
+			_water_wait = WATER_SEARCH_WAIT_SECONDS
+			_start_search(goal, reach)
+			_water_ahead = global_position + direction * wet
 	return direction
 
 
@@ -439,6 +516,7 @@ func _touches_still_enemy() -> bool:
 
 func _forget_path() -> void:
 	_following = false
+	_water_ahead = Vector3.INF
 	_waiting = false
 	_wait_after_path = false
 	_stuck_left = STUCK_SECONDS

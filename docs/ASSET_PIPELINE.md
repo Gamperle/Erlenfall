@@ -2,11 +2,7 @@
 
 This pipeline makes draft 3D props from text. FLUX.2 klein 4B draws a picture, TripoSR turns it into a textured mesh, and Blender renders previews for review. It runs on a Windows PC with an AMD Radeon RX 7900 XT, controlled over SSH.
 
-**Status: experimental. No generated asset is in the game yet.** Before one can be added:
-
-1. The maintainer accepts the art style ([#22](https://github.com/Gamperle/Erlenfall/issues/22)).
-2. The SDXL license is cleared ([#60](https://github.com/Gamperle/Erlenfall/issues/60)).
-3. A cleanup step exists for orientation, face count, and glTF export ([#55](https://github.com/Gamperle/Erlenfall/issues/55)).
+**Status: in use for props.** Two FLUX.2 klein batches are in the game, each model listed in [ASSETS.md](../ASSETS.md). SDXL output is not used ([#60](https://github.com/Gamperle/Erlenfall/issues/60)). [The pipeline's README](../tools/asset_pipeline/README.md) walks through a batch with pictures.
 
 ## Workflow
 
@@ -26,7 +22,11 @@ The scripts are in [tools/asset_pipeline](../tools/asset_pipeline):
 | File | Purpose |
 | --- | --- |
 | `setup_pc.ps1` | Installs everything into one folder |
-| `draw_pictures.py` | Holds the object list and prompts, and draws candidates |
+| `batches/*.json` | Each batch's objects, with subject, face budget, real size, and first seed |
+| `draw_klein.py` | Draws candidates for a batch with FLUX.2 klein |
+| `draw_pictures.py` | The older SDXL drawing script, kept for reference |
+| `contact_sheet.py` | Puts candidates or previews on one labeled page |
+| `clean_models.ps1`, `size_models.ps1` | Clean a batch's chosen models and scale them to real size |
 | `make_models.ps1` | Makes models and previews, with crash retries and a log for each attempt in `<batch>\logs` |
 | `run_triposr.py` | Runs TripoSR with cuDNN off |
 | `render_preview.py` | Renders a model from the front and back |
@@ -64,20 +64,22 @@ Both environments should report that the GPU is available. The first runs also d
 
 ## Making a batch
 
-1. Edit `OBJECTS` in `draw_pictures.py`, copy it to the work folder, and draw candidates:
+1. Write `tools/asset_pipeline/batches/my_batch.json` with each object's subject, face budget, and real size in meters, and a first seed no other batch uses. Copy it to `D:\erlenfall-assets\batches\`, and `draw_klein.py` to the work folder.
+2. Draw candidates:
 
    ```bash
-   ssh ASSET_PC "Set-Location D:\erlenfall-assets; \$env:HF_HOME='D:\erlenfall-assets\hf-cache-sdxl'; venv-images\Scripts\python.exe draw_pictures.py my_batch"
+   ssh ASSET_PC "Set-Location D:\erlenfall-assets; \$env:HF_HOME='D:\erlenfall-assets\hf-cache-bakeoff'; venv-bakeoff\Scripts\python.exe draw_klein.py my_batch"
    ```
 
-2. Look at the candidates and copy the best ones to `D:\erlenfall-assets\my_batch\input\`.
-3. Make the models:
+3. Look at the candidates and copy the best ones to `D:\erlenfall-assets\my_batch\input\`. `contact_sheet.py` puts them on one page.
+4. Make the models:
 
    ```bash
    ssh ASSET_PC "powershell -NoProfile -ExecutionPolicy Bypass -File D:\erlenfall-assets\make_models.ps1 -Batch my_batch"
    ```
 
-4. Copy the previews back with `scp` and check them against the picture. Use `check_mesh.py`'s output to spot failed models. The failed stone wall in the first batch had just 222 faces.
+5. Copy the previews back with `scp` and check them against the picture. Use `check_mesh.py`'s output to spot failed models. The failed stone wall in the first batch had just 222 faces.
+6. List the models to keep in `my_batch\keep.txt`, one per line, then run `clean_models.ps1 -Batch my_batch` and `size_models.ps1 -Batch my_batch`. The files in `my_batch\props` go into `assets/props`.
 
 ## Choosing the image model
 

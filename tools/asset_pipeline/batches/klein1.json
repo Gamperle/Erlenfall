@@ -1,0 +1,97 @@
+{
+	"seed": 6000,
+	"objects": {
+		"anvil": {
+			"subject": "black iron blacksmith anvil with a pointed horn, on a wooden stump",
+			"faces": 3000,
+			"meters": 0.8
+		},
+		"barrel": {
+			"subject": "upright oak barrel with iron hoops",
+			"faces": 2500,
+			"meters": 1.0
+		},
+		"bowl": {
+			"subject": "turned wooden bowl seen from the side",
+			"faces": 1200,
+			"meters": 0.25
+		},
+		"cauldron": {
+			"subject": "cast iron cooking cauldron with thick stubby legs and two handles",
+			"faces": 3000,
+			"meters": 0.55
+		},
+		"chest": {
+			"subject": "wooden storage chest with iron bands, lid closed",
+			"faces": 4000,
+			"meters": 0.9
+		},
+		"cupboard": {
+			"subject": "rustic wooden kitchen cupboard with both doors fully closed",
+			"faces": 6000,
+			"meters": 1.6
+		},
+		"desk": {
+			"subject": "old wooden writing desk with drawers, empty top",
+			"faces": 6000,
+			"meters": 1.2
+		},
+		"door": {
+			"subject": "heavy arched wooden door with iron hinges in a stone frame",
+			"faces": 5000,
+			"meters": 2.4
+		},
+		"forge": {
+			"subject": "stone blacksmith forge with a chimney hood",
+			"faces": 8000,
+			"meters": 2.5
+		},
+		"hammer": {
+			"subject": "blacksmith hammer with a square steel head and a short wooden handle",
+			"faces": 1500,
+			"meters": 0.4
+		},
+		"jug": {
+			"subject": "glazed brown clay jug with a handle",
+			"faces": 1500,
+			"meters": 0.3
+		},
+		"kiln": {
+			"subject": "small domed brick kiln with an arched opening",
+			"faces": 6000,
+			"meters": 1.8
+		},
+		"lantern": {
+			"subject": "iron oil lantern with glass panes and a carrying ring",
+			"faces": 3000,
+			"meters": 0.35
+		},
+		"pan": {
+			"subject": "black iron frying pan seen from the side, with a long handle",
+			"faces": 1200,
+			"meters": 0.5
+		},
+		"stone_wall": {
+			"subject": "short section of dry stone wall standing alone, both ends and an uneven top visible",
+			"faces": 6000,
+			"meters": 2.0
+		},
+		"stool": {
+			"subject": "simple wooden stool with three legs",
+			"faces": 2000,
+			"meters": 0.45
+		},
+		"sword": {
+			"subject": "plain steel longsword with a leather-wrapped grip, pointing straight down",
+			"faces": 1200,
+			"meters": 1.1,
+			"mode": "long"
+		},
+		"short_sword": {
+			"subject": "plain steel short sword with a straight broad blade, pointing straight down",
+			"faces": 1200,
+			"meters": 0.7,
+			"mode": "long"
+		}
+	}
+}

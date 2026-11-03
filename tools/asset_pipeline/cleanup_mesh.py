@@ -1,8 +1,8 @@
 """Turns a raw TripoSR model into a game-ready GLB: straighten, reduce faces, re-bake, export.
 
-Usage: blender -b -P cleanup_mesh.py -- mesh.obj texture.png out_prefix max_faces [long|upright]
+Usage: blender -b -P cleanup_mesh.py -- mesh.obj texture.png out_prefix max_faces [long|upright|keep]
 
-"long" stands thin objects like swords on end. Writes <out_prefix>.glb and <out_prefix>_front.png and _back.png.
+"long" stands thin objects like swords on end. "keep" skips straightening, for objects with sloped sides such as tents. Writes <out_prefix>.glb and <out_prefix>_front.png and _back.png.
 """
 import math
 import sys
@@ -227,7 +227,12 @@ def main():
 
     raw_faces = len(high.data.polygons)
     removed = remove_loose_pieces(high)
-    rotation = long_axis_rotation(high) if mode == "long" else upright_rotation(high)
+    if mode == "long":
+        rotation = long_axis_rotation(high)
+    elif mode == "keep":
+        rotation = Matrix.Identity(4)
+    else:
+        rotation = upright_rotation(high)
     tilt = math.degrees(rotation.to_quaternion().angle)
     high.data.transform(rotation)
     high.data.update()

@@ -1,28 +1,24 @@
-# Cleans the models in <Root>\selected into <Root>\cleaned. Finished models are skipped.
+# Cleans a batch's models into <batch>\cleaned. Finished models are skipped.
+# Only the names in <batch>\keep.txt are cleaned if that file exists. Face budgets and "long" come from batches\<batch>.json.
 param(
+    [Parameter(Mandatory)][string]$Batch,
     [string]$Root = 'D:\erlenfall-assets',
-    [string]$Only = '',
     [string]$Blender = 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe'
 )
 
-# Face budgets for each type. Starting points to test against integrated graphics.
-$budgets = @{
-    anvil = 3000; barrel = 2500; bowl = 1200; cauldron = 3000; chest = 4000; cupboard = 6000; desk = 6000; door = 5000
-    forge = 8000; hammer = 1500; jug = 1500; kiln = 6000; lantern = 3000; pan = 1200; stone_wall = 6000; stool = 2000
-    sword = 1200; short_sword = 1200
-}
-$long = 'sword', 'short_sword'
-
-$out = "$Root\cleaned"
+$base = "$Root\$Batch"
+$objects = (Get-Content "$Root\batches\$Batch.json" -Raw | ConvertFrom-Json).objects
+$keep = if (Test-Path "$base\keep.txt") { @(Get-Content "$base\keep.txt" | Where-Object { $_.Trim() }) } else { @() }
+$out = "$base\cleaned"
 New-Item -ItemType Directory -Force $out | Out-Null
-foreach ($dir in Get-ChildItem "$Root\selected" -Directory | Sort-Object Name) {
+foreach ($dir in Get-ChildItem "$base\models" -Directory | Sort-Object Name) {
     $name = $dir.Name
-    if ($Only -and ($Only -split ',') -notcontains $name) { continue }
+    if ($keep.Count -and $keep -notcontains $name) { continue }
     if (Test-Path "$out\$name.glb") { continue }
-    $type = $name -replace '_\d+$', ''
-    $mode = if ($long -contains $type) { 'long' } else { 'upright' }
+    $item = $objects.($name -replace '_\d+$', '')
+    $mode = if ($item.mode) { $item.mode } else { 'upright' }
     $log = "$out\$name.log"
-    cmd /c "`"$Blender`" -b -P $Root\cleanup_mesh.py -- $($dir.FullName)\mesh.obj $($dir.FullName)\texture.png $out\$name $($budgets[$type]) $mode > $log 2>&1"
+    cmd /c "`"$Blender`" -b -P $Root\cleanup_mesh.py -- $($dir.FullName)\0\mesh.obj $($dir.FullName)\0\texture.png $out\$name $($item.faces) $mode > $log 2>&1"
     $result = Select-String -Path $log -Pattern 'RESULT|Error|Traceback' | Select-Object -First 3 | ForEach-Object { $_.Line }
     "$name $($result -join ' | ')"
 }

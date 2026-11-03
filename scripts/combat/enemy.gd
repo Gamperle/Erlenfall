@@ -38,6 +38,8 @@ const CROWD_MARGIN := 0.3
 ## An enemy walking straight looks for water on the way now and then, and plans a path at most
 ## this often when there is some, since it would rather walk around.
 const WATER_SEARCH_WAIT_SECONDS := 2.0
+## How far ahead it looks for water on the way.
+const WATER_LOOKAHEAD := 15.0
 ## While it plans a way around water, it walks on until it's this near.
 const WATER_STOP_DISTANCE := 2.5
 ## A waiting enemy looks again at once when one of those in the way moves this far.
@@ -388,7 +390,7 @@ func _steer(goal: Vector3, reach: float) -> Vector3:
 	elif _water_wait <= 0.0:
 		# A bridge nearby can be quicker than wading, and it should turn to it before the river.
 		_water_wait = CLEAR_WAY_CHECK_SECONDS
-		var wet := _path.wet_distance(global_position, goal)
+		var wet := _path.wet_distance(global_position, goal, WATER_LOOKAHEAD)
 		if wet < INF:
 			_water_wait = WATER_SEARCH_WAIT_SECONDS
 			_start_search(goal, reach)

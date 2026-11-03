@@ -195,15 +195,25 @@ func is_line_clear(from: Vector3, to: Vector3, skip_end := 0.0) -> bool:
 	return _line_end == Line.CLEAR
 
 
-## How far the body would walk straight toward a point before it got wet, or INF when something
-## else is in the way first, which is left to be found by bumping into it.
-func wet_distance(from: Vector3, to: Vector3) -> float:
-	var offset := Vector2(to.x - from.x, to.z - from.z).limit_length(LINE_MAX_LENGTH)
+## How far the body would walk straight toward a point, looking at most `max_length` ahead, before it
+## got wet, or INF when it doesn't or something else is in the way first, which is left to be found
+## by bumping into it.
+func wet_distance(from: Vector3, to: Vector3, max_length: float) -> float:
+	var offset := Vector2(to.x - from.x, to.z - from.z).limit_length(max_length)
+	var length := offset.length()
 	# The river is the only water, and most of the time it's too far away to reach.
-	if _terrain.river_clearance(from.x, from.z) > offset.length():
+	var clearance := _terrain.river_clearance(from.x, from.z)
+	if length <= 0.0 or clearance > length:
 		return INF
-	var along := _walk_line(from, from + Vector3(offset.x, 0.0, offset.y), 0.0)
-	return along if _line_end == Line.WET else INF
+	# Nothing nearer than the river's banks is wet, so the line is only checked from a little before
+	# them, which keeps the cells to check, each a ray and a shape query, few.
+	var end := from + Vector3(offset.x, 0.0, offset.y)
+	var skip := maxf(clearance - _cell_size, 0.0)
+	var start := from.lerp(end, skip / length)
+	if skip > 0.0:
+		start.y = _terrain.height_at(start.x, start.z)
+	var along := _walk_line(start, end, 0.0)
+	return skip + along if _line_end == Line.WET else INF
 
 
 ## Walks along a straight line until it ends or something is in the way, which is kept in

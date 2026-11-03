@@ -1578,7 +1578,7 @@ func _check(condition: bool, label: String) -> void:
 		_failures += 1
 
 
-## The axe shows while chopping (#121), and a player inside the ground comes back up (#125).
+## The axe shows while chopping (#121) and hits with its own damage (#134), and a player inside the ground comes back up (#125).
 func _test_player_fixes(scene: Node, player: Player) -> void:
 	var terrain: Terrain = scene.get_node("Terrain")
 	var village: Village = scene.get_node("Village")
@@ -1595,11 +1595,13 @@ func _test_player_fixes(scene: Node, player: Player) -> void:
 	var seconds: float = FeatureFlags.value("axe_in_hand_seconds")
 	await _physics_frames(ceili(seconds * Engine.physics_ticks_per_second) + 5)
 	_check(player.item_in_hand() == "iron_sword", "the strongest weapon is in hand")
+	_check(player.swing_damage() == 20.0, "a swing hits with the sword in hand")
 	player.position = forest.tree_position(0) + player.facing_direction() * -2.5 + Vector3.UP * 0.2
 	await _physics_frames(3)
 	player._attack_cooldown = 0.0
 	player.interact()
 	_check(player.item_in_hand() == Forest.AXE_ITEM, "chopping puts the axe in hand, even with a sword carried")
+	_check(player.swing_damage() == 16.0, "a chopping swing hits with the axe, not the sword")
 	await _physics_frames(ceili(seconds * Engine.physics_ticks_per_second) + 5)
 	_check(player.item_in_hand() == "iron_sword", "after chopping the sword comes back")
 	forest.load_data(saved_forest)

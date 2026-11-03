@@ -408,8 +408,13 @@ func _update_torch(delta: float) -> void:
 		notice.emit("UI_TORCH_BURNED_OUT")
 
 
+## A swing hits with the item in hand, so a chop hits with the axe even when a sword is carried.
+func swing_damage() -> float:
+	return maxf(inventory.weapon_damage(_shown_weapon), UNARMED_DAMAGE)
+
+
 func _land_attack() -> void:
-	var damage := maxf(inventory.best_weapon_damage(), UNARMED_DAMAGE)
+	var damage := swing_damage()
 	for node in get_tree().get_nodes_in_group(Enemy.GROUP):
 		var enemy := node as Enemy
 		var offset := enemy.global_position - global_position

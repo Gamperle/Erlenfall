@@ -47,6 +47,15 @@ func best_weapon_damage() -> float:
 	return best
 
 
+## Returns the damage of the best carried copy of this item, or 0 if it isn't carried or isn't a weapon.
+func weapon_damage(item_id: String) -> float:
+	var best := 0.0
+	for entry in entries():
+		if entry["id"] == item_id:
+			best = maxf(best, CraftingData.weapon_damage(item_id, entry["quality"]))
+	return best
+
+
 ## Returns the strongest carried weapon, or "" if there is none. Quality doesn't change how it looks.
 func best_weapon_id() -> String:
 	var best := ""

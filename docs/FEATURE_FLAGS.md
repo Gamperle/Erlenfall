@@ -87,14 +87,16 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 
 ## Enemy navigation values
 
-Enemies walk straight at their target until something blocks them, then search a small grid for a way around it.
+Enemies walk straight at their target until something blocks them, then search a small grid for a way around it. They also search when water lies ahead, since a bridge can be quicker, and they plan around other enemies that stand still, such as one attacking in a narrow gap.
 
 | Name | Default | Effect |
 |---|---|---|
 | `enemy_path_cell_size` | `0.5` | The size in meters of a grid cell. Smaller cells find narrower gaps but search more cells |
 | `enemy_path_max_nodes` | `1500` | How many cells one search looks at before it settles for the nearest point it found |
-| `enemy_path_budget_steps` | `70` | How much work all searches may do per physics frame. A search step counts 1 and checking a new cell counts 3. 70 is about 1 ms on a Radeon 680M laptop. A search that runs out carries on in the next frame |
+| `enemy_path_budget_steps` | `70` | How much work all searches may do per physics frame. A search step counts 1 and checking a new cell counts 3. 70 is about 1.5 ms on a Radeon 680M laptop. A search that runs out carries on in the next frame |
 | `enemy_path_cache_seconds` | `5` | How long enemies remember which cells are blocked before checking them again |
+| `enemy_path_water_cost` | `3` | How many times as much a step through deep water counts as one on dry land, so enemies take a bridge unless it's far out of the way. Wading is about 1.8 times as slow, so values below that make enemies wade even where the bridge is quicker |
+| `enemy_crowd_wait_seconds` | `3` | How long an enemy that other enemies block, such as in a narrow gap, waits before it looks for a way again. It plans around enemies that stand still, and waits only when there's no other way. It looks again sooner when the way clears or one of them moves |
 | `river_fine_margin` | `3.0` | How many meters past the river's banks the terrain mesh, and its collision, stay finer. Below 3 some banks end up in coarse cells, where the ground is less exact |
 
 ## Grass values

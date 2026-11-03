@@ -31,6 +31,15 @@ const GOAL_LINE_SKIP := 0.75
 const STUCK_MARK_DISTANCE := 0.5
 const FORGET_DISTANCE := 1.5
 const SIDESTEP_SECONDS := 0.5
+## Other enemies standing still this near are planned around.
+const CROWD_RANGE := 15.0
+## Room left between this body and one standing still that is planned around.
+const CROWD_MARGIN := 0.3
+## How far ahead an enemy walking straight looks for water, which it would rather walk around.
+const WATER_LOOKAHEAD := 2.0
+const WATER_SEARCH_WAIT_SECONDS := 2.0
+## A waiting enemy looks again at once when one of those in the way moves this far.
+const CROWD_MOVED_DISTANCE := 0.3
 
 static var _data: Dictionary = {}
 
@@ -53,6 +62,12 @@ var _stuck_left := STUCK_SECONDS
 var _stuck_from := Vector3.ZERO
 var _sidestep_left := 0.0
 var _sidestep_side := 1.0
+var _moving := false
+var _waiting := false
+var _wait_left := 0.0
+var _wait_after_path := false
+var _water_wait := 0.0
+var _searched_crowd := PackedVector3Array()
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _body: Humanoid
 var _collision: CollisionShape3D
@@ -129,6 +144,11 @@ func revive() -> void:
 	_forget_path()
 	visible = true
 	_collision.set_deferred("disabled", false)
+
+
+## Whether it stands still, such as while attacking, so others should walk around it.
+func is_holding_ground() -> bool:
+	return state != State.DEAD and not _moving
 
 
 func to_data() -> Dictionary:
@@ -227,6 +247,15 @@ func _flat_distance(point: Vector3) -> float:
 ## It's near enough at `reach`, which is how far the search for a path needs to get.
 func _move_toward_point(point: Vector3, reach: float) -> void:
 	var direction := _steer(point, reach)
+	if direction == Vector3.ZERO:
+		velocity.x = 0.0
+		velocity.z = 0.0
+		_moving = false
+		direction = _flat_direction(point)
+		if direction != Vector3.ZERO:
+			rotation.y = atan2(-direction.x, -direction.z)
+		return
+	_moving = true
 	var speed := float(_stats["speed"]) * (get_tree().get_first_node_in_group(Terrain.GROUP) as Terrain).wading_factor(global_position)
 	velocity.x = direction.x * speed
 	velocity.z = direction.z * speed
@@ -236,20 +265,30 @@ func _move_toward_point(point: Vector3, reach: float) -> void:
 func _steer(goal: Vector3, reach: float) -> Vector3:
 	var delta := get_physics_process_delta_time()
 	_search_wait = maxf(_search_wait - delta, 0.0)
+	_water_wait = maxf(_water_wait - delta, 0.0)
 	if _path == null:
 		_path = EnemyPath.new(self, _stats["radius"])
 	if _path.is_searching() and _path.advance():
 		_following = not _path.waypoints.is_empty()
 		_waypoint = 0
 		_clear_way_wait = CLEAR_WAY_CHECK_SECONDS
-		if not _path.reached:
+		# Others standing in the way may move, so it waits nearby instead of pushing past them.
+		_wait_after_path = not _path.reached and _path.crowd_size() > 0
+		_waiting = _wait_after_path and not _following
+		_wait_left = float(FeatureFlags.value("enemy_crowd_wait_seconds"))
+		if not _path.reached and not _wait_after_path:
 			_search_wait = FAILED_SEARCH_WAIT_SECONDS
+	if _waiting:
+		return _wait(goal, reach, delta)
 	_stuck_left -= delta
 	if _stuck_left <= 0.0:
 		var stuck := _flat_distance(_stuck_from) < STUCK_DISTANCE
 		_stuck_from = global_position
 		_stuck_left = STUCK_SECONDS
-		if stuck and is_on_wall() and not _touches_scenery():
+		if stuck and _touches_still_enemy():
+			if not _path.is_searching():
+				_start_search(goal, reach)
+		elif stuck and is_on_wall() and not _touches_scenery():
 			_sidestep_left = SIDESTEP_SECONDS
 			_sidestep_side = -_sidestep_side
 		elif stuck and _search_wait <= 0.0:
@@ -259,20 +298,57 @@ func _steer(goal: Vector3, reach: float) -> Vector3:
 		return _flat_direction(goal).rotated(Vector3.UP, _sidestep_side * PI / 2.0)
 	if _following:
 		_update_following(goal, reach, delta)
+	if _waiting:
+		return Vector3.ZERO
 	if _following:
 		return _flat_direction(_waypoint_position())
-	if _touches_scenery() and _search_wait <= 0.0 and not _path.is_searching():
+	var direction := _flat_direction(goal)
+	if _path.is_searching() and _touches_still_enemy():
+		return Vector3.ZERO
+	if _search_wait > 0.0 or _path.is_searching():
+		return direction
+	if _touches_scenery():
 		_path.forget_around(global_position, FORGET_DISTANCE)
 		_start_search(goal, reach)
-	return _flat_direction(goal)
+	elif _touches_still_enemy():
+		_start_search(goal, reach)
+	elif _water_wait <= 0.0 and _path.is_wet(global_position + direction * WATER_LOOKAHEAD):
+		# A bridge nearby can be quicker than wading.
+		_water_wait = WATER_SEARCH_WAIT_SECONDS
+		_start_search(goal, reach)
+	return direction
+
+
+## Stands still where others block the way, and looks again now and then.
+func _wait(goal: Vector3, reach: float, delta: float) -> Vector3:
+	_stuck_left = STUCK_SECONDS
+	_stuck_from = global_position
+	_wait_left -= delta
+	_clear_way_wait -= delta
+	if _clear_way_wait <= 0.0:
+		_clear_way_wait = CLEAR_WAY_CHECK_SECONDS
+		var crowd := _update_crowd()
+		if _path.is_line_clear(global_position, goal, GOAL_LINE_SKIP):
+			_waiting = false
+			_path.cancel()
+			return _flat_direction(goal)
+		if _crowd_moved(crowd):
+			_wait_left = 0.0
+	var goal_moved := _path_goal.distance_to(goal) > GOAL_MOVED_DISTANCE
+	if (_wait_left <= 0.0 or goal_moved) and not _path.is_searching():
+		_wait_left = float(FeatureFlags.value("enemy_crowd_wait_seconds"))
+		_start_search(goal, reach)
+	return Vector3.ZERO
 
 
 func _update_following(goal: Vector3, reach: float, delta: float) -> void:
 	_clear_way_wait -= delta
 	if _clear_way_wait <= 0.0:
 		_clear_way_wait = CLEAR_WAY_CHECK_SECONDS
+		_update_crowd()
 		if _path.is_line_clear(global_position, goal, GOAL_LINE_SKIP):
 			_following = false
+			_wait_after_path = false
 			return
 	if _path_goal.distance_to(goal) > GOAL_MOVED_DISTANCE and _search_wait <= 0.0 and not _path.is_searching():
 		_start_search(goal, reach)
@@ -285,6 +361,10 @@ func _update_following(goal: Vector3, reach: float, delta: float) -> void:
 		_waypoint += 1
 		if _waypoint > last:
 			_following = false
+			if _wait_after_path:
+				_wait_after_path = false
+				_waiting = true
+				_wait_left = float(FeatureFlags.value("enemy_crowd_wait_seconds"))
 
 
 ## A path that doesn't fit avoids the spot just ahead from now on. Otherwise something new is in
@@ -303,6 +383,7 @@ func _on_stuck(goal: Vector3, reach: float) -> void:
 func _start_search(goal: Vector3, reach: float) -> void:
 	_path_goal = goal
 	_search_wait = SEARCH_WAIT_SECONDS
+	_searched_crowd = _update_crowd()
 	_path.begin(global_position, goal, reach * ARRIVE_FRACTION)
 
 
@@ -327,8 +408,39 @@ func _touches_scenery() -> bool:
 	return false
 
 
+## Others standing still nearby, for the path search to keep clear of.
+func _update_crowd() -> PackedVector3Array:
+	var points := PackedVector3Array()
+	var clearances := PackedFloat32Array()
+	for other: Enemy in get_tree().get_nodes_in_group(GROUP):
+		if other != self and other.is_holding_ground() and _flat_distance(other.global_position) < CROWD_RANGE:
+			points.append(other.global_position)
+			clearances.append(float(_stats["radius"]) + float(other._stats["radius"]) + CROWD_MARGIN)
+	_path.set_crowd(points, clearances)
+	return points
+
+
+func _crowd_moved(crowd: PackedVector3Array) -> bool:
+	if crowd.size() != _searched_crowd.size():
+		return true
+	for i in crowd.size():
+		if crowd[i].distance_to(_searched_crowd[i]) > CROWD_MOVED_DISTANCE:
+			return true
+	return false
+
+
+func _touches_still_enemy() -> bool:
+	for i in get_slide_collision_count():
+		var other := get_slide_collision(i).get_collider() as Enemy
+		if other != null and other.is_holding_ground():
+			return true
+	return false
+
+
 func _forget_path() -> void:
 	_following = false
+	_waiting = false
+	_wait_after_path = false
 	_stuck_left = STUCK_SECONDS
 	_stuck_from = global_position
 	if _path != null:
@@ -338,6 +450,7 @@ func _forget_path() -> void:
 func _stop() -> void:
 	velocity.x = 0.0
 	velocity.z = 0.0
+	_moving = false
 	_forget_path()
 
 

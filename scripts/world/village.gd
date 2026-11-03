@@ -663,33 +663,41 @@ func _add_multimesh(mesh: Mesh, transforms: Array[Transform3D], height_offset: f
 	var group := Node3D.new()
 	add_child(group)
 	for chunk: Array in chunks.values():
-		var multimesh := MultiMesh.new()
-		multimesh.transform_format = MultiMesh.TRANSFORM_3D
-		multimesh.use_colors = tint_random != null
-		multimesh.mesh = mesh
-		multimesh.instance_count = chunk.size()
+		# The far version is filled in the same pass, since a MultiMesh's buffer can't always be read back.
+		var multimeshes: Array[MultiMesh] = [_new_multimesh(mesh, chunk.size(), tint_random != null)]
+		if far_mesh != null:
+			multimeshes.append(_new_multimesh(far_mesh, chunk.size(), tint_random != null))
 		for i in chunk.size():
 			var transform: Transform3D = chunk[i]
 			var offset := transform.basis * (Vector3.UP * height_offset)
-			multimesh.set_instance_transform(i, transform.translated(offset))
-			if tint_random != null:
-				var brightness := tint_random.randf_range(0.8, 1.15)
-				multimesh.set_instance_color(i, Color(brightness, brightness, brightness * 0.95))
+			var brightness := tint_random.randf_range(0.8, 1.15) if tint_random != null else 1.0
+			for multimesh in multimeshes:
+				multimesh.set_instance_transform(i, transform.translated(offset))
+				if tint_random != null:
+					multimesh.set_instance_color(i, Color(brightness, brightness, brightness * 0.95))
 		var instance := MultiMeshInstance3D.new()
-		instance.multimesh = multimesh
+		instance.multimesh = multimeshes[0]
 		instance.material_override = material
 		group.add_child(instance)
 		if far_mesh != null:
-			_add_far_version(instance, far_mesh)
+			_add_far_version(instance, multimeshes[1])
 	return group
 
 
-## Beyond the distance, a chunk swaps to the simpler mesh. The copy keeps each plant's place and tint.
-func _add_far_version(near: MultiMeshInstance3D, far_mesh: Mesh) -> void:
+## Beyond the distance, a chunk swaps to the simpler mesh, which has the same places and tints.
+func _new_multimesh(mesh: Mesh, count: int, tinted: bool) -> MultiMesh:
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.use_colors = tinted
+	multimesh.mesh = mesh
+	multimesh.instance_count = count
+	return multimesh
+
+
+func _add_far_version(near: MultiMeshInstance3D, far_multimesh: MultiMesh) -> void:
 	near.visibility_range_end = PLANT_DETAIL_DISTANCE
 	var far := MultiMeshInstance3D.new()
-	far.multimesh = near.multimesh.duplicate()
-	far.multimesh.mesh = far_mesh
+	far.multimesh = far_multimesh
 	far.material_override = near.material_override
 	far.visibility_range_begin = PLANT_DETAIL_DISTANCE
 	near.add_child(far)

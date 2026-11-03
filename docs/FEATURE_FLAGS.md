@@ -83,6 +83,17 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `torch_burn_seconds` | `600` | How long one torch burns when burn time is on |
 | `interface_min_scale` | `0.9` | The smallest size the interface shrinks to in a small window, as a share of its full size |
 | `controls_hint_seconds` | `30` | How long the controls line stays on screen when play starts. It shows again in the pause menu. 0 keeps it on screen |
+
+## Enemy navigation values
+
+Enemies walk straight at their target until something blocks them, then search a small grid for a way around it.
+
+| Name | Default | Effect |
+|---|---|---|
+| `enemy_path_cell_size` | `0.5` | The size in meters of a grid cell. Smaller cells find narrower gaps but search more cells |
+| `enemy_path_max_nodes` | `1500` | How many cells one search looks at before it settles for the nearest point it found |
+| `enemy_path_budget_steps` | `70` | How much work all searches may do per physics frame. A search step counts 1 and checking a new cell counts 3. 70 is about 1 ms on a Radeon 680M laptop. A search that runs out carries on in the next frame |
+| `enemy_path_cache_seconds` | `5` | How long enemies remember which cells are blocked before checking them again |
 | `river_fine_margin` | `3.0` | How many meters past the river's banks the terrain mesh, and its collision, stay finer. Below 3 some banks end up in coarse cells, where the ground is less exact |
 
 ## Grass values

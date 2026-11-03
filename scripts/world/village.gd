@@ -357,7 +357,6 @@ func _add_building(data: Dictionary) -> void:
 
 ## Places the generated props. "building" makes x and z relative to that building, and "on"
 ## sets a prop on top of an earlier one, with x and z as the offset from its center.
-## "solid": false skips collision where it would leave a notch against a wall that enemies get stuck in.
 func _add_props(props: Array, buildings: Array) -> void:
 	var building_transforms := {}
 	for building: Dictionary in buildings:
@@ -392,7 +391,7 @@ func _add_props(props: Array, buildings: Array) -> void:
 		var bounds: AABB = mesh.get_aabb()
 		placed[data["model"]] = { "position": at, "height": bounds.end.y }
 		_busy_spots.append(Vector2(at.x, at.z))
-		if data.get("solid", true) and not data.has("tilt") and not data.has("on") and bounds.get_longest_axis_size() >= PROP_SOLID_SIZE:
+		if not data.has("tilt") and not data.has("on") and bounds.get_longest_axis_size() >= PROP_SOLID_SIZE:
 			var shape := BoxShape3D.new()
 			shape.size = bounds.size
 			var collision := CollisionShape3D.new()

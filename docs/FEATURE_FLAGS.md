@@ -66,6 +66,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `realistic_enemies` | `true` | Uses rigged models for enemies who have one |
 | `realistic_player` | `true` | Uses a rigged model for the player |
 | `performance_overlay` | `true` | Shows the performance measurements at the top right |
+| `river_fine_collision` | `true` | Makes the ground near the river collide exactly where it is drawn, using the mesh's own triangles. Off leaves the coarser collision for the whole map, which costs less to load and to simulate |
 
 ## Torch flags
 
@@ -75,6 +76,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `torch_crafting_enabled` | `true` | Allows crafting torches |
 | `torch_starting_item_enabled` | `true` | Gives the player one torch |
 | `torch_burn_time_enabled` | `false` | Makes torches burn out instead of lasting forever |
+| `forest` | `true` | The dense forest in the west, whose trees can be felled with an axe |
 | `torch_recipe` | aggregate | `torches` and `torch_crafting_enabled` |
 | `torch_at_start` | aggregate | `torches` and `torch_starting_item_enabled` |
 | `torch_burns_out` | aggregate | `torches` and `torch_burn_time_enabled` |
@@ -92,3 +94,14 @@ Enemies walk straight at their target until something blocks them, then search a
 | `enemy_path_max_nodes` | `1500` | How many cells one search looks at before it settles for the nearest point it found |
 | `enemy_path_budget_steps` | `70` | How much work all searches may do per physics frame. A search step counts 1 and checking a new cell counts 3. 70 is about 1 ms on a Radeon 680M laptop. A search that runs out carries on in the next frame |
 | `enemy_path_cache_seconds` | `5` | How long enemies remember which cells are blocked before checking them again |
+| `river_fine_margin` | `3.0` | How many meters past the river's banks the terrain mesh, and its collision, stay finer. Below 3 some banks end up in coarse cells, where the ground is less exact |
+
+## Grass values
+
+| Name | Default | Effect |
+|---|---|---|
+| `grass_far_distance` | `60` | From this many meters away, a cell of grass uses simpler tufts |
+| `grass_far_blade_share` | `0.5` | The share of a tuft's blades that simpler tufts keep. Each is one wider triangle instead of three |
+| `grass_draw_scale_low` | `0.6` | How far grass reaches on low graphics, as a share of the full 220 meters |
+| `grass_draw_scale_medium` | `0.8` | The same on medium graphics |
+| `grass_draw_scale_high` | `1.0` | The same on high graphics |

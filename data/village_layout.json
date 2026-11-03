@@ -50,7 +50,8 @@
 	],
 	"roads": [
 		{ "width": 3, "points": [[0, 220], [-3, 165], [0, 110], [3, 60], [0, 20], [0, -12]] },
-		{ "width": 3, "points": [[0, -12], [-13, -20], [-12, -45], [4, -110], [12, -165]] }
+		{ "width": 3, "points": [[0, -12], [-13, -20], [-12, -45], [4, -110], [12, -165]] },
+		{ "width": 2, "points": [[-12, -45], [-50, -88], [-100, -102], [-150, -112], [-185, -112]] }
 	],
 	"river": {
 		"bank_width": 3,
@@ -84,6 +85,20 @@
 		"max_radius": 440,
 		"road_clearance": 6,
 		"field_clearance": 32
+	},
+	"forest": {
+		"seed": 31,
+		"x": -205,
+		"z": -115,
+		"radius": 78,
+		"count": 720,
+		"spacing": 3.6,
+		"leaf_share": 0.3,
+		"road_clearance": 3,
+		"field_clearance": 32,
+		"strikes": 3,
+		"wood_per_strike": 1,
+		"regrow_seconds": 600
 	},
 	"leaf_trees": {
 		"seed": 17,

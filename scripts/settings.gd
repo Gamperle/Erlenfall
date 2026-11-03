@@ -52,6 +52,10 @@ static func render_scale() -> float:
 	return GRAPHICS_LEVELS[graphics]["render_scale"]
 
 
+static func grass_draw_scale() -> float:
+	return FeatureFlags.value("grass_draw_scale_" + graphics, 1.0)
+
+
 static func shadows() -> bool:
 	return GRAPHICS_LEVELS[graphics]["shadows"]
 

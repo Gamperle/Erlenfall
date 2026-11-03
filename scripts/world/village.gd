@@ -41,6 +41,9 @@ const PROP_FOLDER := "res://assets/props/"
 ## Smaller props have no collision, so they never block the player.
 const PROP_SOLID_SIZE := 0.6
 const PLANT_CHUNK_SIZE := 128.0
+const FOREST_ATTEMPTS_PER_TREE := 12
+const STUMP_HEIGHT := 0.45
+const STUMP_CUT_COLOR := Color(0.72, 0.58, 0.38)
 ## How far a chunk of trees is from the camera when it swaps to simpler meshes.
 const PLANT_DETAIL_DISTANCE := 150.0
 const FAR_FIR_TIERS := 2
@@ -69,6 +72,8 @@ func _ready() -> void:
 	_add_props(layout["props"], layout["buildings"])
 	_add_roads(layout["roads"])
 	_add_trees(layout["trees"], layout["fields"])
+	if FeatureFlags.enabled("forest"):
+		_add_forest(layout["forest"], layout["fields"])
 	var leaf_trees := _scatter(layout["leaf_trees"], layout["fields"])
 	_add_multimesh(_leaf_tree_mesh(), leaf_trees, 0.0, _tint_random(layout["leaf_trees"]), _far_leaf_tree_mesh()).name = "LeafTrees"
 	_add_tree_collision(leaf_trees)
@@ -114,7 +119,10 @@ func to_data() -> Dictionary:
 			enemies.append(child.to_data())
 		elif child is ResourceNode:
 			resources.append(child.to_data())
-	return { "enemies": enemies, "resources": resources }
+	var result := { "enemies": enemies, "resources": resources }
+	if has_node("Forest"):
+		result["forest"] = (get_node("Forest") as Forest).to_data()
+	return result
 
 
 func load_data(data: Dictionary) -> void:
@@ -128,6 +136,8 @@ func load_data(data: Dictionary) -> void:
 				child.position.y = ground
 		elif child is ResourceNode and not resources.is_empty():
 			child.load_data(resources.pop_front())
+	if has_node("Forest"):
+		(get_node("Forest") as Forest).load_data(data.get("forest", {}))
 
 
 ## Returns the x and z of a quest marker: a villager, station, or repair site by name, or a pair of numbers.
@@ -408,6 +418,64 @@ func _add_trees(data: Dictionary, fields: Array) -> void:
 	var transforms := _scatter(data, fields)
 	_add_multimesh(_fir_mesh(TREE_TIERS, 9), transforms, 0.0, _tint_random(data), _fir_mesh(FAR_FIR_TIERS, FAR_FIR_SIDES))
 	_add_tree_collision(transforms)
+
+
+## Trees close together in a rough circle, thinning toward its edge.
+func _add_forest(data: Dictionary, fields: Array) -> void:
+	var random := RandomNumberGenerator.new()
+	random.seed = data["seed"]
+	var center := Vector2(data["x"], data["z"])
+	var spacing := float(data["spacing"])
+	var taken: Dictionary = {}
+	var transforms: Array[Transform3D] = []
+	var kinds := PackedByteArray()
+	var tints := PackedFloat32Array()
+	var attempts := int(data["count"]) * FOREST_ATTEMPTS_PER_TREE
+	for attempt in attempts:
+		if transforms.size() >= int(data["count"]):
+			break
+		# Without the square root, trees would crowd the middle. The power thins the edge.
+		var point := center + Vector2.from_angle(random.randf() * TAU) * float(data["radius"]) * pow(random.randf(), 0.6)
+		var cell := Vector2i((point / spacing).floor())
+		if _is_spot_taken(taken, cell, point, spacing) or not _is_tree_allowed(point, data, fields):
+			continue
+		taken[cell] = point
+		var scale_factor := random.randf_range(0.8, 1.4)
+		var basis := Basis(Vector3.UP, random.randf() * TAU).scaled(Vector3.ONE * scale_factor)
+		transforms.append(Transform3D(basis, _ground_position(point.x, point.y)))
+		kinds.append(1 if random.randf() < float(data["leaf_share"]) else 0)
+		tints.append(random.randf_range(0.8, 1.15))
+	var material := StandardMaterial3D.new()
+	material.vertex_color_use_as_albedo = true
+	material.vertex_color_is_srgb = true
+	material.roughness = 1.0
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var meshes: Array[Array] = [[_fir_mesh(TREE_TIERS, 9), _fir_mesh(FAR_FIR_TIERS, FAR_FIR_SIDES)], [_leaf_tree_mesh(), _far_leaf_tree_mesh()]]
+	var forest := Forest.new()
+	forest.name = "Forest"
+	add_child(forest)
+	forest.setup(data, transforms, kinds, meshes, _stump_mesh(), material, tints)
+
+
+func _is_spot_taken(taken: Dictionary, cell: Vector2i, point: Vector2, spacing: float) -> bool:
+	for x in range(cell.x - 1, cell.x + 2):
+		for y in range(cell.y - 1, cell.y + 2):
+			var other: Variant = taken.get(Vector2i(x, y))
+			if other != null and point.distance_to(other) < spacing:
+				return true
+	return false
+
+
+## What's left of a felled tree: a short trunk with a pale cut on top.
+func _stump_mesh() -> ArrayMesh:
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	surface.set_smooth_group(-1)
+	var jitter := RandomNumberGenerator.new()
+	_add_cone(surface, TRUNK_RADIUS * 1.15, TRUNK_RADIUS, 0.0, STUMP_HEIGHT, 7, TRUNK_COLOR, TRUNK_COLOR, jitter, 0.0)
+	_add_cone(surface, TRUNK_RADIUS, 0.0, STUMP_HEIGHT, STUMP_HEIGHT + 0.02, 7, STUMP_CUT_COLOR, STUMP_CUT_COLOR, jitter, 0.0)
+	surface.generate_normals()
+	return surface.commit()
 
 
 ## Separate from the placement, so that adding plants never changes where others stand.

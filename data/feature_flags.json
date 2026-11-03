@@ -1,11 +1,13 @@
 {
 	"flags": {
+		"forest": true,
 		"compass": true,
 		"compass_objectives": true,
 		"realistic_villagers": true,
 		"realistic_enemies": true,
 		"realistic_player": true,
 		"performance_overlay": true,
+		"river_fine_collision": true,
 		"torches": true,
 		"torch_crafting_enabled": true,
 		"torch_starting_item_enabled": true,
@@ -21,6 +23,12 @@
 		"enemy_path_cell_size": 0.5,
 		"enemy_path_max_nodes": 1500,
 		"enemy_path_budget_steps": 70,
-		"enemy_path_cache_seconds": 5.0
+		"enemy_path_cache_seconds": 5.0,
+		"river_fine_margin": 3.0,
+		"grass_far_distance": 60,
+		"grass_far_blade_share": 0.5,
+		"grass_draw_scale_low": 0.6,
+		"grass_draw_scale_medium": 0.8,
+		"grass_draw_scale_high": 1.0
 	}
 }

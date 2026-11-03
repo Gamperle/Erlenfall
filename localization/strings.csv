@@ -28,6 +28,8 @@ UI_ANVIL,Anvil,Amboss
 PROMPT_MINE_IRON,Mine iron ore,Eisenerz abbauen
 PROMPT_MINE_COAL,Mine coal,Kohle abbauen
 PROMPT_TAKE_WOOD,Take wood,Holz nehmen
+PROMPT_CHOP_TREE,Chop the tree,Den Baum fällen
+UI_NEED_AXE,You need an axe to chop trees.,Zum Bäumefällen brauchst du eine Axt.
 ITEM_IRON_ORE,Iron ore,Eisenerz
 ITEM_COAL,Coal,Kohle
 ITEM_WOOD,Wood,Holz

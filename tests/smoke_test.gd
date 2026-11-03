@@ -46,7 +46,7 @@ func _run() -> void:
 	_check(terrain.wading_factor(river_floor + Vector3.UP * 5.0) == 1.0, "a bridge over the river doesn't slow anyone")
 	_check(absf(player.position.y - terrain.height_at(player.position.x, player.position.z)) < 1.0, "collision matches terrain")
 	_check(village.get_node_or_null("forge") != null, "buildings load from data")
-	_check(village.get_node("Roads").get_child_count() == 2, "roads load from data")
+	_check(village.get_node("Roads").get_child_count() == 3, "roads load from data")
 	_check(village.get_node("Boulders").get_child_count() > 0, "boulders have collision")
 	_check(village.get_node("Boulders").get_child(0).shape is ConvexPolygonShape3D, "boulders collide with their real shape")
 	_check(terrain.is_on_landslide(40.0, -300.0) and not terrain.is_on_landslide(0.0, 0.0), "landslide stays out of the village")
@@ -96,6 +96,7 @@ func _run() -> void:
 		_check(kinds.size() >= 1 and _has_joypad(kinds), "%s has a controller binding" % action)
 
 	await _test_land_and_river(scene, player)
+	await _test_river_collision(terrain, player)
 	await _test_hud(scene, player)
 	_test_character_models(player)
 	_test_generated_props()
@@ -124,7 +125,9 @@ func _run() -> void:
 	await _test_combat(scene, player)
 	await _test_enemy_navigation(scene, player)
 	await _test_gathering_collision(scene, player)
+	await _test_forest(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
+	await _test_grass_cost(scene)
 	await _test_settings(scene, player)
 	_test_translations()
 
@@ -204,6 +207,111 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 		_check(crossed, "the player crosses the river at x=%.0f" % x)
 	player.position = saved_position
 	await _physics_frames(10)
+
+
+## Compares the collision with the triangles on screen, across the river and its banks.
+func _test_river_collision(terrain: Terrain, player: Player) -> void:
+	var samples := PackedVector2Array()
+	for i in range(0, terrain.river.positions.size() - 1):
+		var here := terrain.river.positions[i]
+		if here.length() > 500.0:
+			continue
+		var side := (terrain.river.positions[i + 1] - here).normalized().orthogonal()
+		var reach := terrain.river.half_widths[i] + 9.0
+		for step in int(reach * 2.0 / 0.9):
+			samples.append(here + side * (step * 0.9 - reach))
+	var ground := _visible_triangles(terrain, samples)
+	var space := terrain.get_world_3d().direct_space_state
+	var worst := 0.0
+	var compared := 0
+	for at in samples:
+		var height := _visible_height(ground, at)
+		if is_nan(height):
+			continue
+		var query := PhysicsRayQueryParameters3D.create(Vector3(at.x, height + 20.0, at.y), Vector3(at.x, height - 20.0, at.y))
+		var hit := space.intersect_ray(query)
+		# Bridges and whatever else stands on the ground isn't part of this.
+		if hit.is_empty() or hit["collider"] != terrain:
+			continue
+		compared += 1
+		worst = maxf(worst, absf(hit["position"].y - height))
+	_check(compared > samples.size() * 0.9, "the river's banks are compared with their collision (%d of %d)" % [compared, samples.size()])
+	_check(worst < 0.01, "collision matches the visible ground along the river (%.3f m off)" % worst)
+
+	# The capsule rests a little above a slope, by up to 0.09 m on the steepest banks.
+	var saved_position := player.position
+	var pivot: Node3D = player.get_node("CameraPivot")
+	pivot.rotation = Vector3.ZERO
+	var south := 18.0
+	player.position = Vector3(-32.0, terrain.height_at(-32.0, south) + 0.5, south)
+	await _physics_frames(10)
+	var path := PackedVector2Array()
+	var feet := PackedFloat32Array()
+	Input.action_press("move_forward")
+	for i in 420:
+		await physics_frame
+		if player.is_on_floor():
+			path.append(Vector2(player.position.x, player.position.z))
+			feet.append(player.position.y)
+	Input.action_release("move_forward")
+	var on_path := _visible_triangles(terrain, path)
+	var highest := -INF
+	var lowest := INF
+	for i in path.size():
+		var gap := feet[i] - _visible_height(on_path, path[i])
+		if not is_nan(gap):
+			highest = maxf(highest, gap)
+			lowest = minf(lowest, gap)
+	_check(player.position.z < south - 15.0, "the player wades across the fine collision")
+	_check(highest < 0.15 and lowest > -0.02, "the player's feet stay on the visible ground (%.3f to %.3f m)" % [lowest, highest])
+	player.position = saved_position
+	await _physics_frames(10)
+
+
+## The drawn triangles around these points, by 4 m cell. Reads only the chunks they fall in.
+func _visible_triangles(terrain: Terrain, points: PackedVector2Array) -> Dictionary:
+	var cells := {}
+	for child in terrain.get_children():
+		if not child is MeshInstance3D or child.name == "Water":
+			continue
+		var box: AABB = child.mesh.get_aabb()
+		var used := false
+		for point in points:
+			if point.x >= box.position.x and point.x <= box.end.x and point.y >= box.position.z and point.y <= box.end.z:
+				used = true
+				break
+		if not used:
+			continue
+		var arrays: Array = child.mesh.surface_get_arrays(0)
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+		for t in range(0, indices.size(), 3):
+			var a := vertices[indices[t]]
+			var b := vertices[indices[t + 1]]
+			var c := vertices[indices[t + 2]]
+			var key := _ground_cell((a.x + b.x + c.x) / 3.0, (a.z + b.z + c.z) / 3.0)
+			if not cells.has(key):
+				cells[key] = PackedVector3Array()
+			cells[key].append_array(PackedVector3Array([a, b, c]))
+	return cells
+
+
+func _ground_cell(x: float, z: float) -> Vector2i:
+	return Vector2i(floori(x / Terrain.STEP), floori(z / Terrain.STEP))
+
+
+func _visible_height(cells: Dictionary, at: Vector2) -> float:
+	var triangles: PackedVector3Array = cells.get(_ground_cell(at.x, at.y), PackedVector3Array())
+	for t in range(0, triangles.size(), 3):
+		var a := triangles[t]
+		var b := triangles[t + 1]
+		var c := triangles[t + 2]
+		var area := (b.z - c.z) * (a.x - c.x) + (c.x - b.x) * (a.z - c.z)
+		var u := ((b.z - c.z) * (at.x - c.x) + (c.x - b.x) * (at.y - c.z)) / area
+		var v := ((c.z - a.z) * (at.x - c.x) + (a.x - c.x) * (at.y - c.z)) / area
+		if u >= -0.0001 and v >= -0.0001 and u + v <= 1.0001:
+			return u * a.y + v * b.y + (1.0 - u - v) * c.y
+	return NAN
 
 
 func _test_grass(terrain: Terrain, grass: GrassField, layout: Dictionary) -> void:
@@ -754,6 +862,59 @@ func _enemy_reaches(enemy: Enemy, from: Vector3, to: Vector3, player: Player, fr
 	return false
 
 
+func _test_forest(scene: Node, player: Player) -> void:
+	var forest: Forest = scene.get_node("Village/Forest")
+	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/village_layout.json"))
+	var data: Dictionary = layout["forest"]
+	_check(forest.tree_count() > int(data["count"]) * 0.8, "the forest is dense (%d trees)" % forest.tree_count())
+	var center := Vector2(data["x"], data["z"])
+	var well_placed := true
+	for tree in forest.tree_count():
+		var at := forest.tree_position(tree)
+		well_placed = well_placed and Vector2(at.x, at.z).distance_to(center) <= float(data["radius"]) and absf(at.y - scene.get_node("Terrain").height_at(at.x, at.z)) < 0.01
+	_check(well_placed, "forest trees stand on the ground inside the forest")
+
+	var saved_position := player.position
+	var saved_items := player.inventory.to_data()
+	var tree_at := forest.tree_position(0)
+	player.position = tree_at + player.facing_direction() * -2.5 + Vector3.UP * 0.2
+	await _physics_frames(3)
+	_check(player.interact_target == forest.target() and forest.has_target(), "the player can aim at a forest tree")
+	player.inventory.load_data({})
+	var messages: Array[String] = []
+	var on_notice := func(text: String) -> void: messages.append(text)
+	player.notice.connect(on_notice)
+	player.interact()
+	_check(player.inventory.count("wood") == 0 and messages.has("UI_NEED_AXE"), "chopping without an axe gives nothing and says why")
+	player.inventory.add("iron_axe")
+	var standing := forest.standing_count()
+	var target_tree := forest._target_tree
+	player._attack_cooldown = 0.0
+	player.interact()
+	_check(player.inventory.count("wood") == 1, "an axe strike gives wood")
+	player.interact()
+	_check(player.inventory.count("wood") == 1, "swings set the pace of chopping")
+	player.notice.disconnect(on_notice)
+	forest.strike_tree(target_tree, player)
+	_check(forest.standing_count() == standing, "a tree takes several strikes")
+	forest.strike_tree(target_tree, player)
+	_check(forest.standing_count() == standing - 1 and player.inventory.count("wood") == int(data["strikes"]), "enough strikes fell the tree")
+	await _physics_frames(3)
+	_check(forest._target_tree != target_tree, "a felled tree can't be chopped again")
+
+	var saved: Dictionary = JSON.parse_string(JSON.stringify(forest.to_data()))
+	forest.load_data({})
+	_check(forest.standing_count() == standing, "an old save without a forest has every tree standing")
+	forest.load_data(saved)
+	_check(forest.standing_count() == standing - 1, "felled trees are saved")
+	player.position = saved_position
+	await _physics_frames(1)
+	forest._felled[target_tree] = 0.0
+	await _physics_frames(2)
+	_check(forest.standing_count() == standing, "felled trees grow back")
+	player.inventory.load_data(saved_items)
+
+
 func _test_gathering_collision(scene: Node, player: Player) -> void:
 	var spot: ResourceNode = null
 	for node in scene.get_node("Village").get_children():
@@ -1065,6 +1226,41 @@ func _talk(ui: DialogueUI, npc_id: String, player: Player, answers: Array) -> vo
 	ui.open_conversation(npc_id, npc_id, player)
 	for answer: int in answers:
 		ui.choose(answer)
+
+
+func _test_grass_cost(scene: Node) -> void:
+	var grass: GrassField = scene.get_node("Village/Grass")
+	var menu: GameMenu = scene.get_node("GameMenu")
+	await _physics_frames(30)
+	var cell: Vector2i = grass._planted.keys()[0]
+	var planted: GrassField.PlantedCell = grass._planted[cell]
+	var cell_center := (Vector2(cell) + Vector2(0.5, 0.5)) * GrassField.CELL_SIZE
+
+	var whole_tris := 0
+	var far_tris := 0
+	for species in grass._meshes.size():
+		whole_tris += grass._meshes[species].surface_get_array_len(0) / 3
+		far_tris += grass._far_meshes[species].surface_get_array_len(0) / 3
+	_check(far_tris * 3 < whole_tris, "distant grass tufts cost far less (%d against %d triangles)" % [far_tris, whole_tris])
+
+	grass._fit_detail(cell, cell_center)
+	var multimesh := planted.multimeshes[0]
+	_check(multimesh.visible_instance_count == multimesh.instance_count and multimesh.mesh == grass._meshes[planted.species[0]], "grass around the camera is drawn whole")
+	grass._fit_detail(cell, cell_center + Vector2(160.0, 0.0))
+	_check(multimesh.visible_instance_count < multimesh.instance_count and multimesh.mesh == grass._far_meshes[planted.species[0]], "distant grass draws fewer, simpler tufts")
+	grass._fit_detail(cell, cell_center + Vector2(600.0, 0.0))
+	_check(not planted.group.visible, "grass beyond the draw distance isn't drawn")
+	grass._fit_detail(cell, cell_center)
+	_check(planted.group.visible and multimesh.mesh == grass._meshes[planted.species[0]], "grass returns when the camera comes back")
+
+	var distances: Array[float] = []
+	for level in 3:
+		menu._choose_graphics(level)
+		distances.append(grass._draw_distance)
+		_check(grass.tuft_share(GrassField.DRAW_DISTANCE * GrassField.EARLY_FADE - 1.0) == 1.0, "%s graphics keep all the grass nearby" % Settings.graphics)
+		_check(grass.tuft_share(grass._draw_distance) == 0.0, "%s graphics draw no grass past the draw distance" % Settings.graphics)
+	_check(distances[0] < distances[1] and distances[1] < distances[2], "lower graphics draw grass less far (%s)" % str(distances))
+	_check(distances[2] == GrassField.DRAW_DISTANCE, "high graphics draw grass at full distance")
 
 
 func _test_settings(scene: Node, player: Player) -> void:

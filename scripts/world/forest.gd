@@ -103,6 +103,8 @@ func chop(player: Player) -> void:
 		return
 	if not player.attack():
 		return
+	# The axe comes out for the swing, even when a stronger weapon is carried.
+	player.show_tool(AXE_ITEM, float(FeatureFlags.value("axe_in_hand_seconds", 1.5)))
 	strike_tree(_target_tree, player)
 
 

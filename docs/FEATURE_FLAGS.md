@@ -75,6 +75,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `torch_crafting_enabled` | `true` | Allows crafting torches |
 | `torch_starting_item_enabled` | `true` | Gives the player one torch |
 | `torch_burn_time_enabled` | `false` | Makes torches burn out instead of lasting forever |
+| `forest` | `true` | The dense forest in the west, whose trees can be felled with an axe |
 | `torch_recipe` | aggregate | `torches` and `torch_crafting_enabled` |
 | `torch_at_start` | aggregate | `torches` and `torch_starting_item_enabled` |
 | `torch_burns_out` | aggregate | `torches` and `torch_burn_time_enabled` |

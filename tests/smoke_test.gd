@@ -124,6 +124,7 @@ func _run() -> void:
 	await _test_story(scene, player)
 	await _test_combat(scene, player)
 	await _test_enemy_navigation(scene, player)
+	await _test_enemy_crowds_and_bridges(scene, player)
 	await _test_gathering_collision(scene, player)
 	await _test_forest(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
@@ -833,6 +834,126 @@ func _test_enemy_navigation(scene: Node, player: Player) -> void:
 
 	var door: Node = scene.get_node("Village/Props/door_3")
 	_check(door.get_children().any(func(child: Node) -> bool: return child is CollisionShape3D), "the inn's door is solid")
+
+
+## Uses the camp's goblins away from their camp: one chases, and another stands still in a gap.
+func _test_enemy_crowds_and_bridges(scene: Node, player: Player) -> void:
+	var enemies := root.get_tree().get_nodes_in_group(Enemy.GROUP)
+	var enemy: Enemy = enemies[0]
+	var blocker: Enemy = enemies[1]
+	var home := enemy._home
+	for other: Enemy in enemies:
+		if other != enemy:
+			other.process_mode = Node.PROCESS_MODE_DISABLED
+			other.position.y -= 100.0
+
+	var terrain: Terrain = scene.get_node("Terrain")
+	var bridge: Node3D = scene.get_node("Village").get_children().filter(func(child: Node) -> bool: return child.name.begins_with("Bridge"))[0]
+	var along := bridge.global_basis.z
+	var side := bridge.global_basis.x
+	var on_ground := func(along_bridge: float, beside: float) -> Vector3:
+		var point: Vector3 = bridge.global_position + along * along_bridge + side * beside
+		return Vector3(point.x, terrain.height_at(point.x, point.z) + 0.5, point.z)
+	var hit := terrain.get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(bridge.global_position + Vector3.UP * 3.0, bridge.global_position + Vector3.DOWN * 3.0))
+	var deck: Vector3 = hit["position"] + Vector3.UP * 0.1
+	var bank_a: Vector3 = on_ground.call(-11.0, 2.5)
+	var bank_b: Vector3 = on_ground.call(11.0, 2.5)
+	var beside_end: Vector3 = on_ground.call(11.0, 3.5)
+	for trip: Array in [[bank_a, bank_b, "enemies plan a way over a bridge rather than through the river"], [deck, beside_end, "an enemy on a bridge plans its way along the deck"]]:
+		EnemyPath.forget_all()
+		enemy.revive()
+		enemy.position = trip[0]
+		await physics_frame
+		var path := EnemyPath.new(enemy, enemy._stats["radius"])
+		path.begin(trip[0], trip[1], float(enemy._stats["attack_range"]) * Enemy.ARRIVE_FRACTION)
+		while not path.advance():
+			await physics_frame
+		var off_deck := 0
+		for point in path.waypoints:
+			var from_middle := Vector3(point.x, bridge.global_position.y, point.y) - bridge.global_position
+			if terrain.river_clearance(point.x, point.y) < 0.0 and absf(from_middle.dot(side)) > 1.6:
+				off_deck += 1
+		_check(path.reached and off_deck == 0, "%s (%d points off the deck)" % [trip[2], off_deck])
+
+	EnemyPath.forget_all()
+	enemy.revive()
+	enemy._home = bank_a
+	enemy.position = bank_a
+	enemy.state = Enemy.State.CHASE
+	player.health.restore()
+	player.position = bank_b
+	var wading := 0
+	for i in 900:
+		await physics_frame
+		player.position = bank_b
+		player.health.restore()
+		if terrain.wading_factor(enemy.global_position) < 1.0:
+			wading += 1
+		if enemy.state == Enemy.State.WINDUP:
+			break
+	_check(enemy.state == Enemy.State.WINDUP and wading == 0, "enemies cross the river by the bridge (%d frames wading)" % wading)
+
+	# The blocker stands in a gap as if it were attacking. A disabled body would leave the physics world.
+	var site := Vector3(home.x + 12.0, home.y, home.z + 12.0)
+	blocker.disable_mode = CollisionObject3D.DISABLE_MODE_KEEP_ACTIVE
+	var stand_in := func(at: Vector3) -> void:
+		blocker.revive()
+		blocker.position = at
+		blocker.state = Enemy.State.WINDUP
+		blocker._moving = false
+	var walls := Node3D.new()
+	root.add_child(walls)
+	_add_test_box(walls, site + Vector3(-5.6, 0.0, 0.0), Vector3(10.0, 6.0, 0.4))
+	_add_test_box(walls, site + Vector3(3.0, 0.0, 0.0), Vector3(4.8, 6.0, 0.4))
+	_add_test_box(walls, site + Vector3(10.7, 0.0, 0.0), Vector3(7.2, 6.0, 0.4))
+	stand_in.call(site + Vector3(0.0, 0.3, 0.0))
+	await physics_frame
+	_check(await _enemy_reaches(enemy, site + Vector3(0.0, 0.5, -6.0), site + Vector3(0.0, 0.5, 1.5), player, 900), "enemies take another gap when another enemy blocks the nearest one")
+	walls.free()
+
+	# The only way in is blocked, so the enemy waits behind without pushing, and goes on once it's free.
+	walls = Node3D.new()
+	root.add_child(walls)
+	for part: Array in [[Vector3(0.0, 0.0, 4.0), Vector3(9.0, 6.0, 1.0)], [Vector3(4.0, 0.0, 0.0), Vector3(1.0, 6.0, 9.0)], [Vector3(-4.0, 0.0, 0.0), Vector3(1.0, 6.0, 9.0)], [Vector3(-2.65, 0.0, -4.0), Vector3(3.7, 6.0, 1.0)], [Vector3(2.65, 0.0, -4.0), Vector3(3.7, 6.0, 1.0)]]:
+		_add_test_box(walls, site + part[0], part[1])
+	var gap := site + Vector3(0.0, 0.0, -4.0)
+	stand_in.call(gap + Vector3.UP * 0.3)
+	await physics_frame
+	var inside := site + Vector3(0.0, 0.5, -2.5)
+	var reached := await _enemy_reaches(enemy, site + Vector3(0.0, 0.5, -10.0), inside, player, 300)
+	var pushes := 0
+	var moved := 0.0
+	var last := enemy.global_position
+	for i in 180:
+		await physics_frame
+		player.position = inside
+		player.health.restore()
+		for c in enemy.get_slide_collision_count():
+			if enemy.get_slide_collision(c).get_collider() == blocker:
+				pushes += 1
+		moved += Vector2(enemy.global_position.x - last.x, enemy.global_position.z - last.z).length()
+		last = enemy.global_position
+	_check(not reached and pushes == 0 and moved < 0.1 and enemy.global_position.distance_to(gap) < 2.0, "enemies wait behind another enemy that blocks the only way (%d pushes, %.2f m moved)" % [pushes, moved])
+	blocker.position.y -= 100.0
+	reached = false
+	for i in 300:
+		await physics_frame
+		player.position = inside
+		player.health.restore()
+		if enemy.state == Enemy.State.WINDUP:
+			reached = true
+			break
+	_check(reached, "a waiting enemy goes on once the way is free")
+	walls.free()
+
+	blocker.disable_mode = CollisionObject3D.DISABLE_MODE_REMOVE
+	enemy._home = home
+	enemy.revive()
+	for other: Enemy in enemies:
+		other.process_mode = Node.PROCESS_MODE_INHERIT
+		other.revive()
+	EnemyPath.forget_all()
+	await _physics_frames(1)
 
 
 func _add_test_box(parent: Node3D, at: Vector3, size: Vector3) -> void:

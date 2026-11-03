@@ -69,6 +69,15 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `river_fine_collision` | `true` | Makes the ground near the river collide exactly where it is drawn, using the mesh's own triangles. Off leaves the coarser collision for the whole map, which costs less to load and to simulate |
 | `terrain_seam_cells` | `true` | Gives each coarse terrain cell beside the river's fine ones a fine grid too, which meets the fine cells on the true ground and bends evenly towards the coarse cells beyond. Off keeps the fine cells' outer edges straight along the coarse cells, which creases the ground there, with about 15,000 fewer triangles and a little less loading time |
 
+## Player flags and values
+
+| Name | Default | Effect |
+|---|---|---|
+| `lift_buried_player` | `true` | Puts a player who ends up inside the ground, for example from an old save, back on top of it. A ray looks down from above at the ground's own collision, so roofs and bridges never lift anyone |
+| `buried_player_depth` | `0.1` | How many meters the ground has to reach above the player's feet before they are lifted |
+| `buried_player_ray_height` | `6.0` | How many meters above the land, or the feet if they are higher, the ray starts. It has to start above the collision, which can lie a little higher than the land's exact height |
+| `axe_in_hand_seconds` | `1.5` | How long the axe stays in hand after a chop, before the strongest weapon comes back |
+
 ## Torch flags
 
 | Name | Default | Effect |

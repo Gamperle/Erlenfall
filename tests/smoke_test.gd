@@ -128,6 +128,7 @@ func _run() -> void:
 	await _test_enemy_crowds_and_bridges(scene, player)
 	await _test_gathering_collision(scene, player)
 	await _test_forest(scene, player)
+	await _test_player_fixes(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
 	await _test_grass_cost(scene)
 	_test_grass_cell_edge(scene)
@@ -1575,6 +1576,95 @@ func _check(condition: bool, label: String) -> void:
 	print("%s: %s" % ["ok" if condition else "FAIL", label])
 	if not condition:
 		_failures += 1
+
+
+## The axe shows while chopping (#121), and a player inside the ground comes back up (#125).
+func _test_player_fixes(scene: Node, player: Player) -> void:
+	var terrain: Terrain = scene.get_node("Terrain")
+	var village: Village = scene.get_node("Village")
+	var day_night: DayNight = scene.get_node("DayNight")
+	var forest: Forest = scene.get_node("Village/Forest")
+	var saved_position := player.position
+	var saved_items := player.inventory.to_data()
+	var saved_forest: Dictionary = JSON.parse_string(JSON.stringify(forest.to_data()))
+
+	player.inventory.load_data({})
+	player.inventory.add("iron_sword")
+	player.inventory.add(Forest.AXE_ITEM)
+	# The forest test chopped a moment ago.
+	var seconds: float = FeatureFlags.value("axe_in_hand_seconds")
+	await _physics_frames(ceili(seconds * Engine.physics_ticks_per_second) + 5)
+	_check(player.item_in_hand() == "iron_sword", "the strongest weapon is in hand")
+	player.position = forest.tree_position(0) + player.facing_direction() * -2.5 + Vector3.UP * 0.2
+	await _physics_frames(3)
+	player._attack_cooldown = 0.0
+	player.interact()
+	_check(player.item_in_hand() == Forest.AXE_ITEM, "chopping puts the axe in hand, even with a sword carried")
+	await _physics_frames(ceili(seconds * Engine.physics_ticks_per_second) + 5)
+	_check(player.item_in_hand() == "iron_sword", "after chopping the sword comes back")
+	forest.load_data(saved_forest)
+	player.inventory.load_data(saved_items)
+
+	# Beside the river, where the ground collides exactly where it is drawn.
+	var i := terrain.river.positions.size() / 3
+	var here := terrain.river.positions[i]
+	var side := (terrain.river.positions[i + 1] - here).normalized().orthogonal()
+	var bank := here + side * (terrain.river.half_widths[i] + 3.0)
+	var dry := Vector2(150.0, 150.0)
+	for at: Vector2 in [bank, dry]:
+		for depth: float in [0.2, 0.8, 3.0]:
+			player.position = Vector3(at.x, terrain.height_at(at.x, at.y) - depth, at.y)
+			player.velocity = Vector3.ZERO
+			await _physics_frames(30)
+			_check(not _under_ground(terrain, player), "a player %.1f m inside the ground at (%.0f, %.0f) comes back up" % [depth, at.x, at.y])
+
+	var ground := terrain.height_at(bank.x, bank.y)
+	player.position = Vector3(bank.x, ground - 0.8, bank.y)
+	SaveGame.write(TEST_SAVE, player, day_night, village)
+	player.position = saved_position
+	SaveGame.apply(TEST_SAVE, player, day_night, village)
+	player.velocity = Vector3.ZERO
+	await _physics_frames(30)
+	_check(not _under_ground(terrain, player), "a save from inside the ground loads on top of it")
+	DirAccess.remove_absolute(TEST_SAVE)
+
+	# A roof overhead never lifts anyone, buried or not.
+	var roof := Node3D.new()
+	root.add_child(roof)
+	_add_test_box(roof, Vector3(bank.x, ground + 2.4, bank.y), Vector3(4.0, 0.4, 4.0))
+	await _physics_frames(2)
+	for depth: float in [-0.05, 0.8]:
+		player.position = Vector3(bank.x, ground - depth, bank.y)
+		player.velocity = Vector3.ZERO
+		await _physics_frames(30)
+		var how := "buried" if depth > 0.0 else "standing"
+		_check(not _under_ground(terrain, player) and player.position.y < ground + 1.0, "a roof overhead doesn't lift a %s player onto it" % how)
+	roof.free()
+
+	# Wading under the bridge keeps the player in the water.
+	var bridge: Node3D = village.get_node("Bridge")
+	var under := Vector2(bridge.position.x, bridge.position.z)
+	var bed := terrain.height_at(under.x, under.y)
+	player.position = Vector3(under.x, bed + 0.05, under.y)
+	player.velocity = Vector3.ZERO
+	await _physics_frames(30)
+	_check(not _under_ground(terrain, player) and player.position.y < bed + 0.3, "wading under the bridge stays in the water (%.2f m above the bed)" % (player.position.y - bed))
+	player.position = saved_position
+	player.velocity = Vector3.ZERO
+	await _physics_frames(10)
+
+
+## Whether the ground's own collision lies above the player's feet, by more than 0.3 m.
+func _under_ground(terrain: Terrain, player: Player) -> bool:
+	var feet := player.global_position
+	var query := PhysicsRayQueryParameters3D.create(feet + Vector3.UP * 30.0, feet + Vector3.UP * 0.3)
+	query.exclude = [player.get_rid()]
+	var space := terrain.get_world_3d().direct_space_state
+	var hit := space.intersect_ray(query)
+	while not hit.is_empty() and hit["collider"] != terrain:
+		query.exclude = query.exclude + [hit["rid"]]
+		hit = space.intersect_ray(query)
+	return not hit.is_empty() or feet.y < terrain.height_at(feet.x, feet.z) - 20.0
 
 
 func _test_grass_cell_edge(scene: Node) -> void:

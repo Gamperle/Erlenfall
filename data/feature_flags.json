@@ -20,7 +20,7 @@
 		"controls_hint_seconds": 30,
 		"enemy_path_cell_size": 0.5,
 		"enemy_path_max_nodes": 1500,
-		"enemy_path_budget_usec": 1000,
+		"enemy_path_budget_steps": 70,
 		"enemy_path_cache_seconds": 5.0
 	}
 }

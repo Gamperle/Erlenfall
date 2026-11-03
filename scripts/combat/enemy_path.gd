@@ -2,8 +2,9 @@ class_name EnemyPath
 extends RefCounted
 ## Finds a way around obstacles with a search on a small grid. The grid exists only where a search
 ## looks: each cell is checked against the physics world when first needed, and the answer is shared
-## by all enemies for a few seconds. Searches share a time budget per physics frame, and one that
-## runs out carries on in the next frame.
+## by all enemies for a few seconds. Searches share a budget of work per physics frame, and one that
+## runs out carries on in the next frame. The budget counts steps rather than time, so a search
+## takes the same number of frames on any machine.
 
 const WALKABLE_SLOPE := 0.9
 const SLOPE_SAMPLE_DISTANCE := 1.0
@@ -14,7 +15,8 @@ const PROBE_RESULTS := 4
 const LINE_SKIP_AT_START := 0.3
 const LINE_MAX_LENGTH := 40.0
 const START_SEARCH_CELLS := 2
-const EXPANSIONS_PER_TIME_CHECK := 8
+## Checking a new cell against the physics world costs about three times as much as a search step.
+const PROBE_COST := 3
 ## Slightly favors cells near the goal, which searches far fewer cells for a nearly as short path.
 const HEURISTIC_WEIGHT := 1.2
 const KEY_OFFSET := 1 << 15
@@ -105,21 +107,12 @@ func begin(from: Vector3, goal: Vector3, arrive_distance: float) -> void:
 
 ## Does search work until it finishes, which returns true, or the frame's budget runs out.
 func advance() -> bool:
-	var frame := Engine.get_physics_frames()
-	if frame != _budget_frame:
-		_budget_frame = frame
-		_budget_used = 0
-	var budget: int = FeatureFlags.value("enemy_path_budget_usec")
-	var began := Time.get_ticks_usec()
-	var now := began
-	while _budget_used + now - began < budget:
-		for i in EXPANSIONS_PER_TIME_CHECK:
-			if _expand():
-				_searching = false
-				_budget_used += Time.get_ticks_usec() - began
-				return true
-		now = Time.get_ticks_usec()
-	_budget_used += now - began
+	var budget: int = FeatureFlags.value("enemy_path_budget_steps")
+	while _spend(0) < budget:
+		_spend(1)
+		if _expand():
+			_searching = false
+			return true
 	return false
 
 
@@ -202,6 +195,7 @@ func _is_blocked(cell: Vector2i) -> bool:
 	var known: Variant = _blocked.get(key)
 	if known != null:
 		return known
+	_spend(PROBE_COST)
 	var blocked := _probe(_center_of(cell))
 	_blocked[key] = blocked
 	return blocked
@@ -281,6 +275,16 @@ func _key(cell: Vector2i) -> int:
 
 func _cell_from_key(key: int) -> Vector2i:
 	return Vector2i((key >> KEY_SHIFT) - KEY_OFFSET, (key & KEY_MASK) - KEY_OFFSET)
+
+
+## Adds to the work done in this physics frame, and returns the total so far.
+static func _spend(steps: int) -> int:
+	var frame := Engine.get_physics_frames()
+	if frame != _budget_frame:
+		_budget_frame = frame
+		_budget_used = 0
+	_budget_used += steps
+	return _budget_used
 
 
 static func forget_all() -> void:

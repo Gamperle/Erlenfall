@@ -90,5 +90,5 @@ Enemies walk straight at their target until something blocks them, then search a
 |---|---|---|
 | `enemy_path_cell_size` | `0.5` | The size in meters of a grid cell. Smaller cells find narrower gaps but search more cells |
 | `enemy_path_max_nodes` | `1500` | How many cells one search looks at before it settles for the nearest point it found |
-| `enemy_path_budget_usec` | `1000` | How many microseconds all searches may use per physics frame. A search that runs out carries on in the next frame |
+| `enemy_path_budget_steps` | `70` | How much work all searches may do per physics frame. A search step counts 1 and checking a new cell counts 3. 70 is about 1 ms on a Radeon 680M laptop. A search that runs out carries on in the next frame |
 | `enemy_path_cache_seconds` | `5` | How long enemies remember which cells are blocked before checking them again |

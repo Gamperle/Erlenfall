@@ -676,6 +676,13 @@ func _test_enemy_navigation(scene: Node, player: Player) -> void:
 	var enemy: Enemy = root.get_tree().get_first_node_in_group(Enemy.GROUP)
 	var home := enemy._home
 	var site := Vector3(home.x + 12.0, home.y, home.z + 12.0)
+	# The other goblins would chase the player too, and block the gaps while they attack.
+	var others: Array[Enemy] = []
+	for other: Enemy in root.get_tree().get_nodes_in_group(Enemy.GROUP):
+		if other != enemy:
+			others.append(other)
+			other.process_mode = Node.PROCESS_MODE_DISABLED
+			other.position.y -= 100.0
 
 	# A prop just off a wall, leaving a notch.
 	var obstacles := Node3D.new()
@@ -709,6 +716,9 @@ func _test_enemy_navigation(scene: Node, player: Player) -> void:
 
 	enemy._home = home
 	enemy.revive()
+	for other in others:
+		other.process_mode = Node.PROCESS_MODE_INHERIT
+		other.revive()
 	EnemyPath.forget_all()
 	await _physics_frames(1)
 

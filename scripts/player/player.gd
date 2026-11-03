@@ -70,10 +70,14 @@ const TORCH_ARM_RAISE := 1.2
 const TORCH_HAND_POSITION := Vector3(0.0, -0.58, -0.05)
 const TORCH_FIRST_PERSON_POSITION := Vector3(-0.4, -0.5, -0.7)
 const TORCH_FIRST_PERSON_SCALE := 0.7
+## How many things overhead the buried check looks past before giving up.
+const BURIED_RAY_ATTEMPTS := 8
 
 var first_person := false
 var inventory := Inventory.new()
 var _shown_weapon := "-"
+var _tool_in_hand := ""
+var _tool_seconds := 0.0
 var known_recipes: Dictionary = {}
 var quests := QuestLog.new()
 ## What pressing the use button would act on right now, if anything.
@@ -170,10 +174,21 @@ func is_blocking() -> bool:
 	return not _busy and Input.is_action_pressed("block")
 
 
-## Gives the starting torch once per game, including to games saved before torches existed.
-## The weapon in hand is the one that attacks use. Empty hands show nothing.
+## Puts a tool such as the axe in hand for a while, after which the weapon comes back.
+func show_tool(item_id: String, seconds: float) -> void:
+	_tool_in_hand = item_id
+	_tool_seconds = seconds
+	_update_weapon_model()
+
+
+## The item the hand shows right now, or "" for empty hands.
+func item_in_hand() -> String:
+	return _shown_weapon
+
+
+## The weapon in hand is the one that attacks use, unless a tool is out. Empty hands show nothing.
 func _update_weapon_model() -> void:
-	var weapon_id := inventory.best_weapon_id()
+	var weapon_id := _tool_in_hand if _tool_seconds > 0.0 else inventory.best_weapon_id()
 	if weapon_id == _shown_weapon:
 		return
 	_shown_weapon = weapon_id
@@ -184,6 +199,7 @@ func _update_weapon_model() -> void:
 		_weapon.add_child(model)
 
 
+## Gives the starting torch once per game, including to games saved before torches existed.
 func give_starting_items() -> void:
 	if not torch_given and FeatureFlags.enabled("torch_at_start"):
 		torch_given = true
@@ -330,6 +346,8 @@ func _physics_process(delta: float) -> void:
 		velocity.z = _dodge_direction.z * ROLL_CARRY_SPEED
 	move_and_slide()
 	_keep_inside_world()
+	if terrain != null:
+		lift_out_of_ground(terrain)
 	interact_target = _find_interact_target()
 	_body_mesh.animate(Vector2(velocity.x, velocity.z).length(), delta)
 
@@ -342,6 +360,10 @@ func _update_combat(delta: float) -> void:
 	_attack_cooldown = maxf(_attack_cooldown - delta, 0.0)
 	_dodge_time = maxf(_dodge_time - delta, 0.0)
 	_dodge_cooldown = maxf(_dodge_cooldown - delta, 0.0)
+	if _tool_seconds > 0.0:
+		_tool_seconds -= delta
+		if _tool_seconds <= 0.0:
+			_update_weapon_model()
 	if _attack_windup > 0.0:
 		_attack_windup -= delta
 		if _attack_windup <= 0.0:
@@ -431,6 +453,32 @@ func _keep_inside_world() -> void:
 		flat = flat.limit_length(WORLD_RADIUS)
 		position.x = flat.x
 		position.z = flat.y
+
+
+## Puts a player who ended up inside the ground back on top of it, and reports whether it did.
+## Only the ground's own collision counts, so a roof or bridge overhead never lifts anyone, and
+## the ray looks down from above, since the collision itself can lie away from `height_at`.
+func lift_out_of_ground(terrain: Terrain) -> bool:
+	if not FeatureFlags.enabled("lift_buried_player"):
+		return false
+	var depth: float = FeatureFlags.value("buried_player_depth", 0.1)
+	var feet := global_position
+	var top := maxf(feet.y, terrain.height_at(feet.x, feet.z)) + float(FeatureFlags.value("buried_player_ray_height", 6.0))
+	var from := Vector3(feet.x, top, feet.z)
+	var query := PhysicsRayQueryParameters3D.create(from, feet + Vector3.UP * depth)
+	query.exclude = [get_rid()]
+	var space := get_world_3d().direct_space_state
+	for attempt in BURIED_RAY_ATTEMPTS:
+		var hit := space.intersect_ray(query)
+		if hit.is_empty():
+			return false
+		if hit["collider"] == terrain:
+			global_position.y = hit["position"].y
+			velocity.y = maxf(velocity.y, 0.0)
+			return true
+		# Something else overhead, like a roof or a bridge. Look past it.
+		query.exclude = query.exclude + [hit["rid"]]
+	return false
 
 
 func _replace_body() -> void:

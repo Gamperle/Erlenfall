@@ -68,6 +68,15 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `performance_overlay` | `true` | Shows the performance measurements at the top right |
 | `river_fine_collision` | `true` | Makes the ground near the river collide exactly where it is drawn, using the mesh's own triangles. Off leaves the coarser collision for the whole map, which costs less to load and to simulate |
 
+## Player flags and values
+
+| Name | Default | Effect |
+|---|---|---|
+| `lift_buried_player` | `true` | Puts a player who ends up inside the ground, for example from an old save, back on top of it. A ray looks down from above at the ground's own collision, so roofs and bridges never lift anyone |
+| `buried_player_depth` | `0.1` | How many meters the ground has to reach above the player's feet before they are lifted |
+| `buried_player_ray_height` | `6.0` | How many meters above the land, or the feet if they are higher, the ray starts. It has to start above the collision, which can lie a little higher than the land's exact height |
+| `axe_in_hand_seconds` | `1.5` | How long the axe stays in hand after a chop, before the strongest weapon comes back |
+
 ## Torch flags
 
 | Name | Default | Effect |

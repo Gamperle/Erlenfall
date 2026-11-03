@@ -67,6 +67,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `realistic_player` | `true` | Uses a rigged model for the player |
 | `performance_overlay` | `true` | Shows the performance measurements at the top right |
 | `river_fine_collision` | `true` | Makes the ground near the river collide exactly where it is drawn, using the mesh's own triangles. Off leaves the coarser collision for the whole map, which costs less to load and to simulate |
+| `terrain_seam_cells` | `true` | Gives each coarse terrain cell beside the river's fine ones a fine grid too, which meets the fine cells on the true ground and bends evenly towards the coarse cells beyond. Off keeps the fine cells' outer edges straight along the coarse cells, which creases the ground there, with about 15,000 fewer triangles and a little less loading time |
 
 ## Player flags and values
 

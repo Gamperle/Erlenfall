@@ -33,10 +33,10 @@
 		{ "quest": "first_nails", "objective": "repair_roof", "flag": "inn_roof_repaired", "model": "ladder", "rotation": -80, "prompt": "PROMPT_REPAIR_ROOF", "x": 20.6, "z": -11.5, "width": 0.6, "depth": 0.3, "height": 5, "color": "#8a6a42" }
 	],
 	"beds": [
-		{ "model": "bed", "prompt": "PROMPT_SLEEP", "x": -9, "z": 21, "width": 2, "depth": 1, "height": 0.5, "color": "#6f5a4a" }
+		{ "model": "bed", "asset": "res://assets/props/bed_3.glb", "prompt": "PROMPT_SLEEP", "x": -9, "z": 21, "width": 2, "depth": 1, "height": 0.5, "color": "#6f5a4a" }
 	],
 	"stations": [
-		{ "id": "furnace", "model": "furnace", "prompt": "UI_FURNACE", "x": 9, "z": 24, "width": 2, "depth": 2, "height": 2.2, "color": "#3f3a36" },
+		{ "id": "furnace", "model": "furnace", "asset": "res://assets/props/furnace_0.glb", "prompt": "UI_FURNACE", "x": 9, "z": 24, "width": 2, "depth": 2, "height": 2.2, "color": "#3f3a36" },
 		{ "id": "anvil", "model": "anvil", "asset": "res://assets/props/anvil_2.glb", "prompt": "UI_ANVIL", "x": 16, "z": 25, "width": 1.2, "depth": 0.6, "height": 0.9, "work_spot": [0, 0.87, 0.12], "color": "#26282b" }
 	],
 	"resources": [
@@ -179,6 +179,24 @@
     {"model": "stone_wall_3", "building": "abandoned_house_2", "x": 3.5, "z": 5},
     {"model": "forge_2", "building": "abandoned_house_2", "x": 5.8, "z": 0, "rotation": -90},
     {"model": "stone_wall_4", "building": "abandoned_house_3", "x": -3.5, "z": 4.5},
-    {"model": "cauldron_5", "building": "abandoned_house_3", "x": 2, "z": 4}
+    {"model": "cauldron_5", "building": "abandoned_house_3", "x": 2, "z": 4},
+    {"model": "well_1", "x": -6, "z": -6},
+    {"model": "bench_1", "x": -6, "z": -1.8, "rotation": 180},
+    {"model": "bucket_5", "x": -3.9, "z": -5.4},
+    {"model": "bench_4", "building": "town_hall", "x": 2.4, "z": 5.6},
+    {"model": "crate_4", "building": "inn", "x": 4.4, "z": 6.3},
+    {"model": "sack_2", "building": "inn", "x": 5.6, "z": 5.3},
+    {"model": "wood_pile_1", "building": "forge", "x": -6.0, "z": 4.2},
+    {"model": "wood_pile_4", "building": "grandfather_house", "x": -5.0, "z": 1.0, "rotation": 90},
+    {"model": "haystack_1", "building": "north_farm", "x": 8.5, "z": 0},
+    {"model": "hand_cart_3", "building": "north_farm", "x": 3, "z": 6, "rotation": 25},
+    {"model": "sack_4", "building": "north_farm", "x": -2.5, "z": 4.4},
+    {"model": "haystack_3", "building": "west_farm", "x": 8.5, "z": 1},
+    {"model": "crate_4", "building": "west_farm", "x": 2.5, "z": 4.6},
+    {"model": "hand_cart_5", "building": "south_farm", "x": -3, "z": 6, "rotation": -20},
+    {"model": "bucket_1", "building": "south_farm", "x": 1.8, "z": 4.3},
+    {"model": "campfire_4", "x": 118, "z": -145},
+    {"model": "goblin_tent_2", "x": 126, "z": -153, "rotation": -40},
+    {"model": "goblin_tent_3", "x": 109, "z": -151, "rotation": 40}
   ]
 }

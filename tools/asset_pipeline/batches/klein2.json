@@ -1,0 +1,17 @@
+{
+	"seed": 7000,
+	"objects": {
+		"well": { "subject": "round village well with a low fieldstone wall, a small wooden shingle roof on two posts, and a wooden bucket on a rope", "faces": 6000, "meters": 2.6 },
+		"crate": { "subject": "sturdy wooden crate made of rough planks, lid nailed shut", "faces": 1500, "meters": 0.7 },
+		"sack": { "subject": "full burlap grain sack tied at the top with a cord, standing upright", "faces": 1500, "meters": 0.8 },
+		"bench": { "subject": "simple wooden bench made of one thick plank on four stout legs, seen from the front", "faces": 2000, "meters": 1.6 },
+		"haystack": { "subject": "round domed haystack of golden dried hay", "faces": 3000, "meters": 2.6 },
+		"wood_pile": { "subject": "neat stack of split firewood logs, cut ends facing forward", "faces": 4000, "meters": 1.4 },
+		"bucket": { "subject": "wooden bucket made of staves with two iron bands and a rope handle", "faces": 1500, "meters": 0.4 },
+		"hand_cart": { "subject": "empty wooden farm hand cart with two large solid wooden wheels and two long handles", "faces": 5000, "meters": 2.2 },
+		"campfire": { "subject": "unlit campfire of stacked logs inside a ring of grey stones", "faces": 3000, "meters": 1.2 },
+		"goblin_tent": { "subject": "small crude tent made of patched brown animal hides stretched over wooden poles", "faces": 4000, "meters": 2.4, "mode": "keep" },
+		"bed": { "subject": "simple wooden bed frame with a straw mattress and a folded wool blanket", "faces": 4000, "meters": 2.0 },
+		"furnace": { "subject": "squat round smelting furnace of clay and fieldstone with a small arched opening at the bottom", "faces": 5000, "meters": 2.2 }
+	}
+}

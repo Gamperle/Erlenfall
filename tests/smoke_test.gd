@@ -552,9 +552,9 @@ func _test_generated_props() -> void:
 		_check(size.length() > 0.2 and maxf(size.x, maxf(size.y, size.z)) < 2.6, file + " has a believable size")
 		_check(meshes[0].mesh.get_surface_count() == 1 and (meshes[0].mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture != null, file + " is textured")
 		prop.free()
-	_check(count == 40, "all generated props are present")
+	_check(count == 59, "all generated props are present")
 	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/village_layout.json"))
-	_check((layout["props"] as Array).size() == 39, "39 generated props are placed, and the anvil is a station")
+	_check((layout["props"] as Array).size() == 57, "57 generated props are placed, and the anvil, furnace, and bed are separate")
 
 
 func _test_feature_flags() -> void:

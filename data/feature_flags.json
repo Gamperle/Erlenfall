@@ -1,5 +1,6 @@
 {
 	"flags": {
+		"forest": true,
 		"compass": true,
 		"compass_objectives": true,
 		"realistic_villagers": true,

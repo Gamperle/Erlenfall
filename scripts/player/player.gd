@@ -206,12 +206,15 @@ func set_torch_lit(lit: bool) -> void:
 
 
 ## Starts a swing. The hit lands after a short windup.
-func attack() -> void:
-	if _attack_cooldown <= 0.0 and not is_blocking() and not is_dodging():
+## Starts a swing if one can start now, and reports whether it did.
+func attack() -> bool:
+	var ready_to_swing := _attack_cooldown <= 0.0 and not is_blocking() and not is_dodging()
+	if ready_to_swing:
 		_attack_cooldown = ATTACK_COOLDOWN
 		_attack_windup = ATTACK_WINDUP
 		_body_mesh.play_action(ATTACK_ANIMATION)
 		_body_mesh.rotation.y = _pivot.rotation.y
+	return ready_to_swing
 
 
 ## Rolls in the direction of movement, or backward when standing still. Avoids all damage.
@@ -395,6 +398,11 @@ func _land_attack() -> void:
 
 func _forward() -> Vector3:
 	return Vector3.FORWARD.rotated(Vector3.UP, _pivot.rotation.y)
+
+
+## The way the player is facing, along the ground.
+func facing_direction() -> Vector3:
+	return _forward()
 
 
 func _find_interact_target() -> Interactable:

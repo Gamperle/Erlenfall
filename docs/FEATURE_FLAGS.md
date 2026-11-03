@@ -76,6 +76,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `torch_crafting_enabled` | `true` | Allows crafting torches |
 | `torch_starting_item_enabled` | `true` | Gives the player one torch |
 | `torch_burn_time_enabled` | `false` | Makes torches burn out instead of lasting forever |
+| `forest` | `true` | The dense forest in the west, whose trees can be felled with an axe |
 | `torch_recipe` | aggregate | `torches` and `torch_crafting_enabled` |
 | `torch_at_start` | aggregate | `torches` and `torch_starting_item_enabled` |
 | `torch_burns_out` | aggregate | `torches` and `torch_burn_time_enabled` |
@@ -83,3 +84,13 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `interface_min_scale` | `0.9` | The smallest size the interface shrinks to in a small window, as a share of its full size |
 | `controls_hint_seconds` | `30` | How long the controls line stays on screen when play starts. It shows again in the pause menu. 0 keeps it on screen |
 | `river_fine_margin` | `3.0` | How many meters past the river's banks the terrain mesh, and its collision, stay finer. Below 3 some banks end up in coarse cells, where the ground is less exact |
+
+## Grass values
+
+| Name | Default | Effect |
+|---|---|---|
+| `grass_far_distance` | `60` | From this many meters away, a cell of grass uses simpler tufts |
+| `grass_far_blade_share` | `0.5` | The share of a tuft's blades that simpler tufts keep. Each is one wider triangle instead of three |
+| `grass_draw_scale_low` | `0.6` | How far grass reaches on low graphics, as a share of the full 220 meters |
+| `grass_draw_scale_medium` | `0.8` | The same on medium graphics |
+| `grass_draw_scale_high` | `1.0` | The same on high graphics |

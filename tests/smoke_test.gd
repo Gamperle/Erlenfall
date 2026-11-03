@@ -133,6 +133,7 @@ func _run() -> void:
 	await _test_combat(scene, player)
 	await _test_enemy_navigation(scene, player)
 	await _test_enemy_crowds_and_bridges(scene, player)
+	await _test_enemies_make_way(player)
 	await _test_gathering_collision(scene, player)
 	await _test_forest(scene, player)
 	await _test_player_fixes(scene, player)
@@ -1002,6 +1003,30 @@ func _test_enemy_crowds_and_bridges(scene: Node, player: Player) -> void:
 			break
 	_check(enemy.state == Enemy.State.WINDUP and wading == 0, "enemies cross the river by the bridge (%d frames wading)" % wading)
 
+	# Walking straight at the player, 8 m beside the bridge, it turns to the bridge before the river (#141).
+	EnemyPath.forget_all()
+	var beside_a: Vector3 = on_ground.call(-11.0, 8.0)
+	var beside_b: Vector3 = on_ground.call(11.0, 8.0)
+	enemy.revive()
+	enemy._home = beside_a
+	enemy.position = beside_a
+	enemy.state = Enemy.State.CHASE
+	player.position = beside_b
+	wading = 0
+	var nearest := INF
+	for i in 1200:
+		await physics_frame
+		player.position = beside_b
+		player.health.restore()
+		var at := enemy.global_position
+		if terrain.wading_factor(at) < 1.0:
+			wading += 1
+		if absf((at - bridge.global_position).dot(side)) > 3.0:
+			nearest = minf(nearest, terrain.river_clearance(at.x, at.z))
+		if enemy.state == Enemy.State.WINDUP:
+			break
+	_check(enemy.state == Enemy.State.WINDUP and wading == 0 and nearest > 0.5, "enemies turn to a bridge before they reach the river (%d frames wading, %.1f m from the river)" % [wading, nearest])
+
 	# The blocker stands in a gap as if it were attacking. A disabled body would leave the physics world.
 	var site := Vector3(home.x + 12.0, home.y, home.z + 12.0)
 	blocker.disable_mode = CollisionObject3D.DISABLE_MODE_KEEP_ACTIVE
@@ -1061,6 +1086,54 @@ func _test_enemy_crowds_and_bridges(scene: Node, player: Player) -> void:
 	for other: Enemy in enemies:
 		other.process_mode = Node.PROCESS_MODE_INHERIT
 		other.revive()
+	EnemyPath.forget_all()
+	await _physics_frames(1)
+
+
+## The camp's three goblins walk side by side at a wall with one 1.2 m gap, and let each other through
+## rather than push (#140).
+func _test_enemies_make_way(player: Player) -> void:
+	var enemies := root.get_tree().get_nodes_in_group(Enemy.GROUP)
+	var home: Vector3 = enemies[0]._home
+	var homes: Array[Vector3] = []
+	var site := Vector3(home.x + 12.0, home.y, home.z + 12.0)
+	var walls := Node3D.new()
+	root.add_child(walls)
+	_add_test_box(walls, site + Vector3(-7.8, 0.0, 0.0), Vector3(14.4, 6.0, 0.4))
+	_add_test_box(walls, site + Vector3(7.8, 0.0, 0.0), Vector3(14.4, 6.0, 0.4))
+	await _physics_frames(2)
+	EnemyPath.forget_all()
+	for i in enemies.size():
+		var enemy: Enemy = enemies[i]
+		homes.append(enemy._home)
+		enemy.revive()
+		enemy._home = site + Vector3((i - 1) * 1.2, 0.5, -4.5 if i == 1 else -4.0)
+		enemy.position = enemy._home
+		enemy.state = Enemy.State.CHASE
+	var goal := site + Vector3(0.0, 0.5, 6.0)
+	player.health.restore()
+	player.position = goal
+	var touching := 0
+	var arrived := {}
+	for i in 600:
+		await physics_frame
+		player.position = goal
+		player.health.restore()
+		for enemy: Enemy in enemies:
+			if enemy.state != Enemy.State.CHASE:
+				arrived[enemy] = true
+			for c in enemy.get_slide_collision_count():
+				var other := enemy.get_slide_collision(c).get_collider() as Enemy
+				if other != null and other._moving and enemy._moving:
+					touching += 1
+					break
+		if arrived.size() == enemies.size():
+			break
+	_check(arrived.size() == enemies.size() and touching <= 10, "goblins let each other through a gap (%d of %d through, %d frames touching)" % [arrived.size(), enemies.size(), touching])
+	walls.free()
+	for i in enemies.size():
+		enemies[i]._home = homes[i]
+		enemies[i].revive()
 	EnemyPath.forget_all()
 	await _physics_frames(1)
 

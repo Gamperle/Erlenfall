@@ -147,11 +147,11 @@ func _start_batch(center: Vector2) -> void:
 	for x in range(center_cell.x - reach, center_cell.x + reach + 1):
 		for y in range(center_cell.y - reach, center_cell.y + reach + 1):
 			var cell := Vector2i(x, y)
-			if not _planted.has(cell) and _cell_distance(cell, center) < _draw_distance:
+			if not _planted.has(cell) and _cell_nearest_distance(cell, center) < _draw_distance:
 				wanted.append(cell)
 	if wanted.is_empty():
 		return
-	wanted.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return _cell_distance(a, center) < _cell_distance(b, center))
+	wanted.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return _cell_nearest_distance(a, center) < _cell_nearest_distance(b, center))
 	_batch = wanted.slice(0, CELLS_PER_BATCH)
 	_batch_results.resize(_batch.size())
 	_task = WorkerThreadPool.add_group_task(_grow_batch_cell, _batch.size())
@@ -222,15 +222,12 @@ func _fit_detail(cell: Vector2i, center: Vector2) -> void:
 
 func _drop_far_cells(center: Vector2) -> void:
 	for cell: Vector2i in _planted.keys():
-		if _cell_distance(cell, center) > _draw_distance + KEEP_MARGIN:
+		if _cell_nearest_distance(cell, center) > _draw_distance + KEEP_MARGIN:
 			_planted[cell].group.queue_free()
 			_planted.erase(cell)
 
 
-func _cell_distance(cell: Vector2i, center: Vector2) -> float:
-	return ((Vector2(cell) + Vector2(0.5, 0.5)) * CELL_SIZE).distance_to(center)
-
-
+## How far the cell's nearest edge is from the point. Zero if the point is inside the cell.
 func _cell_nearest_distance(cell: Vector2i, center: Vector2) -> float:
 	var origin := Vector2(cell) * CELL_SIZE
 	return center.clamp(origin, origin + Vector2.ONE * CELL_SIZE).distance_to(center)

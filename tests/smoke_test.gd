@@ -128,6 +128,7 @@ func _run() -> void:
 	await _test_forest(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
 	await _test_grass_cost(scene)
+	_test_grass_cell_edge(scene)
 	await _test_settings(scene, player)
 	_test_translations()
 
@@ -1352,3 +1353,26 @@ func _check(condition: bool, label: String) -> void:
 	print("%s: %s" % ["ok" if condition else "FAIL", label])
 	if not condition:
 		_failures += 1
+
+
+func _test_grass_cell_edge(scene: Node) -> void:
+	var grass: GrassField = scene.get_node("Village/Grass")
+	var cell := Vector2i(10, 10)
+	var origin := Vector2(cell) * GrassField.CELL_SIZE
+	var half := GrassField.CELL_SIZE * 0.5
+	# The camera stands just inside the draw distance from the cell's near edge, but its center is further out.
+	var near := origin + Vector2(-grass._draw_distance + 5.0, half)
+	_check(grass._cell_nearest_distance(cell, near) < grass._draw_distance, "a cell's near edge is inside the draw distance")
+	_check(grass._cell_nearest_distance(cell, origin + Vector2(half, half)) == 0.0, "a camera inside a cell is no distance from it")
+	for planted: GrassField.PlantedCell in grass._planted.values():
+		planted.group.queue_free()
+	grass._planted.clear()
+	if grass._task >= 0:
+		grass._finish_batch()
+	for i in 400:
+		grass._start_batch(near)
+		if grass._task < 0:
+			break
+		grass._finish_batch()
+	_check(grass._planted.has(cell), "a cell whose near edge is inside the draw distance is planted")
+	_check(not grass._planted.has(cell + Vector2i(1, 0)), "a cell whose near edge is outside the draw distance is left out")

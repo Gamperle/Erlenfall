@@ -340,19 +340,20 @@ func _add_building(data: Dictionary) -> void:
 	collision.position = Vector3.UP * (height - FOUNDATION_DEPTH) / 2.0
 	body.add_child(collision)
 
+	# The parts that never change are joined into one mesh. A roof that gets repaired stays apart.
 	if ruined:
-		var fallen := ModelBuilder.damaged_roof(width, depth, height - 1.0)
-		body.add_child(fallen)
-		return
-	var full_roof := ModelBuilder.house_roof(width, depth, height)
-	body.add_child(full_roof)
-	if data.has("repaired_by_flag"):
+		walls.add_child(ModelBuilder.damaged_roof(width, depth, height - 1.0))
+	elif data.has("repaired_by_flag"):
+		var full_roof := ModelBuilder.house_roof(width, depth, height)
 		full_roof.name = "RepairedRoof"
+		body.add_child(full_roof)
 		var damaged := ModelBuilder.damaged_roof(width, depth, height)
 		body.add_child(damaged)
 		_repairs.append({ "flag": data["repaired_by_flag"], "repaired": full_roof, "damaged": damaged })
 	else:
-		body.add_child(ModelBuilder.chimney(width, depth, height))
+		walls.add_child(ModelBuilder.house_roof(width, depth, height))
+		walls.add_child(ModelBuilder.chimney(width, depth, height))
+	ModelBuilder.merged(walls)
 
 
 ## Places the generated props. "building" makes x and z relative to that building, and "on"
@@ -391,6 +392,9 @@ func _add_props(props: Array, buildings: Array) -> void:
 		var bounds: AABB = mesh.get_aabb()
 		placed[data["model"]] = { "position": at, "height": bounds.end.y }
 		_busy_spots.append(Vector2(at.x, at.z))
+		# Small props are specks from far away, and drawing them and their shadows costs as much as a house.
+		if bounds.get_longest_axis_size() < PROP_SOLID_SIZE:
+			mesh.visibility_range_end = FeatureFlags.value("small_prop_draw_distance", 80.0)
 		if not data.has("tilt") and not data.has("on") and bounds.get_longest_axis_size() >= PROP_SOLID_SIZE:
 			var shape := BoxShape3D.new()
 			shape.size = bounds.size

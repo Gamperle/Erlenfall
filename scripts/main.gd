@@ -32,6 +32,7 @@ var _fade_overlay: ColorRect
 @onready var _day_night: DayNight = $DayNight
 @onready var _player: Player = $Player
 var _controls_tween: Tween
+var _hurt_tween: Tween
 
 @onready var _menu: GameMenu = $GameMenu
 @onready var _ui: HudLayout = $UI
@@ -254,8 +255,12 @@ func _on_player_died() -> void:
 
 
 func _flash_hurt() -> void:
+	# The previous hit's fade would otherwise keep running and cut this flash short.
+	if _hurt_tween != null:
+		_hurt_tween.kill()
 	_hurt_overlay.modulate.a = 1.0
-	create_tween().tween_property(_hurt_overlay, "modulate:a", 0.0, HURT_FADE_SECONDS)
+	_hurt_tween = create_tween()
+	_hurt_tween.tween_property(_hurt_overlay, "modulate:a", 0.0, HURT_FADE_SECONDS)
 
 
 ## A full-screen color for effects, hidden until needed, that doesn't catch the mouse.

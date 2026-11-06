@@ -113,6 +113,12 @@ Copy the files from `klein2\props` into `assets/props`, and add each one to `pro
 
 Interactive objects such as the bed and furnace take the model as `"asset"` in their own entries. Props 0.6 m or larger get a collision box.
 
+Then check their size and height against a person in the prop tuner. It lays every prop out on flat ground beside a 2 m pole, and you walk up to one with the player to select it. Arrow keys change its size and height, and every change is saved to `data/prop_tuning.json`, which the village applies to that model wherever it's placed. Open `tools/prop_tuner/prop_tuner.tscn` in the editor and press F6, or run:
+
+```bash
+godot --path . tools/prop_tuner/prop_tuner.tscn
+```
+
 Then photograph them in the game. Each shot takes a name, the point to look at, the camera's distance and height, and the direction it looks from:
 
 ```bash
@@ -134,6 +140,7 @@ Last, list every new file in [ASSETS.md](../../ASSETS.md) with its seed and subj
 | `run_trellis.ps1`, `make_trellis.py`, `trellis2_api.json` | Make models with TRELLIS.2 |
 | `size_models.ps1`, `size_glb.py` | Scale models to real size for Godot |
 | `shoot_props.gd` | Photographs placed props in the game |
+| `../prop_tuner/prop_tuner.tscn` | Shows every prop beside a 2 m pole to correct its size and height |
 | `make_models.ps1`, `run_triposr.py`, `render_preview.py`, `watchdog.ps1` | Make models with TripoSR, the fallback |
 | `clean_models.ps1`, `cleanup_mesh.py`, `adjust_glb.py` | Clean and reshape TripoSR models |
 | `check_mesh.py` | Prints a raw model's face count and whether it's watertight |

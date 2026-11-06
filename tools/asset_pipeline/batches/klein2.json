@@ -13,5 +13,6 @@
 		"goblin_tent": { "subject": "small crude tent made of patched brown animal hides stretched over wooden poles", "faces": 4000, "meters": 2.4, "mode": "keep" },
 		"bed": { "subject": "simple wooden bed frame with a straw mattress and a folded wool blanket", "faces": 4000, "meters": 2.0 },
 		"furnace": { "subject": "squat round smelting furnace of clay and fieldstone with a small arched opening at the bottom", "faces": 5000, "meters": 2.2 }
-	}
+	},
+	"turns": { "well_1": -90 }
 }

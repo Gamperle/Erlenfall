@@ -4,8 +4,6 @@ extends RefCounted
 
 const SOURCE := preload("res://assets/animations/humanoid.glb")
 const LOOPING: Array[StringName] = [&"Idle", &"Idle_Torch", &"Sword_Idle", &"Walk", &"Sprint"]
-## Transferred animations lean these bodies too far forward, so both back bones turn back this much.
-const BACK_CORRECTION_DEGREES := 8.0
 
 static var _library: AnimationLibrary
 
@@ -34,16 +32,10 @@ static func _prepare() -> AnimationLibrary:
 	var player: AnimationPlayer = source.find_child("AnimationPlayer", true, false)
 	var original := player.get_animation_library("")
 	var prepared := AnimationLibrary.new()
-	var correction := Quaternion(Vector3.RIGHT, deg_to_rad(-BACK_CORRECTION_DEGREES))
 	for animation_name in original.get_animation_list():
 		var animation: Animation = original.get_animation(animation_name).duplicate(true)
 		if animation_name in LOOPING:
 			animation.loop_mode = Animation.LOOP_LINEAR
-		for track in animation.get_track_count():
-			var path := String(animation.track_get_path(track))
-			if animation.track_get_type(track) == Animation.TYPE_ROTATION_3D and (path.ends_with(":Spine") or path.ends_with(":Chest")):
-				for key in animation.track_get_key_count(track):
-					animation.track_set_key_value(track, key, correction * animation.track_get_key_value(track, key))
 		prepared.add_animation(animation_name, animation)
 	source.free()
 	return prepared

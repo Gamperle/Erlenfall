@@ -203,19 +203,8 @@ def recolor_image(image, color):
     image.pixels = pixels.ravel().tolist()
 
 
-def calf_height(body):
-    group = body.vertex_groups["calf_l"].index
-    heights = [
-        vertex.co.z for vertex in body.data.vertices
-        if any(element.group == group and element.weight > 0.5 for element in vertex.groups)
-    ]
-    return sum(heights) / len(heights)
-
-
-def stand_on_ground(rig, meshes, body_calf, ground):
-    """Puts the feet at 0 and lines the bones up with the mesh. Root stays at the origin."""
-    bone = rig.data.bones["calf_l"]
-    bone_lift = body_calf - (bone.head_local.z + bone.tail_local.z) / 2.0 - ground
+def stand_on_ground(rig, meshes, ground):
+    """Puts the feet at 0. The rig is fitted to the body, so its bones move with the mesh, Root included."""
     for mesh_object in meshes:
         for vertex in mesh_object.data.vertices:
             vertex.co.z -= ground
@@ -224,12 +213,8 @@ def stand_on_ground(rig, meshes, body_calf, ground):
     bpy.context.view_layer.objects.active = rig
     bpy.ops.object.mode_set(mode="EDIT")
     for edit_bone in rig.data.edit_bones:
-        if edit_bone.name != "Root":
-            edit_bone.use_connect = False
-    for edit_bone in rig.data.edit_bones:
-        if edit_bone.name != "Root":
-            edit_bone.head.z += bone_lift
-            edit_bone.tail.z += bone_lift
+        edit_bone.head.z -= ground
+        edit_bone.tail.z -= ground
     bpy.ops.object.mode_set(mode="OBJECT")
 
 
@@ -310,7 +295,8 @@ def build(recipe, folders, output, full_detail=False):
     from bl_ext.blender_org.mpfb.services.humanservice import HumanService
     from bl_ext.blender_org.mpfb.services.targetservice import TargetService
 
-    body = HumanService.create_human(mask_helpers=True, detailed_helpers=False, extra_vertex_groups=True, feet_on_ground=False, scale=0.1)
+    # The joint helpers place the rig's bones on this body. Without them, every body gets the default skeleton.
+    body = HumanService.create_human(mask_helpers=True, detailed_helpers=True, extra_vertex_groups=True, feet_on_ground=False, scale=0.1)
     for key, value in recipe["shape"].items():
         HumanObjectProperties.set_value(key, value, entity_reference=body)
     TargetService.reapply_macro_details(body)
@@ -326,7 +312,6 @@ def build(recipe, folders, output, full_detail=False):
     bpy.context.view_layer.update()
 
     bake_modifiers(body)
-    body_calf = calf_height(body)
     for asset, _kind, _name in meshes.values():
         bake_modifiers(asset)
     if not full_detail:
@@ -363,7 +348,7 @@ def build(recipe, folders, output, full_detail=False):
     all_meshes = [body] + [item[0] for item in meshes.values()]
     feet = [item[0] for item in meshes.values() if item[2] in recipe.get("footwear", [])]
     ground = min(vertex.co.z for mesh_object in (feet or all_meshes) for vertex in mesh_object.data.vertices)
-    stand_on_ground(rig, all_meshes, body_calf, ground)
+    stand_on_ground(rig, all_meshes, ground)
 
     for image in bpy.data.images:
         if image.size[0] > TEXTURE_SIZE:

@@ -59,7 +59,7 @@ Set these on the model's `Skeleton3D` in the import settings, for both the chara
 - **Bone map:** use `SkeletonProfileHumanoid`. On characters, leave the finger bones out, because the animations' finger poses turn the hands into claws. They then keep their relaxed rest pose.
 - **Silhouette fix:** turn it on, with a threshold of 3 degrees, since the bodies rest in an A-pose.
 
-- **Back correction:** transferred animations lean these bodies about 5 to 6 degrees further forward than the animations' own figure. Rotate the `Spine` and `Chest` rotation tracks back by 8 degrees each, as `_straightened` in `turntable.gd` and `scripts/world/character_animations.gd` do.
+- **Posture:** the animations lean these bodies forward, and by a different amount for each body. `scripts/world/posture_modifier.gd` measures the first pose of each character and turns the back and neck back to the bodies' own rest posture, in every animation. `CharacterModel` and `turntable.gd` add it.
 
 ## Goblin
 
@@ -69,7 +69,8 @@ Set these on the model's `Skeleton3D` in the import settings, for both the chara
 
 To tell whether a flaw comes from the assets or this script, add `full` to the end of the build command. It skips removing hidden parts and all reduction.
 
-- **Severe stretching:** the bones didn't line up with the mesh. `stand_on_ground` keeps them aligned.
+- **Severe stretching:** the bones didn't line up with the mesh. `stand_on_ground` moves the bones and the mesh together.
+- **Hunched shoulders:** without MakeHuman's joint helpers, MPFB gives every body its default skeleton, with the shoulders and neck in the wrong places. `create_human` keeps the helpers, so the rig fits each body.
 - **Dark eyes, hidden eyebrows:** materials were exported as blended, which Godot can't sort. `finish_materials` makes them opaque or cut out.
 - **Skin through clothes:** `remove_covered` deletes the body under clothes before reducing it, but keeps a margin at cuffs, collars, and hems. Without the margin, there are gaps at the wrists and neck. It also never removes the head or neck, because a hole there shows the red inside of the mouth.
 - **Spiky hands:** reducing the whole body at once destroys the fingers. `reduce_body` gives hands and the head their own budgets.

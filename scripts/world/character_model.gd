@@ -27,6 +27,7 @@ func load_model(path: String) -> void:
 	add_child(_model)
 	_skeleton = _model.find_child("GeneralSkeleton", true, false)
 	_player = CharacterAnimations.play(_model, IDLE)
+	add_modifier(PostureModifier.new())
 	_copy_materials()
 
 

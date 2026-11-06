@@ -1,3 +1,52 @@
 {
-	"props": {}
+	"props": {
+		"cauldron_1": {
+			"lift": 0.0,
+			"scale": 1.293
+		},
+		"cauldron_2": {
+			"lift": 0.0,
+			"scale": 1.706
+		},
+		"cauldron_5": {
+			"lift": 0.0,
+			"scale": 1.576
+		},
+		"chest_0": {
+			"lift": 0.0,
+			"scale": 1.02
+		},
+		"desk_3": {
+			"lift": 0.0,
+			"scale": 1.293
+		},
+		"desk_5": {
+			"lift": 0.0,
+			"scale": 1.126
+		},
+		"furnace_0": {
+			"lift": 0.0,
+			"scale": 1.195
+		},
+		"goblin_tent_2": {
+			"lift": 0.0,
+			"scale": 1.243
+		},
+		"goblin_tent_3": {
+			"lift": 0.0,
+			"scale": 1.293
+		},
+		"haystack_1": {
+			"lift": -0.4,
+			"scale": 1.0
+		},
+		"haystack_3": {
+			"lift": -0.31,
+			"scale": 1.0
+		},
+		"kiln_1": {
+			"lift": 0.0,
+			"scale": 1.149
+		}
+	}
 }

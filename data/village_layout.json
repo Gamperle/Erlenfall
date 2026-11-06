@@ -36,7 +36,7 @@
 		{ "model": "bed", "asset": "res://assets/props/bed_3.glb", "prompt": "PROMPT_SLEEP", "x": -9, "z": 21, "width": 2, "depth": 1, "height": 0.5, "color": "#6f5a4a" }
 	],
 	"stations": [
-		{ "id": "furnace", "model": "furnace", "asset": "res://assets/props/furnace_0.glb", "prompt": "UI_FURNACE", "x": 9, "z": 24, "width": 2, "depth": 2, "height": 2.2, "color": "#3f3a36" },
+		{ "id": "furnace", "model": "furnace", "asset": "res://assets/props/furnace_0.glb", "prompt": "UI_FURNACE", "x": 9, "z": 24, "width": 2.6, "depth": 2.6, "height": 2.0, "color": "#3f3a36" },
 		{ "id": "anvil", "model": "anvil", "asset": "res://assets/props/anvil_2.glb", "prompt": "UI_ANVIL", "x": 16, "z": 25, "width": 1.2, "depth": 0.6, "height": 0.9, "work_spot": [0, 0.87, 0.12], "color": "#26282b" }
 	],
 	"resources": [

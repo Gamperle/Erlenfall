@@ -69,6 +69,13 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `river_fine_collision` | `true` | Makes the ground near the river collide exactly where it is drawn, using the mesh's own triangles. Off leaves the coarser collision for the whole map, which costs less to load and to simulate |
 | `terrain_seam_cells` | `true` | Gives each coarse terrain cell beside the river's fine ones a fine grid too, which meets the fine cells on the true ground and bends evenly towards the coarse cells beyond. Off keeps the fine cells' outer edges straight along the coarse cells, which creases the ground there, with about 15,000 fewer triangles and a little less loading time |
 
+## Graphics flags
+
+| Name | Default | Effect |
+|---|---|---|
+| `surface_relief` | `true` | Gives the photo surfaces of buildings, roads, rocks, and the ground their normal, roughness, and occlusion maps from `assets/textures/*_relief.png`, so they catch the light and stones poke through grass. Off draws them flat, with one texture read fewer per photo, which costs about 5% of the frame rate on a Radeon 680M |
+| `screen_ambient_occlusion` | `true` | Darkens corners, eaves, and the ground under things on high graphics. Off never does, which saves about 1.3 ms a frame on a Radeon 680M, most of it for the extra normal buffer that it needs whatever its quality |
+
 ## Player flags and values
 
 | Name | Default | Effect |

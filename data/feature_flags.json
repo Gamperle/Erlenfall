@@ -10,6 +10,8 @@
 		"river_fine_collision": true,
 		"terrain_seam_cells": true,
 		"lift_buried_player": true,
+		"surface_relief": true,
+		"screen_ambient_occlusion": true,
 		"torches": true,
 		"torch_crafting_enabled": true,
 		"torch_starting_item_enabled": true,

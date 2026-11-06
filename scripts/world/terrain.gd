@@ -5,6 +5,13 @@ extends StaticBody3D
 const TERRAIN_SHADER := preload("res://shaders/terrain.gdshader")
 const WATER_SHADER := preload("res://shaders/water.gdshader")
 const LAYOUT_PATH := "res://data/village_layout.json"
+## The terrain shader's photos and the parameter that takes each one's relief map.
+const RELIEF_PARAMETERS: Dictionary = {
+	"grass_texture": "grass_relief", "lush_grass_texture": "lush_grass_relief", "dry_grass_texture": "dry_grass_relief",
+	"soil_texture": "soil_relief", "rock_texture": "rock_relief", "rock_texture_2": "rock_relief_2",
+	"snow_texture": "snow_relief", "snow_texture_2": "snow_relief_2", "rubble_texture": "rubble_relief",
+	"rubble_texture_2": "rubble_relief_2",
+}
 
 const SIZE := 1600.0
 const STEP := 4.0
@@ -563,6 +570,8 @@ func _ground_material() -> ShaderMaterial:
 	material.set_shader_parameter("rock_texture_2", preload("res://assets/textures/rock_2.jpg"))
 	material.set_shader_parameter("snow_texture_2", preload("res://assets/textures/snow_2.jpg"))
 	material.set_shader_parameter("rubble_texture_2", preload("res://assets/textures/rubble_2.jpg"))
+	for photo: String in RELIEF_PARAMETERS:
+		material.set_shader_parameter(RELIEF_PARAMETERS[photo], Surfaces.relief_map(material.get_shader_parameter(photo)))
 	material.set_shader_parameter("rubble_color", RUBBLE_COLOR)
 	material.set_shader_parameter("rock_color", ROCK_COLOR)
 	material.set_shader_parameter("snow_color", SNOW_COLOR)

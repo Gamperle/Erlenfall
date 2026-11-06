@@ -8,10 +8,12 @@
 					"text": "DLG_HEDDA_WELCOME",
 					"choices": [
 						{ "text": "DLG_HEDDA_CHOICE_HELP", "next": "send" },
-						{ "text": "DLG_HEDDA_CHOICE_HOW_BAD", "next": "how_bad" }
+						{ "text": "DLG_HEDDA_CHOICE_HOW_BAD", "next": "how_bad" },
+						{ "text": "DLG_HEDDA_CHOICE_GRANDFATHER", "next": "grandfather" }
 					]
 				},
 				"how_bad": { "text": "DLG_HEDDA_HOW_BAD", "next": "send" },
+				"grandfather": { "text": "DLG_HEDDA_GRANDFATHER", "next": "send" },
 				"send": {
 					"text": "DLG_HEDDA_SEND",
 					"effects": [{ "type": "advance_quest", "quest": "arrival" }]
@@ -19,9 +21,60 @@
 			}
 		},
 		{
+			"when": { "objective": ["arrival", "see_smith"] },
+			"start": "again",
+			"nodes": { "again": { "text": "DLG_HEDDA_SEND_AGAIN" } }
+		},
+		{
+			"when": { "objective": ["first_nails", "make_nails"] },
+			"start": "nails",
+			"nodes": { "nails": { "text": "DLG_HEDDA_NAILS" } }
+		},
+		{
+			"when": { "objective": ["first_nails", "tell_mayor"] },
+			"start": "mayor",
+			"nodes": {
+				"mayor": {
+					"text": "DLG_HEDDA_MAYOR",
+					"choices": [
+						{ "text": "DLG_HEDDA_CHOICE_CARRIES", "next": "carries" },
+						{ "text": "DLG_HEDDA_CHOICE_KEEP_IN_MIND" }
+					]
+				},
+				"carries": { "text": "DLG_HEDDA_CARRIES" }
+			}
+		},
+		{
+			"when": { "objective": ["first_nails", "repair_roof"] },
+			"start": "roof",
+			"nodes": { "roof": { "text": "DLG_HEDDA_ROOF" } }
+		},
+		{
 			"when": { "quest_done": "first_nails" },
 			"start": "proud",
-			"nodes": { "proud": { "text": "DLG_HEDDA_PROUD" } }
+			"nodes": {
+				"proud": {
+					"text": "DLG_HEDDA_PROUD",
+					"choices": [
+						{ "text": "DLG_HEDDA_ASK_FAMILY", "next": "family" },
+						{ "text": "DLG_HEDDA_ASK_VILLAGE", "next": "village" },
+						{ "text": "DLG_HEDDA_ASK_GRANDFATHER", "next": "grandfather" },
+						{ "text": "DLG_HEDDA_CHOICE_BYE" }
+					]
+				},
+				"family": { "text": "DLG_HEDDA_FAMILY", "next": "more" },
+				"village": { "text": "DLG_HEDDA_VILLAGE", "next": "more" },
+				"grandfather": { "text": "DLG_HEDDA_GRANDFATHER_STORY", "next": "more" },
+				"more": {
+					"text": "DLG_HEDDA_MORE",
+					"choices": [
+						{ "text": "DLG_HEDDA_ASK_FAMILY", "next": "family" },
+						{ "text": "DLG_HEDDA_ASK_VILLAGE", "next": "village" },
+						{ "text": "DLG_HEDDA_ASK_GRANDFATHER", "next": "grandfather" },
+						{ "text": "DLG_HEDDA_CHOICE_BYE" }
+					]
+				}
+			}
 		},
 		{
 			"start": "idle",
@@ -66,12 +119,53 @@
 		{
 			"when": { "objective": ["first_nails", "make_nails"] },
 			"start": "reminder",
-			"nodes": { "reminder": { "text": "DLG_BERTRAM_REMINDER" } }
+			"nodes": {
+				"reminder": {
+					"text": "DLG_BERTRAM_REMINDER",
+					"choices": [
+						{ "text": "DLG_BERTRAM_CHOICE_ON_IT" },
+						{ "text": "DLG_BERTRAM_ASK_ORE", "next": "ore" }
+					]
+				},
+				"ore": { "text": "DLG_BERTRAM_ORE" }
+			}
+		},
+		{
+			"when": { "objective": ["first_nails", "tell_mayor"] },
+			"start": "mayor",
+			"nodes": { "mayor": { "text": "DLG_BERTRAM_TO_MAYOR" } }
+		},
+		{
+			"when": { "objective": ["first_nails", "repair_roof"] },
+			"start": "ladder",
+			"nodes": { "ladder": { "text": "DLG_BERTRAM_LADDER" } }
 		},
 		{
 			"when": { "quest_done": "first_nails" },
 			"start": "after",
-			"nodes": { "after": { "text": "DLG_BERTRAM_AFTER" } }
+			"nodes": {
+				"after": {
+					"text": "DLG_BERTRAM_AFTER",
+					"choices": [
+						{ "text": "DLG_BERTRAM_ASK_FORGE", "next": "forge" },
+						{ "text": "DLG_BERTRAM_ASK_GRANDFATHER", "next": "grandfather" },
+						{ "text": "DLG_BERTRAM_ASK_MINE", "next": "mine" },
+						{ "text": "DLG_BERTRAM_CHOICE_BYE" }
+					]
+				},
+				"forge": { "text": "DLG_BERTRAM_FORGE", "next": "more" },
+				"grandfather": { "text": "DLG_BERTRAM_GRANDFATHER", "next": "more" },
+				"mine": { "text": "DLG_BERTRAM_MINE", "next": "more" },
+				"more": {
+					"text": "DLG_BERTRAM_MORE",
+					"choices": [
+						{ "text": "DLG_BERTRAM_ASK_FORGE", "next": "forge" },
+						{ "text": "DLG_BERTRAM_ASK_GRANDFATHER", "next": "grandfather" },
+						{ "text": "DLG_BERTRAM_ASK_MINE", "next": "mine" },
+						{ "text": "DLG_BERTRAM_CHOICE_BYE" }
+					]
+				}
+			}
 		},
 		{
 			"start": "idle",
@@ -80,14 +174,74 @@
 	],
 	"mira": [
 		{
+			"when": { "objective": ["arrival", "see_grandmother"] },
+			"start": "idle",
+			"nodes": {
+				"idle": {
+					"text": "DLG_MIRA_IDLE",
+					"choices": [
+						{ "text": "DLG_MIRA_ASK_HOLDING", "next": "holding" },
+						{ "text": "DLG_MIRA_CHOICE_FIND_HER" }
+					]
+				},
+				"holding": { "text": "DLG_MIRA_HOLDING" }
+			}
+		},
+		{
+			"when": { "objective": ["arrival", "see_smith"] },
+			"start": "smith",
+			"nodes": { "smith": { "text": "DLG_MIRA_SMITH" } }
+		},
+		{
 			"when": { "objective": ["first_nails", "make_nails"] },
 			"start": "hint",
-			"nodes": { "hint": { "text": "DLG_MIRA_HINT" } }
+			"nodes": {
+				"hint": {
+					"text": "DLG_MIRA_HINT",
+					"choices": [
+						{ "text": "DLG_MIRA_ASK_GOBLINS", "next": "goblins" },
+						{ "text": "DLG_MIRA_CHOICE_THANKS" }
+					]
+				},
+				"goblins": { "text": "DLG_MIRA_GOBLINS" }
+			}
+		},
+		{
+			"when": { "objective": ["first_nails", "tell_mayor"] },
+			"start": "mayor",
+			"nodes": { "mayor": { "text": "DLG_MIRA_MAYOR" } }
+		},
+		{
+			"when": { "objective": ["first_nails", "repair_roof"] },
+			"start": "roof",
+			"nodes": { "roof": { "text": "DLG_MIRA_ROOF" } }
 		},
 		{
 			"when": { "quest_done": "first_nails" },
 			"start": "after",
-			"nodes": { "after": { "text": "DLG_MIRA_AFTER" } }
+			"nodes": {
+				"after": {
+					"text": "DLG_MIRA_AFTER",
+					"choices": [
+						{ "text": "DLG_MIRA_ASK_WORK", "next": "work" },
+						{ "text": "DLG_MIRA_ASK_STAY", "next": "stay" },
+						{ "text": "DLG_MIRA_ASK_FATHER", "next": "father" },
+						{ "text": "DLG_MIRA_CHOICE_BYE" }
+					]
+				},
+				"work": { "text": "DLG_MIRA_WORK", "next": "more" },
+				"stay": { "text": "DLG_MIRA_STAY", "next": "more" },
+				"father": { "text": "DLG_MIRA_FATHER", "next": "more" },
+				"more": {
+					"text": "DLG_MIRA_MORE",
+					"choices": [
+						{ "text": "DLG_MIRA_ASK_WORK", "next": "work" },
+						{ "text": "DLG_MIRA_ASK_STAY", "next": "stay" },
+						{ "text": "DLG_MIRA_ASK_FATHER", "next": "father" },
+						{ "text": "DLG_MIRA_CHOICE_BYE" }
+					]
+				}
+			}
 		},
 		{
 			"start": "idle",
@@ -98,11 +252,57 @@
 		{
 			"when": { "flag": "inn_roof_repaired" },
 			"start": "grateful",
-			"nodes": { "grateful": { "text": "DLG_GRETA_GRATEFUL" } }
+			"nodes": {
+				"grateful": {
+					"text": "DLG_GRETA_GRATEFUL",
+					"choices": [
+						{ "text": "DLG_GRETA_ASK_GUESTS", "next": "guests" },
+						{ "text": "DLG_GRETA_ASK_BEFORE", "next": "jakob" },
+						{ "text": "DLG_GRETA_ASK_INN", "next": "inn" },
+						{ "text": "DLG_GRETA_CHOICE_BYE" }
+					]
+				},
+				"guests": { "text": "DLG_GRETA_GUESTS", "next": "more" },
+				"jakob": { "text": "DLG_GRETA_JAKOB", "next": "more" },
+				"inn": { "text": "DLG_GRETA_INN", "next": "more" },
+				"more": {
+					"text": "DLG_GRETA_MORE",
+					"choices": [
+						{ "text": "DLG_GRETA_ASK_GUESTS", "next": "guests" },
+						{ "text": "DLG_GRETA_ASK_BEFORE", "next": "jakob" },
+						{ "text": "DLG_GRETA_ASK_INN", "next": "inn" },
+						{ "text": "DLG_GRETA_CHOICE_BYE" }
+					]
+				}
+			}
+		},
+		{
+			"when": { "objective": ["first_nails", "repair_roof"] },
+			"start": "ladder",
+			"nodes": { "ladder": { "text": "DLG_GRETA_LADDER" } }
+		},
+		{
+			"when": { "objective": ["first_nails", "make_nails"] },
+			"start": "nails",
+			"nodes": { "nails": { "text": "DLG_GRETA_NAILS" } }
+		},
+		{
+			"when": { "objective": ["first_nails", "tell_mayor"] },
+			"start": "nails",
+			"nodes": { "nails": { "text": "DLG_GRETA_NAILS" } }
 		},
 		{
 			"start": "idle",
-			"nodes": { "idle": { "text": "DLG_GRETA_IDLE" } }
+			"nodes": {
+				"idle": {
+					"text": "DLG_GRETA_IDLE",
+					"choices": [
+						{ "text": "DLG_GRETA_ASK_INN", "next": "inn" },
+						{ "text": "DLG_GRETA_CHOICE_BYE" }
+					]
+				},
+				"inn": { "text": "DLG_GRETA_INN" }
+			}
 		}
 	],
 	"brandt": [
@@ -134,6 +334,30 @@
 			}
 		},
 		{
+			"when": { "quest_done": "first_nails", "flag": "mayor_respected" },
+			"start": "dry",
+			"nodes": {
+				"dry": {
+					"text": "DLG_BRANDT_INN_DRY",
+					"choices": [
+						{ "text": "DLG_BRANDT_ASK_MINE", "next": "mine" },
+						{ "text": "DLG_BRANDT_ASK_RULES", "next": "rules" },
+						{ "text": "DLG_BRANDT_CHOICE_BYE" }
+					]
+				},
+				"mine": { "text": "DLG_BRANDT_MINE", "next": "more" },
+				"rules": { "text": "DLG_BRANDT_RULES", "next": "more" },
+				"more": {
+					"text": "DLG_BRANDT_MORE",
+					"choices": [
+						{ "text": "DLG_BRANDT_ASK_MINE", "next": "mine" },
+						{ "text": "DLG_BRANDT_ASK_RULES", "next": "rules" },
+						{ "text": "DLG_BRANDT_CHOICE_BYE" }
+					]
+				}
+			}
+		},
+		{
 			"when": { "flag": "mayor_respected" },
 			"start": "warm",
 			"nodes": { "warm": { "text": "DLG_BRANDT_WARM" } }
@@ -141,11 +365,31 @@
 		{
 			"when": { "flag": "mayor_annoyed" },
 			"start": "cold",
-			"nodes": { "cold": { "text": "DLG_BRANDT_COLD" } }
+			"nodes": {
+				"cold": {
+					"text": "DLG_BRANDT_COLD",
+					"choices": [
+						{ "text": "DLG_BRANDT_CHOICE_RASH", "next": "rash" },
+						{ "text": "DLG_BRANDT_ASK_MINE", "next": "mine" },
+						{ "text": "DLG_BRANDT_CHOICE_BYE" }
+					]
+				},
+				"rash": { "text": "DLG_BRANDT_RASH" },
+				"mine": { "text": "DLG_BRANDT_MINE" }
+			}
 		},
 		{
 			"start": "idle",
-			"nodes": { "idle": { "text": "DLG_BRANDT_IDLE" } }
+			"nodes": {
+				"idle": {
+					"text": "DLG_BRANDT_IDLE",
+					"choices": [
+						{ "text": "DLG_BRANDT_ASK_YEARS", "next": "years" },
+						{ "text": "DLG_BRANDT_CHOICE_BYE" }
+					]
+				},
+				"years": { "text": "DLG_BRANDT_YEARS" }
+			}
 		}
 	]
 }

@@ -145,6 +145,7 @@ func _run() -> void:
 	_test_grass_cell_edge(scene)
 	await _test_settings(scene, player)
 	_test_translations()
+	_test_dialogue_data()
 
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")
 	quit(1 if _failures > 0 else 0)
@@ -740,13 +741,17 @@ func _test_story(scene: Node, player: Player) -> void:
 	_check(quests.current_objective("arrival") == "see_smith", "grandmother sends the player to the smith")
 	ui.choose(0)
 	_check(not ui.is_open() and not player.is_busy(), "the conversation ends")
+	_check(DialogueRunner.new("hedda", player).text_key() == "DLG_HEDDA_SEND_AGAIN", "grandmother repeats where the smith is")
 
 	_talk(ui, "bertram", player, [0, 0, 0])
 	_check(quests.is_done("arrival") and quests.current_objective("first_nails") == "make_nails", "the smith gives the nails quest")
 
 	player.inventory.remove("iron_nails", player.inventory.count("iron_nails"))
 	_talk(ui, "bertram", player, [0])
-	_check(quests.current_objective("first_nails") == "make_nails", "the smith waits for the nails")
+	_check(quests.current_objective("first_nails") == "make_nails" and not ui.is_open(), "the smith waits for the nails")
+	var reminder := DialogueRunner.new("bertram", player)
+	reminder.advance(1)
+	_check(reminder.text_key() == "DLG_BERTRAM_ORE", "the smith explains again where the ore is")
 
 	player.inventory.add("iron_nails", 4, "fine")
 	var ingots := player.inventory.count("iron_ingot")
@@ -755,6 +760,7 @@ func _test_story(scene: Node, player: Player) -> void:
 	_check(player.inventory.count("iron_nails") == 0, "the smith takes the nails")
 	_check(player.inventory.count("iron_ingot") == ingots + 2, "the smith pays the player")
 	_check(quests.current_objective("first_nails") == "tell_mayor", "the smith sends the player to the mayor")
+	_check(DialogueRunner.new("hedda", player).text_key() == "DLG_HEDDA_MAYOR", "grandmother has advice about the mayor")
 
 	_talk(ui, "brandt", player, [1, 0])
 	_check(quests.current_objective("first_nails") == "repair_roof", "the mayor leads to the roof repair")
@@ -776,6 +782,15 @@ func _test_story(scene: Node, player: Player) -> void:
 	var cold := DialogueRunner.new("brandt", player)
 	_check(cold.text_key() == "DLG_BRANDT_COLD", "the mayor reacts to the choice")
 	_check(DialogueRunner.new("hedda", player).text_key() == "DLG_HEDDA_PROUD", "grandmother reacts to the finished quest")
+	var topics := DialogueRunner.new("bertram", player)
+	topics.advance(0)
+	var answered := topics.text_key()
+	topics.advance()
+	var back_to_topics := topics.text_key()
+	topics.advance(topics.choice_keys().size() - 1)
+	_check(answered == "DLG_BERTRAM_FORGE" and back_to_topics == "DLG_BERTRAM_MORE" and topics.is_finished(), "villagers answer questions until the player says goodbye")
+	cold.advance(1)
+	_check(cold.text_key() == "DLG_BRANDT_MINE", "the mayor refuses to talk about the mine")
 
 
 func _test_combat(scene: Node, player: Player) -> void:
@@ -1646,18 +1661,43 @@ func _test_settings(scene: Node, player: Player) -> void:
 	TranslationServer.set_locale("en")
 
 
-## Every story and item key must exist in both languages.
+## Every story, item, and villager name key must exist in both languages.
 func _test_translations() -> void:
 	var missing := PackedStringArray()
-	var text := FileAccess.get_file_as_string("res://data/dialogue.json") + FileAccess.get_file_as_string("res://data/quests.json") + FileAccess.get_file_as_string("res://data/crafting.json") + FileAccess.get_file_as_string("res://data/enemies.json")
-	var pattern := RegEx.create_from_string("\"((?:DLG|OBJ|QUEST|ITEM|ENEMY)_[A-Z_]+)\"")
+	var text := ""
+	for path in ["dialogue", "quests", "crafting", "enemies", "village_layout"]:
+		text += FileAccess.get_file_as_string("res://data/%s.json" % path)
+	var pattern := RegEx.create_from_string("\"((?:DLG|OBJ|QUEST|ITEM|ENEMY|NPC)_[A-Z0-9_]+)\"")
+	# Each language's own table, since the English fallback would hide a missing German line.
 	for locale in ["en", "de"]:
-		TranslationServer.set_locale(locale)
+		var translation: Translation = load("res://localization/strings.%s.translation" % locale)
 		for found in pattern.search_all(text):
-			if TranslationServer.translate(found.get_string(1)) == found.get_string(1):
+			if String(translation.get_message(found.get_string(1))).is_empty():
 				missing.append("%s:%s" % [locale, found.get_string(1)])
-	TranslationServer.set_locale("en")
 	_check(missing.is_empty(), "all text is translated %s" % ", ".join(missing))
+
+
+## Every villager has a fallback conversation, and every line leads to a line that exists.
+func _test_dialogue_data() -> void:
+	var dialogue: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DialogueRunner.DATA_PATH))
+	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/village_layout.json"))
+	var problems := PackedStringArray()
+	for npc: Dictionary in layout["npcs"]:
+		var conversations: Array = dialogue.get(npc["id"], [])
+		if conversations.is_empty() or conversations[-1].has("when"):
+			problems.append("%s has no fallback" % npc["id"])
+	for npc_id: String in dialogue:
+		for conversation: Dictionary in dialogue[npc_id]:
+			var nodes: Dictionary = conversation["nodes"]
+			var targets: Array = [conversation["start"]]
+			for node: Dictionary in nodes.values():
+				targets.append(node.get("next", ""))
+				for choice: Dictionary in node.get("choices", []):
+					targets.append(choice.get("next", ""))
+			for target: String in targets:
+				if target != "" and not nodes.has(target):
+					problems.append("%s leads to missing %s" % [npc_id, target])
+	_check(problems.is_empty(), "dialogue data is complete %s" % ", ".join(problems))
 
 
 func _first_of(parent: Node, type: Variant) -> Node:

@@ -53,7 +53,7 @@ Crafting is the core of the game. It combines **free experimentation** (combine 
 - **Scripted growth:** quests repair and add buildings at set places.
 - **Taking part:** the player adds parts to a building or delivers raw materials to a resident such as the smith.
 - **Village to town:** marked by population, new buildings, and a town wall.
-- **NPCs:** 10-15 named characters with simple daily routines, friendships, and personal quests.
+- **NPCs:** 10-15 named characters with simple daily routines, friendships, and personal quests. The draft cast and the village's history are in [the villager document](VILLAGERS.md).
 - **Economy:** selling goods, supplying shops, taxes, and resource management.
 - **Setbacks:** scripted story events for now, such as raids or poor harvests.
 

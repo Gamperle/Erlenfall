@@ -1,10 +1,10 @@
 # How Erlenfall makes props from text
 
-Erlenfall's furniture, tools, and village clutter start as a sentence. A picture model draws the object, an image-to-3D model turns the picture into a mesh, and Blender cleans the mesh for the game. This page walks through the second batch, `klein2`, which added 19 props to the village. Setup, access, and known problems are in [the pipeline reference](../../docs/ASSET_PIPELINE.md).
+Erlenfall's furniture, tools, and village clutter start as a sentence. FLUX.2 klein draws the object, TRELLIS.2 turns the picture into a textured, game-ready mesh, and Blender scales it to real size. This page walks through the second batch, `klein2`, which added 19 props to the village. Setup, access, and known problems are in [the pipeline reference](../../docs/ASSET_PIPELINE.md).
 
-![A well at each step: the drawn picture, TripoSR's raw model, and the cleaned model](examples/0_well_steps.jpg)
+![A well: the drawn picture, the earlier TripoSR model, and the TRELLIS.2 model](examples/0_well_steps.jpg)
 
-*One well, from left to right: the picture FLUX.2 klein drew, the raw model TripoSR made from it, and the cleaned model at 6,000 faces.*
+*One well, from left to right: the picture FLUX.2 klein drew, the model TripoSR made from it, and the model TRELLIS.2 made from it, both at 6,000 faces.*
 
 ## The steps
 
@@ -13,29 +13,30 @@ Erlenfall's furniture, tools, and village clutter start as a sentence. A picture
 | 1. Describe the objects | A batch file | Here | Minutes |
 | 2. Draw 6 candidates each | FLUX.2 klein 4B (`draw_klein.py`) | Asset PC GPU | 72 pictures in 12 minutes |
 | 3. Choose the best pictures | A person or agent, with `contact_sheet.py` | Here | Minutes |
-| 4. Make a 3D model of each | TripoSR and `rembg` (`make_models.ps1`) | Asset PC GPU and CPU | 24 models in about an hour |
-| 5. Clean and size them | Blender (`clean_models.ps1`, `size_models.ps1`) | Asset PC CPU | 24 models in 11 minutes |
+| 4. Make a 3D model of each | TRELLIS.2 in ComfyUI (`run_trellis.ps1`) | Asset PC GPU | 1 to 25 minutes each, usually 3 to 9 |
+| 5. Size them | Blender (`size_models.ps1`) | Asset PC CPU | Seconds each |
 | 6. Place them and check | `data/village_layout.json`, `shoot_props.gd` | Here | Minutes |
 
 The asset PC is a Windows machine with a Radeon RX 7900 XT, reached over SSH as `ASSET_PC`. Its work folder is `D:\erlenfall-assets`.
 
 ## 1. Describe the objects
 
-A batch is a JSON file in [`batches`](batches). Each object has the subject to draw, a face budget, and its real size in meters, measured along its longest side. `mode` is optional: `long` stands thin objects like swords on end, and `keep` skips straightening.
+A batch is a JSON file in [`batches`](batches). Each object has the subject to draw, a face budget, and its real size in meters, measured along its longest side. `turns` is optional, for models that come out facing sideways. `mode` only matters for the TripoSR fallback.
 
 ```json
 {
 	"seed": 7000,
 	"objects": {
 		"well": { "subject": "round village well with a low fieldstone wall, a small wooden shingle roof on two posts, and a wooden bucket on a rope", "faces": 6000, "meters": 2.6 },
-		"goblin_tent": { "subject": "small crude tent made of patched brown animal hides stretched over wooden poles", "faces": 4000, "meters": 2.4, "mode": "keep" }
-	}
+		"crate": { "subject": "sturdy wooden crate made of rough planks, lid nailed shut", "faces": 1500, "meters": 0.7 }
+	},
+	"turns": { "well_1": -90 }
 }
 ```
 
 Every subject goes into the same style prompt, which asks for one object, straight on, on a white background. The full prompt is in [ASSETS.md](../../ASSETS.md). Candidate `n` of the object at position `i` uses seed `seed + 10 * i + n`, so give each batch a seed range no other batch uses. `klein1` used 6000 and `klein2` 7000.
 
-Describe the shape, not just the name. "Two large solid wooden wheels" gave carts that TripoSR could rebuild, while thin spokes and ropes tend to melt.
+Describe the shape, not just the name, such as "two large solid wooden wheels" or "lid nailed shut".
 
 ## 2. Draw candidates
 
@@ -69,27 +70,36 @@ FLUX.2 klein drew the right object in all 72 `klein2` candidates. It ignored "un
 ## 4. Make the models
 
 ```bash
-ssh ASSET_PC "powershell -NoProfile -ExecutionPolicy Bypass -File D:\erlenfall-assets\make_models.ps1 -Batch klein2"
+scp tools/asset_pipeline/{run_trellis.ps1,make_trellis.py,trellis2_api.json} ASSET_PC:D:/erlenfall-assets/
+ssh ASSET_PC "powershell -NoProfile -ExecutionPolicy Bypass -File D:\erlenfall-assets\run_trellis.ps1 -Batch klein2"
 ```
 
-TripoSR builds each model from its single picture, bakes a texture, and Blender renders a front and back preview. Each model takes 2 to 3 minutes, mostly for texture baking. Runs sometimes crash at startup on this PC, and the script retries them. In `klein2` all 24 worked on the first attempt. Run `watchdog.ps1` beside a long batch to stop runs that hang.
+`run_trellis.ps1` starts ComfyUI on the PC, runs each picture in `klein2\input` through TRELLIS.2, and stops ComfyUI again. `-Names well_1,crate_4` limits it to some pictures. For each one, the workflow in `trellis2_api.json`:
 
-![The raw models for klein2](examples/3_raw_models.jpg)
+1. removes the background with BiRefNet,
+2. builds the shape in three stages, guided by DINOv3's reading of the picture,
+3. remeshes it into one closed surface and reduces it to the object's face budget,
+4. unwraps it and bakes base color, roughness, metallic, normal, and ambient occlusion maps at 1024 px.
 
-The raw models have 50,000 to 500,000 faces and are often tilted. Their backs are guesses, because TripoSR only sees the front.
+Most models take 3 to 9 minutes. Small ones such as swords take about a minute, and detailed boxes such as chests and crates up to 25. The models land in `klein2\trellis`, and finished ones are skipped, so the script can be run again after a dropped connection. Long SSH sessions to this PC have dropped several times, so for a big batch, run it a few names at a time.
 
-## 5. Clean and size the models
+TRELLIS.2 sees only the front, like TripoSR did, but it gets thin parts, backs, and proportions much more right:
+
+![TRELLIS.2 beside TripoSR for a hand cart and a crate](examples/3_trellis_vs_triposr.jpg)
+
+*Left of each pair: TRELLIS.2. Right: TripoSR after cleanup. TripoSR's cleanup broke the crate completely.*
+
+It does worse on loose, fibrous materials. It turned haystacks into brown lumps and gave a sack a dark pattern, so those props still use TripoSR models ([#154](https://github.com/Gamperle/Erlenfall/issues/154)). Check every model against its picture.
+
+## 5. Size the models
 
 ```bash
-ssh ASSET_PC "powershell -NoProfile -ExecutionPolicy Bypass -File D:\erlenfall-assets\clean_models.ps1 -Batch klein2"
 ssh ASSET_PC "powershell -NoProfile -ExecutionPolicy Bypass -File D:\erlenfall-assets\size_models.ps1 -Batch klein2"
 ```
 
-`cleanup_mesh.py` removes loose bits, straightens the model, reduces it to its face budget, and bakes the detail into a new texture. `size_glb.py` then scales it to its real size and turns its front toward Godot's front. Put names in `klein2\keep.txt`, one per line, to clean only those.
+`size_glb.py` scales each model to its real size, stands it on its base, and keeps its texture maps. TRELLIS.2 models usually face Godot's front already, but the well came out facing sideways, so `turns` in the batch file turns it by -90 degrees. Render each model from the front beside its picture to catch these.
 
-Check the cleaned previews before using them. In `klein2`, straightening tipped both tents over, because it lines up the largest surfaces with the axes and a tent's sides slope. Those got `"mode": "keep"`. One crate came out as a black, broken shape, so the other crate is used in both places.
-
-![The cleaned models for klein2](examples/4_cleaned_models.jpg)
+![Some of the TRELLIS.2 props, as they face in the game](examples/4_trellis_models.jpg)
 
 ## 6. Place them and check
 
@@ -109,25 +119,25 @@ Then photograph them in the game. Each shot takes a name, the point to look at, 
 godot --path . --script res://tools/asset_pipeline/shoot_props.gd -- shots square -5 -4 9 2.5 210 goblin_camp 118 -148 13 4 0
 ```
 
-![The new props in the village, at the goblin camp, at a farm, by the inn, by the forge, and the new furnace](examples/5_in_game.jpg)
+![The props in the village, at the goblin camp, by the forge, the furnace, the town hall, and a farm](examples/5_in_game.jpg)
 
-Last, list every new file in [ASSETS.md](../../ASSETS.md) with its seed and subject, and run the smoke test.
+Last, list every new file in [ASSETS.md](../../ASSETS.md) with its seed and subject, and run the smoke test. TRELLIS.2 models are Built with DINOv3, which ASSETS.md notes.
 
 ## Files
 
 | File | Purpose |
 | --- | --- |
-| `batches/*.json` | Each batch's objects, sizes, and face budgets |
+| `batches/*.json` | Each batch's objects, sizes, face budgets, and turns |
 | `draw_klein.py` | Draws candidates with FLUX.2 klein 4B |
 | `contact_sheet.py` | Lays pictures out on one labeled page |
-| `make_models.ps1`, `run_triposr.py`, `render_preview.py` | Make models and previews with TripoSR |
-| `watchdog.ps1` | Stops hung TripoSR runs |
-| `clean_models.ps1`, `cleanup_mesh.py` | Straighten, reduce, and re-bake models |
+| `setup_comfy.ps1` | Installs ComfyUI with ROCm PyTorch and the TRELLIS.2 models |
+| `run_trellis.ps1`, `make_trellis.py`, `trellis2_api.json` | Make models with TRELLIS.2 |
 | `size_models.ps1`, `size_glb.py` | Scale models to real size for Godot |
-| `adjust_glb.py` | Stretches sword blades and thins walls, for objects TripoSR gets out of proportion |
 | `shoot_props.gd` | Photographs placed props in the game |
+| `make_models.ps1`, `run_triposr.py`, `render_preview.py`, `watchdog.ps1` | Make models with TripoSR, the fallback |
+| `clean_models.ps1`, `cleanup_mesh.py`, `adjust_glb.py` | Clean and reshape TripoSR models |
 | `check_mesh.py` | Prints a raw model's face count and whether it's watertight |
-| `setup_pc.ps1`, `torchmcubes.py` | Set up the asset PC |
+| `setup_pc.ps1`, `torchmcubes.py` | Set up the TripoSR and SDXL environments |
 | `draw_pictures.py` | The older SDXL drawing script, kept for reference |
 
 The example pictures are in [`examples`](examples). Its `.gdignore` keeps them out of the game.

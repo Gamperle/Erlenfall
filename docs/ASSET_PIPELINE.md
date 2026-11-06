@@ -26,6 +26,7 @@ The scripts are in [tools/asset_pipeline](../tools/asset_pipeline):
 | `run_trellis.ps1`, `make_trellis.py`, `trellis2_api.json` | Start ComfyUI, make a batch's models, and stop it again |
 | `size_models.ps1`, `size_glb.py` | Scale models to real size and turn them to face Godot's front |
 | `shoot_props.gd` | Photographs placed props in the game |
+| [`tools/prop_tuner`](../tools/prop_tuner) | A scene for correcting each prop's size and height against the player, saved to `data/prop_tuning.json` |
 | `setup_pc.ps1` | Installs the TripoSR and SDXL environments |
 | `make_models.ps1`, `run_triposr.py`, `render_preview.py`, `watchdog.ps1`, `torchmcubes.py` | Make models with TripoSR, the fallback |
 | `clean_models.ps1`, `cleanup_mesh.py`, `adjust_glb.py` | Clean TripoSR models, and reshape ones it gets out of proportion |
@@ -108,7 +109,7 @@ The picture matters more than anything else, because the model sees only that on
 | ComfyUI's UV unwrap fails with `HIPBLAS_STATUS_ALLOC_FAILED` on meshes of 10 million faces or more on Windows ROCm | The workflow reduces the mesh to the face budget before unwrapping | [Comfy-Org/ComfyUI#16124](https://github.com/Comfy-Org/ComfyUI/issues/16124) |
 | Some models take much longer, such as 25 minutes for a crate, in the upsample stage | None. 53 props took about 6 hours of GPU time | |
 | TRELLIS.2 does worse than TripoSR on hay, burlap, and a campfire | Those props still use TripoSR models | [#154](https://github.com/Gamperle/Erlenfall/issues/154) |
-| TRELLIS.2 models are centered on their middle, and a few face sideways | `size_glb.py` stands them on their base, and `turns` in the batch file turns odd ones | |
+| TRELLIS.2 models are centered on their middle, and a few face sideways | `size_glb.py` stands them on their base, and `turns` in the batch file turns odd ones. The smoke test checks every prop is within 10 cm of the ground | |
 | Long SSH sessions to the PC drop, and the PC sleeps during work started over SSH | `make_trellis.py` keeps the PC awake while it runs. Run big batches a few names at a time | |
 | TRELLIS.2 sometimes changes a shape it can't read, such as turning an A-frame tent into a cone | Check the results, and redraw the picture if needed | |
 | TripoSR: 34 of 77 first attempts crashed at startup in `MIOpen.dll` with `0xC0000005` | `make_models.ps1` retries | [#59](https://github.com/Gamperle/Erlenfall/issues/59) |

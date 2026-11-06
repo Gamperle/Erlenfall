@@ -24,10 +24,10 @@ corners = [Vector(c) for c in obj.bound_box]
 size = Vector(max(c[i] for c in corners) - min(c[i] for c in corners) for i in range(3))
 obj.data.transform(Matrix.Rotation(math.radians(turn), 4, "Z") @ Matrix.Scale(float(meters) / max(size), 4))
 # Stand it on the origin, centered, because the game places props by their base. TRELLIS.2 centers models on
-# their middle instead.
-corners = [Vector(c) for c in obj.bound_box]
-low = Vector(min(c[i] for c in corners) for i in range(3))
-high = Vector(max(c[i] for c in corners) for i in range(3))
+# their middle instead. The vertices are read directly, because obj.bound_box isn't updated by the transform.
+points = [v.co for v in obj.data.vertices]
+low = Vector(min(p[i] for p in points) for i in range(3))
+high = Vector(max(p[i] for p in points) for i in range(3))
 obj.data.transform(Matrix.Translation(Vector(((low.x + high.x) / -2, (low.y + high.y) / -2, -low.z))))
 obj.data.update()
 bpy.ops.export_scene.gltf(filepath=target, export_format="GLB", use_selection=True)

@@ -7,6 +7,8 @@ const TEST_SLOT_3 := "user://smoke_test_save_3.json"
 const TEST_SETTINGS := "user://smoke_test_settings.json"
 const TEST_FLAGS_A := "user://smoke_test_flags_a.json"
 const TEST_FLAGS_B := "user://smoke_test_flags_b.json"
+## How far a prop's lowest point may be from the ground, in meters, before it visibly floats or sinks.
+const PROP_GROUND_TOLERANCE := 0.1
 
 var _failures := 0
 
@@ -560,8 +562,14 @@ func _test_generated_props() -> void:
 		var size: Vector3 = meshes[0].get_aabb().size
 		_check(size.length() > 0.2 and maxf(size.x, maxf(size.y, size.z)) < 2.6, file + " has a believable size")
 		_check(meshes[0].mesh.get_surface_count() == 1 and (meshes[0].mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture != null, file + " is textured")
+		var tuning := PropTuning.get_entry(file.get_basename())
+		var bottom: float = meshes[0].get_aabb().position.y * float(tuning["scale"]) + float(tuning["lift"])
+		_check(absf(bottom) < PROP_GROUND_TOLERANCE, file + " stands on the ground")
 		prop.free()
 	_check(count == 59, "all generated props are present")
+	var tuner: Node = load("res://tools/prop_tuner/prop_tuner.tscn").instantiate()
+	_check(tuner != null, "the prop tuner scene loads")
+	tuner.free()
 	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/village_layout.json"))
 	_check((layout["props"] as Array).size() == 57, "57 generated props are placed, and the anvil, furnace, and bed are separate")
 

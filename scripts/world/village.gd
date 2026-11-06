@@ -164,7 +164,9 @@ func _add_box_interactable(node: Interactable, data: Dictionary) -> void:
 
 	var size := Vector3(data["width"], data["height"], data["depth"])
 	if data.has("asset"):
-		node.add_child(load(data["asset"]).instantiate())
+		var model: Node3D = load(data["asset"]).instantiate()
+		PropTuning.apply(model, String(data["asset"]).get_file().get_basename())
+		node.add_child(model)
 	else:
 		node.add_child(ModelBuilder.prop(data.get("model", ""), size))
 	var shape := BoxShape3D.new()
@@ -387,9 +389,11 @@ func _add_props(props: Array, buildings: Array) -> void:
 		root.add_child(body)
 
 		var model: Node3D = load(PROP_FOLDER + data["model"] + ".glb").instantiate()
+		PropTuning.apply(model, data["model"])
 		body.add_child(model)
 		var mesh: MeshInstance3D = model.find_children("*", "MeshInstance3D", true, false)[0]
-		var bounds: AABB = mesh.get_aabb()
+		# In the body's space, so the tuned scale and lift count for collision and for props set on top.
+		var bounds: AABB = (body.global_transform.affine_inverse() * mesh.global_transform) * mesh.get_aabb()
 		placed[data["model"]] = { "position": at, "height": bounds.end.y }
 		_busy_spots.append(Vector2(at.x, at.z))
 		# Small props are specks from far away, and drawing them and their shadows costs as much as a house.

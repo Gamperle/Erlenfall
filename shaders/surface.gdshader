@@ -9,6 +9,10 @@ uniform sampler2D detail_noise : repeat_enable, filter_linear_mipmap_anisotropic
 uniform sampler2D surface_texture : source_color, repeat_enable, filter_linear_mipmap_anisotropic;
 uniform sampler2D surface_texture_2 : source_color, repeat_enable, filter_linear_mipmap_anisotropic;
 uniform sampler2D surface_texture_3 : source_color, repeat_enable, filter_linear_mipmap_anisotropic;
+// Each photo's relief map, built by tools/texture_pipeline: normal x and y, roughness, and occlusion.
+uniform sampler2D surface_relief : repeat_enable, filter_linear_mipmap_anisotropic;
+uniform sampler2D surface_relief_2 : repeat_enable, filter_linear_mipmap_anisotropic;
+uniform sampler2D surface_relief_3 : repeat_enable, filter_linear_mipmap_anisotropic;
 uniform float tile_metres = 2.0;
 uniform float tile_metres_2 = 2.0;
 // No width means this surface has no third photo.
@@ -18,6 +22,10 @@ uniform float area_frequency = 0.037;
 uniform float photo_strength = 1.0;
 uniform vec3 base_color : source_color;
 uniform int pattern = 0;
+// How much the relief's occlusion also darkens sunlight, not only the light from the sky.
+uniform float relief_light_affect = 0.6;
+// How strongly the relief bends the light, where 1 is as the maps were made.
+uniform float relief_strength = 1.6;
 
 varying vec3 world_position;
 varying vec3 world_normal;
@@ -28,6 +36,14 @@ vec3 photo_detail(sampler2D photo, vec2 uv, vec2 dx, vec2 dy) {
 	return textureGrad(photo, uv, dx, dy).rgb / max(textureLod(photo, vec2(0.5), 12.0).rgb, vec3(0.02));
 }
 
+// Bends the surface's normal by a relief map's x and y. The photo's u and v run along the
+// given world directions, and an OpenGL normal map's y points to the top of the photo.
+vec3 bent_normal(vec3 normal, vec2 tilt, vec3 along_u, vec3 along_v) {
+	vec3 tangent = normalize(along_u - normal * dot(normal, along_u));
+	vec3 bitangent = normalize(along_v - normal * dot(normal, along_v));
+	return normalize(normal * sqrt(max(1.0 - dot(tilt, tilt), 0.0)) + tangent * tilt.x - bitangent * tilt.y);
+}
+
 void vertex() {
 	world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
@@ -36,9 +52,14 @@ void vertex() {
 void fragment() {
 	vec3 facing = abs(world_normal);
 	vec2 uv = facing.x > facing.z ? world_position.zy : world_position.xy;
+	vec3 along_u = facing.x > facing.z ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+	vec3 along_v = vec3(0.0, 1.0, 0.0);
 	if (facing.y > 0.85) {
 		uv = world_position.xz;
+		along_u = vec3(1.0, 0.0, 0.0);
+		along_v = vec3(0.0, 0.0, 1.0);
 	}
+	ROUGHNESS = 0.95;
 
 	float noise = texture(detail_noise, uv * 0.13).r;
 	float fine = texture(detail_noise, uv * 0.61).r;
@@ -52,21 +73,29 @@ void fragment() {
 		// The photo adds detail, and dividing by its average keeps base_color as the overall color.
 		vec3 photo = texture(surface_texture, uv / tile_metres).rgb;
 		photo /= max(textureLod(surface_texture, vec2(0.5), 12.0).rgb, vec3(0.02));
+		vec4 relief = texture(surface_relief, uv / tile_metres);
 		// Areas of other photos keep large walls and roads from repeating.
 		float area = texture(detail_noise, uv * area_frequency).r + (fine - 0.5) * 0.15;
 		float other = smoothstep(0.5 - area_softness, 0.5 + area_softness, area);
 		if (other > 0.0) {
 			photo = mix(photo, photo_detail(surface_texture_2, uv / tile_metres_2, dFdx(uv) / tile_metres_2, dFdy(uv) / tile_metres_2), other);
+			relief = mix(relief, textureGrad(surface_relief_2, uv / tile_metres_2, dFdx(uv) / tile_metres_2, dFdy(uv) / tile_metres_2), other);
 		}
 		if (tile_metres_3 > 0.0) {
 			float third_area = texture(detail_noise, uv.yx * area_frequency * 1.7 + vec2(0.37, 0.61)).r + (fine - 0.5) * 0.15;
 			float third = smoothstep(0.55 - area_softness, 0.55 + area_softness, third_area);
 			if (third > 0.0) {
 				photo = mix(photo, photo_detail(surface_texture_3, uv / tile_metres_3, dFdx(uv) / tile_metres_3, dFdy(uv) / tile_metres_3), third);
+				relief = mix(relief, textureGrad(surface_relief_3, uv / tile_metres_3, dFdx(uv) / tile_metres_3, dFdy(uv) / tile_metres_3), third);
 			}
 		}
 		ALBEDO = base_color * mix(vec3(1.0), photo, photo_strength) * (0.85 + noise * 0.3);
+		// The relief shows as strongly as the photo does.
+		vec3 bent = bent_normal(normalize(world_normal), (relief.rg * 2.0 - 1.0) * relief_strength * photo_strength, along_u, along_v);
+		NORMAL = normalize((VIEW_MATRIX * vec4(bent, 0.0)).xyz);
+		ROUGHNESS = mix(0.95, relief.b, photo_strength);
+		AO = mix(1.0, relief.a, photo_strength);
+		AO_LIGHT_AFFECT = relief_light_affect;
 	}
-	ROUGHNESS = 0.95;
 	SPECULAR = 0.2;
 }

@@ -139,6 +139,7 @@ func _run() -> void:
 	await _test_player_fixes(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
 	await _test_grass_cost(scene)
+	_test_surface_relief(scene)
 	_test_grass_cell_edge(scene)
 	await _test_settings(scene, player)
 	_test_translations()
@@ -1565,6 +1566,34 @@ func _test_grass_cost(scene: Node) -> void:
 		_check(grass.tuft_share(grass._draw_distance) == 0.0, "%s graphics draw no grass past the draw distance" % Settings.graphics)
 	_check(distances[0] < distances[1] and distances[1] < distances[2], "lower graphics draw grass less far (%s)" % str(distances))
 	_check(distances[2] == GrassField.DRAW_DISTANCE, "high graphics draw grass at full distance")
+
+
+## Photo surfaces have relief maps, and high graphics darken corners on screen.
+func _test_surface_relief(scene: Node) -> void:
+	var missing := PackedStringArray()
+	for pattern: int in Surfaces.PHOTOS:
+		var material := Surfaces.get_material(pattern, Color.WHITE)
+		var photos: Array = Surfaces.PHOTOS[pattern]
+		for i in photos.size():
+			var suffix := "" if i == 0 else "_%d" % (i + 1)
+			var relief: Texture2D = material.get_shader_parameter("surface_relief" + suffix)
+			if relief == null or relief.get_width() != (photos[i][0] as Texture2D).get_width():
+				missing.append((photos[i][0] as Texture2D).resource_path.get_file())
+	var terrain_material := (scene.get_node("Terrain") as Terrain)._ground_material()
+	for photo: String in Terrain.RELIEF_PARAMETERS:
+		if terrain_material.get_shader_parameter(Terrain.RELIEF_PARAMETERS[photo]) == null:
+			missing.append(photo)
+	_check(missing.is_empty(), "every photo surface has its relief map (missing: %s)" % ", ".join(missing))
+
+	var menu: GameMenu = scene.get_node("GameMenu")
+	var environment := (scene.get_node("WorldEnvironment") as WorldEnvironment).environment
+	var previous := Settings.GRAPHICS_LEVELS.keys().find(Settings.graphics)
+	var darkened: Array[bool] = []
+	for level in 3:
+		menu._choose_graphics(level)
+		darkened.append(environment.ssao_enabled)
+	menu._choose_graphics(previous)
+	_check(darkened == [false, false, true], "only high graphics darken corners on screen (%s)" % str(darkened))
 
 
 func _test_settings(scene: Node, player: Player) -> void:

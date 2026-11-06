@@ -5,9 +5,9 @@ extends RefCounted
 const DEFAULT_PATH := "user://settings.json"
 const LANGUAGES: Array[String] = ["", "en", "de"]
 const GRAPHICS_LEVELS: Dictionary = {
-	"low": { "name": "UI_GRAPHICS_LOW", "render_scale": 0.7, "shadows": false },
-	"medium": { "name": "UI_GRAPHICS_MEDIUM", "render_scale": 0.85, "shadows": true, "shadow_splits": DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS },
-	"high": { "name": "UI_GRAPHICS_HIGH", "render_scale": 1.0, "shadows": true, "shadow_splits": DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS },
+	"low": { "name": "UI_GRAPHICS_LOW", "render_scale": 0.7, "shadows": false, "ambient_occlusion": false },
+	"medium": { "name": "UI_GRAPHICS_MEDIUM", "render_scale": 0.85, "shadows": true, "shadow_splits": DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS, "ambient_occlusion": false },
+	"high": { "name": "UI_GRAPHICS_HIGH", "render_scale": 1.0, "shadows": true, "shadow_splits": DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS, "ambient_occlusion": true },
 }
 const MIN_LOOK_SPEED := 0.25
 const MAX_LOOK_SPEED := 2.5
@@ -58,6 +58,11 @@ static func grass_draw_scale() -> float:
 
 static func shadows() -> bool:
 	return GRAPHICS_LEVELS[graphics]["shadows"]
+
+
+## Whether corners and the ground under things are darkened on screen. The feature flag can turn it off.
+static func ambient_occlusion() -> bool:
+	return GRAPHICS_LEVELS[graphics]["ambient_occlusion"] and FeatureFlags.enabled("screen_ambient_occlusion")
 
 
 static func shadow_splits() -> DirectionalLight3D.ShadowMode:

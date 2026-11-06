@@ -5,3 +5,6 @@
 # Exports
 /build/
 tools/asset_test/work/
+
+# Texture pipeline downloads
+tools/texture_pipeline/downloads/

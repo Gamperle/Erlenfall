@@ -26,6 +26,10 @@ const AREA_FREQUENCY: Dictionary = { Pattern.IRON_ORE: 0.3, Pattern.COAL: 0.3, P
 ## The default size of a NoiseTexture2D.
 const NOISE_SIZE := 512
 
+## A relief map's color for a flat surface: no bend, rough, and not occluded.
+const FLAT_RELIEF := Color(0.5, 0.5, 0.95, 1.0)
+
+static var _flat_relief: ImageTexture
 static var _noise_texture: NoiseTexture2D
 static var _noise_values := PackedByteArray()
 static var _cache: Dictionary = {}
@@ -44,12 +48,24 @@ static func get_material(pattern: Pattern, color: Color) -> ShaderMaterial:
 			for i in photos.size():
 				var suffix := "" if i == 0 else "_%d" % (i + 1)
 				material.set_shader_parameter("surface_texture" + suffix, photos[i][0])
+				material.set_shader_parameter("surface_relief" + suffix, relief_map(photos[i][0]))
 				material.set_shader_parameter("tile_metres" + suffix, photos[i][1])
 			material.set_shader_parameter("photo_strength", PHOTO_STRENGTH.get(pattern, 1.0))
 			material.set_shader_parameter("area_softness", AREA_SOFTNESS.get(pattern, 0.05))
 			material.set_shader_parameter("area_frequency", AREA_FREQUENCY.get(pattern, 0.037))
 		_cache[key] = material
 	return _cache[key]
+
+
+## The relief map built for a photo by tools/texture_pipeline, or a flat one if relief is turned off.
+static func relief_map(photo: Texture2D) -> Texture2D:
+	if not FeatureFlags.enabled("surface_relief"):
+		if _flat_relief == null:
+			var image := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+			image.set_pixel(0, 0, FLAT_RELIEF)
+			_flat_relief = ImageTexture.create_from_image(image)
+		return _flat_relief
+	return load(photo.resource_path.get_basename() + "_relief.png")
 
 
 ## A seamless noise texture shared by the world's shaders.

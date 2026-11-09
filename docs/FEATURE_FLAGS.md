@@ -55,7 +55,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 }
 ```
 
-`FeatureFlags.load_layers(mod_paths)` takes the mods' files in load order. There is no mod loader yet, so the game currently only uses the base file: see [#52](https://github.com/Gamperle/Erlenfall/issues/52).
+`FeatureFlags.load_layers(mod_paths)` takes the mods' files in load order. The game calls it with the mods listed in `user://mods/load_order.json`: see [MODS.md](MODS.md).
 
 ## Interface flags
 

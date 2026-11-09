@@ -101,6 +101,16 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `interface_min_scale` | `0.9` | The smallest size the interface shrinks to in a small window, as a share of its full size |
 | `controls_hint_seconds` | `30` | How long the controls line stays on screen when play starts. It shows again in the pause menu. 0 keeps it on screen |
 
+## Crafting skill flags and values
+
+Skill grows by practice: each recipe has a `skill` and an `xp` amount in `data/crafting.json`, and the skill's `level_xp` list says how much practice each level needs. The numbers are placeholders for the maintainer to tune (#14).
+
+| Name | Default | Effect |
+|---|---|---|
+| `crafting_skill` | `true` | Turns skill progression on or off. Off gives no practice, no bonuses, and hides the skills line |
+| `skill_target_width_per_level` | `0.015` | How much wider the forging target gets for each level above 1, as a share of the bar (the plain width is 0.14) |
+| `skill_speed_reduction_per_level` | `0.03` | How much slower the forging marker moves for each level above 1, as a share of its speed |
+
 ## Enemy navigation values
 
 Enemies walk straight at their target until something blocks them, then search a small grid for a way around it. They also search when water lies ahead, since a bridge can be quicker, and they plan around other enemies that stand still, such as one attacking in a narrow gap.

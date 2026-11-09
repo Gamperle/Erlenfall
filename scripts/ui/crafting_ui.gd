@@ -135,8 +135,8 @@ func _process(delta: float) -> void:
 		return
 	_game.update(delta)
 	var width := _bar.size.x
-	_target.position.x = (_game.target - HammerGame.TARGET_WIDTH / 2.0) * width
-	_target.size = Vector2(HammerGame.TARGET_WIDTH * width, BAR_HEIGHT)
+	_target.position.x = (_game.target - _game.target_width / 2.0) * width
+	_target.size = Vector2(_game.target_width * width, BAR_HEIGHT)
 	_marker.position.x = _game.marker * width - _marker.size.x / 2.0
 
 
@@ -223,7 +223,20 @@ func _inventory_text() -> String:
 		if quality != "":
 			label = "%s (%s)" % [label, quality]
 		lines.append("%d x %s" % [entry["count"], label])
-	return tr("UI_CARRYING") % (", ".join(lines) if lines.size() > 0 else tr("UI_NOTHING"))
+	var text: String = tr("UI_CARRYING") % (", ".join(lines) if lines.size() > 0 else tr("UI_NOTHING"))
+	if FeatureFlags.enabled("crafting_skill"):
+		text += "\n" + _skills_text()
+	return text
+
+
+func _skills_text() -> String:
+	var parts := PackedStringArray()
+	for skill_id: String in CraftingData.skill_ids():
+		var xp: int = _player.skill_xp.get(skill_id, 0)
+		var next := CraftingData.skill_next_xp(skill_id, xp)
+		var progress := tr("UI_SKILL_MAX") if next == 0 else "%d / %d" % [xp, next]
+		parts.append("%s %d (%s)" % [CraftingData.skill_name(skill_id), CraftingData.skill_level(skill_id, xp), progress])
+	return tr("UI_SKILLS") % ", ".join(parts)
 
 
 func _known_recipes_text() -> String:
@@ -240,7 +253,15 @@ func _known_recipes_text() -> String:
 
 
 func _start_forging(recipe: Dictionary) -> void:
-	_game = HammerGame.new(int(recipe["strikes"]), recipe["speed"])
+	var levels_gained := 0
+	if FeatureFlags.enabled("crafting_skill") and recipe.has("skill"):
+		levels_gained = _player.skill_level(recipe["skill"]) - 1
+	_game = HammerGame.new(
+		int(recipe["strikes"]),
+		recipe["speed"],
+		levels_gained * float(FeatureFlags.value("skill_target_width_per_level", 0.0)),
+		levels_gained * float(FeatureFlags.value("skill_speed_reduction_per_level", 0.0)),
+	)
 	_bar.visible = true
 	_message.text = tr("UI_FORGE_HINT")
 	_update_strike_text()
@@ -262,6 +283,10 @@ func _finish_recipe(quality: String) -> void:
 	if quality != "":
 		made = "%s (%s)" % [made, CraftingData.quality_name(quality)]
 	_message.text = tr("UI_MADE_NEW" if is_new else "UI_MADE") % made
+	if FeatureFlags.enabled("crafting_skill") and _recipe.has("skill"):
+		var new_level := _player.practice(_recipe["skill"], int(_recipe.get("xp", 1)))
+		if new_level > 0:
+			_message.text += "\n" + tr("UI_SKILL_UP") % [CraftingData.skill_name(_recipe["skill"]), new_level]
 	_title.text = tr("UI_" + _station.to_upper())
 	_refresh()
 

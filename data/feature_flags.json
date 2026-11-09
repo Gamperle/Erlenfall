@@ -12,6 +12,7 @@
 		"lift_buried_player": true,
 		"surface_relief": true,
 		"screen_ambient_occlusion": true,
+		"crafting_skill": true,
 		"torches": true,
 		"torch_crafting_enabled": true,
 		"torch_starting_item_enabled": true,
@@ -21,6 +22,8 @@
 		"torch_burns_out": { "all": ["torches", "torch_burn_time_enabled"] }
 	},
 	"values": {
+		"skill_target_width_per_level": 0.015,
+		"skill_speed_reduction_per_level": 0.03,
 		"torch_burn_seconds": 600,
 		"buried_player_depth": 0.1,
 		"buried_player_ray_height": 6.0,

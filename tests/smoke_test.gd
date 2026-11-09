@@ -697,6 +697,15 @@ func _test_crafting(scene: Node, player: Player) -> void:
 	_check(player.inventory.count("iron_ingot") == ingots - 1 and player.inventory.count("wood") == wood - 1, "abandoning saves half the materials")
 	ui.close()
 
+	_check(player.skill_xp.get("smithing", 0) > 0, "crafting gives practice")
+	var skilled := HammerGame.new(3, 1.0, 0.03, 0.06)
+	var plain := HammerGame.new(3, 1.0)
+	_check(skilled.target_width > plain.target_width and skilled.speed < plain.speed, "skill widens the target and slows the marker")
+	_check(CraftingData.skill_level("smithing", 0) == 1 and CraftingData.skill_level("smithing", 10) == 2, "practice raises the skill level")
+	_check(CraftingData.skill_level("smithing", 100000) == CraftingData.skill_max_level("smithing"), "skill level stops at the highest")
+	player.skill_xp.clear()
+	_check(player.practice("smithing", 10) == 2 and player.practice("smithing", 1) == 0, "practice reports a rise only once")
+	player.skill_xp.clear()
 	var clumsy := HammerGame.new(2, 1.0)
 	clumsy.marker = clamp(clumsy.target + 0.5, 0.0, 1.0) if clumsy.target < 0.5 else clumsy.target - 0.5
 	clumsy.strike()
@@ -1405,6 +1414,8 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	var saved_position := player.position
 	var saved_coal := player.inventory.count("coal")
 	var recipes := player.known_recipes.size()
+	player.skill_xp["smithing"] = 27
+	scene.save_game()
 	player.set_torch_lit(true)
 	player.torch_burned_seconds = 12.0
 	scene.save_game()
@@ -1414,6 +1425,7 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	player.position += Vector3(5.0, 0.0, 5.0)
 	player.inventory.add("coal", 7)
 	player.known_recipes.clear()
+	player.skill_xp.clear()
 	player.health.current = 1.0
 	player.set_torch_lit(false)
 	player.torch_burned_seconds = 0.0
@@ -1433,6 +1445,7 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	scene.save_game()
 	_check(player.inventory.count("coal") == saved_coal, "inventory is restored")
 	_check(player.known_recipes.size() == recipes, "recipes are restored")
+	_check(player.skill_xp.get("smithing", 0) == 27, "skill practice is restored")
 	_check(player.health.current == 100.0, "health is restored")
 	_check(player.torch_lit and player.torch_burned_seconds == 12.0 and player.torch_given, "the torch is restored")
 	player.set_torch_lit(false)

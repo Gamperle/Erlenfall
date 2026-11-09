@@ -79,6 +79,8 @@ var _shown_weapon := "-"
 var _tool_in_hand := ""
 var _tool_seconds := 0.0
 var known_recipes: Dictionary = {}
+## Practice in each craft, by skill id.
+var skill_xp: Dictionary = {}
 var quests := QuestLog.new()
 ## What pressing the use button would act on right now, if anything.
 var interact_target: Interactable
@@ -106,6 +108,18 @@ var _torch := Torch.new()
 @onready var _spring_arm: SpringArm3D = $CameraPivot/SpringArm
 @onready var _body_mesh: Humanoid = $Body
 @onready var _weapon: Node3D = $CameraPivot/Weapon
+
+
+## Adds practice to a skill, and returns the new level if this raised it, or 0.
+func practice(skill_id: String, xp: int) -> int:
+	var before := CraftingData.skill_level(skill_id, skill_xp.get(skill_id, 0))
+	skill_xp[skill_id] = int(skill_xp.get(skill_id, 0)) + xp
+	var after := CraftingData.skill_level(skill_id, skill_xp[skill_id])
+	return after if after > before else 0
+
+
+func skill_level(skill_id: String) -> int:
+	return CraftingData.skill_level(skill_id, skill_xp.get(skill_id, 0))
 
 
 func _enter_tree() -> void:

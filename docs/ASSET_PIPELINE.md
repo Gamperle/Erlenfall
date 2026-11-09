@@ -100,7 +100,7 @@ The picture matters more than anything else, because the model sees only that on
 - **Check it's the right object.** SDXL has drawn an axe when asked for a hammer, and it doesn't reliably know bellows.
 - **Describe the shape, not only the name.** "Pointed horn" and "square steel head" helped the anvil and hammer.
 - **Prefer solid shapes.** Glass and hidden sides are the weakest.
-- **Walls are unreliable.** A stone wall works when the picture shows a clear outline. Every timber wall picture ran off the frame or showed a room. See [#61](https://github.com/Gamperle/Erlenfall/issues/61).
+- **Walls are unreliable.** A stone wall works when the picture shows a clear outline. Every timber wall picture ran off the frame or showed a room. Walls are code-built instead, see [WALLS_AND_BUILDINGS.md](WALLS_AND_BUILDINGS.md) and [#61](https://github.com/Gamperle/Erlenfall/issues/61).
 
 ## Known problems
 

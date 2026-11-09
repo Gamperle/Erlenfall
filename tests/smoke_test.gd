@@ -52,6 +52,17 @@ func _run() -> void:
 	var building_parts := village.get_node("forge").find_children("*", "MeshInstance3D", true, false)
 	var bridge_parts := village.get_node("Bridge").find_children("*", "MeshInstance3D", true, false)
 	_check(building_parts.size() == 1 and building_parts[0].mesh.get_surface_count() <= 6 and bridge_parts.size() == 1, "buildings and bridges are joined into one mesh each")
+	var stone_wall := ModelBuilder.stone_wall(8.0, 2.4, 0.6, 1)
+	var wall_parts := stone_wall.find_children("*", "MeshInstance3D", true, false)
+	var wall_bounds: AABB = wall_parts[0].mesh.get_aabb()
+	_check(wall_parts.size() == 1 and wall_parts[0].mesh.get_surface_count() <= 3 and wall_bounds.size.x > 7.9 and wall_bounds.size.x < 8.1 and absf(wall_bounds.size.y - 2.4) < 0.15, "a code-built stone wall is one mesh of the size asked for")
+	var same_wall := ModelBuilder.stone_wall(8.0, 2.4, 0.6, 1).find_children("*", "MeshInstance3D", true, false)[0]
+	_check(same_wall.mesh.get_faces() == wall_parts[0].mesh.get_faces(), "the same seed builds the same wall")
+	var palisade := ModelBuilder.palisade(6.0, 3.0, 1).find_children("*", "MeshInstance3D", true, false)
+	_check(palisade.size() == 1 and absf(palisade[0].mesh.get_aabb().size.x - 6.0) < 0.1, "a code-built palisade is one mesh of the size asked for")
+	stone_wall.free()
+	same_wall.get_parent().get_parent().free()
+	palisade[0].get_parent().get_parent().free()
 	var bowl: MeshInstance3D = village.get_node("Props/bowl_1").find_children("*", "MeshInstance3D", true, false)[0]
 	var door: MeshInstance3D = village.get_node("Props/door_3").find_children("*", "MeshInstance3D", true, false)[0]
 	_check(bowl.visibility_range_end > 0.0 and door.visibility_range_end == 0.0, "only small props stop being drawn far away")

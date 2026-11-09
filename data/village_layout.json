@@ -23,8 +23,15 @@
 		{ "id": "mira", "model": "res://assets/characters/mira.glb", "name": "NPC_MIRA", "x": -9, "z": 30, "color": "#3f7a6a", "hair": "#8a4f24" },
 		{ "id": "greta", "model": "res://assets/characters/greta.glb", "name": "NPC_GRETA", "x": 17, "z": -8, "color": "#a0703a" },
 		{ "id": "brandt", "model": "res://assets/characters/brandt.glb", "name": "NPC_BRANDT", "x": 4, "z": -19, "color": "#7a2e2e", "hair": "#6e6a64" },
-		{ "id": "marek", "name": "NPC_MAREK", "x": 19.5, "z": -17.5, "color": "#8a4f6a", "hair": "#3a3330", "appears_when": { "flag": "inn_roof_repaired" } },
-		{ "id": "oswin", "name": "NPC_OSWIN", "x": 21, "z": -21, "color": "#6a5f50", "hair": "#d8d5d0", "appears_when": { "flag": "inn_roof_repaired" } }
+		{ "id": "konrad", "name": "NPC_KONRAD", "x": 130, "z": -70, "color": "#6b5a45" },
+		{ "id": "agnes", "name": "NPC_AGNES", "x": 84, "z": 142, "color": "#5d6f80", "hair": "#d8d6d2" },
+		{ "id": "wendel", "name": "NPC_WENDEL", "x": -12, "z": -138, "color": "#556040", "hair": "#4a4440" },
+		{ "id": "oswin", "name": "NPC_OSWIN", "x": -10, "z": -23, "color": "#6a5f52", "hair": "#c9c6c0", "appears_when": { "flag": "inn_roof_repaired" } },
+		{ "id": "albrecht", "name": "NPC_ALBRECHT", "x": -15, "z": -14, "color": "#5a4a3a", "hair": "#d8d6d2" },
+		{ "id": "jakob", "name": "NPC_JAKOB", "x": 22, "z": -20, "color": "#8a7458", "hair": "#b08a4a" },
+		{ "id": "falk", "name": "NPC_FALK", "x": 58, "z": -62, "color": "#3d3128", "hair": "#1e1c1a" },
+		{ "id": "marek", "name": "NPC_MAREK", "x": 8, "z": 36, "color": "#8a4f3a", "hair": "#4a3a2e", "appears_when": { "flag": "inn_roof_repaired" } },
+		{ "id": "lene", "name": "NPC_LENE", "x": -4, "z": -21, "color": "#6e2a2e", "hair": "#8a6a4a" }
 	],
 	"enemies": [
 		{ "type": "goblin", "x": 118, "z": -150 },

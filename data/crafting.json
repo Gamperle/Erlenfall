@@ -13,6 +13,9 @@
 			{ "size": [0.012, 0.012, 0.09], "at": [0.03, 0.006, -0.01], "color": "#8a8d92" }
 		] },
 		"torch": { "name": "ITEM_TORCH" },
+		"short_bow": { "name": "ITEM_SHORT_BOW", "model": [{ "size": [0.03, 0.7, 0.03], "at": [0, 0.35, 0], "color": "#6b4a2b" }] },
+		"arrow": { "name": "ITEM_ARROW", "material": true },
+		"fire_flask": { "name": "ITEM_FIRE_FLASK" },
 		"iron_dagger": { "name": "ITEM_IRON_DAGGER", "damage": 10, "model": [
 			{ "size": [0.03, 0.14, 0.03], "at": [0, 0.07, 0], "color": "#3b3026" },
 			{ "size": [0.09, 0.02, 0.03], "at": [0, 0.15, 0], "color": "#6f7276" },
@@ -28,6 +31,9 @@
 			{ "size": [0.17, 0.13, 0.02], "at": [0.09, 0.55, 0], "color": "#a9acb0" }
 		] }
 	},
+	"skills": {
+		"smithing": { "name": "SKILL_SMITHING", "level_xp": [0, 10, 25, 50, 90, 150] }
+	},
 	"qualities": [
 		{ "id": "crude", "name": "QUALITY_CRUDE", "min_score": 0.0, "damage_multiplier": 0.8 },
 		{ "id": "common", "name": "QUALITY_COMMON", "min_score": 0.4, "damage_multiplier": 1.0 },
@@ -35,18 +41,20 @@
 		{ "id": "masterwork", "name": "QUALITY_MASTERWORK", "min_score": 0.9, "damage_multiplier": 1.6 }
 	],
 	"recipes": [
-		{ "id": "smelt_iron", "station": "furnace", "inputs": { "iron_ore": 2, "coal": 1 }, "result": "iron_ingot", "count": 1 },
+		{ "id": "smelt_iron", "station": "furnace", "inputs": { "iron_ore": 2, "coal": 1 }, "result": "iron_ingot", "count": 1, "skill": "smithing", "xp": 1 },
 		{
 			"id": "smelt_scrap",
 			"station": "furnace",
 			"inputs": { "iron_scrap": 3, "coal": 1 },
 			"result": "iron_ingot",
-			"count": 1
+			"count": 1,
+			"skill": "smithing",
+			"xp": 1
 		},
-		{ "id": "make_torch", "station": "furnace", "requires_flag": "torch_recipe", "inputs": { "wood": 1, "coal": 1 }, "result": "torch", "count": 1 },
-		{ "id": "forge_nails", "station": "anvil", "inputs": { "iron_ingot": 1 }, "result": "iron_nails", "count": 4, "strikes": 3, "speed": 0.8 },
-		{ "id": "forge_dagger", "station": "anvil", "inputs": { "iron_ingot": 1, "wood": 1 }, "result": "iron_dagger", "count": 1, "strikes": 4, "speed": 1.0 },
-		{ "id": "forge_axe", "station": "anvil", "inputs": { "iron_ingot": 2, "wood": 2 }, "result": "iron_axe", "count": 1, "strikes": 5, "speed": 1.15 },
-		{ "id": "forge_sword", "station": "anvil", "inputs": { "iron_ingot": 2, "wood": 1 }, "result": "iron_sword", "count": 1, "strikes": 6, "speed": 1.3 }
+		{ "id": "make_torch", "station": "furnace", "requires_flag": "torch_recipe", "inputs": { "wood": 1, "coal": 1 }, "result": "torch", "count": 1, "skill": "smithing", "xp": 1 },
+		{ "id": "forge_nails", "station": "anvil", "inputs": { "iron_ingot": 1 }, "result": "iron_nails", "count": 4, "strikes": 3, "speed": 0.8, "skill": "smithing", "xp": 3 },
+		{ "id": "forge_dagger", "station": "anvil", "inputs": { "iron_ingot": 1, "wood": 1 }, "result": "iron_dagger", "count": 1, "strikes": 4, "speed": 1.0, "skill": "smithing", "xp": 4 },
+		{ "id": "forge_axe", "station": "anvil", "inputs": { "iron_ingot": 2, "wood": 2 }, "result": "iron_axe", "count": 1, "strikes": 5, "speed": 1.15, "skill": "smithing", "xp": 5 },
+		{ "id": "forge_sword", "station": "anvil", "inputs": { "iron_ingot": 2, "wood": 1 }, "result": "iron_sword", "count": 1, "strikes": 6, "speed": 1.3, "skill": "smithing", "xp": 6 }
 	]
 }

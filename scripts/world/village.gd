@@ -29,6 +29,9 @@ const MAX_TREE_HEIGHT := 90.0
 const MAX_PLACEMENT_ATTEMPTS := 10
 const ROAD_COLOR := Color(0.4, 0.32, 0.22)
 const ROAD_LIFT := 0.04
+## A road is solid out to this share of its half width, then fades to nothing at ROAD_FEATHER, so its dirt thins out into the grass.
+const ROAD_CORE := 0.55
+const ROAD_FEATHER := 1.5
 const RIVER_TREE_CLEARANCE := 4.0
 const SITE_TREE_CLEARANCE := 4.0
 const BRIDGE_OVERHANG := 1.5
@@ -83,14 +86,19 @@ func _ready() -> void:
 	_set_small_plants(bushes, BUSH_DRAW_DISTANCE)
 	_add_grass(layout["grass"], layout["fields"])
 	_add_boulders(layout["boulders"])
+	var routines := VillagerRoutines.new()
+	routines.name = "VillagerRoutines"
+	add_child(routines)
 	for npc_data: Dictionary in layout["npcs"]:
 		var npc := Npc.new()
 		npc.setup(npc_data)
 		npc.position = _ground_position(npc_data["x"], npc_data["z"])
+		npc.ground_height = terrain.height_at
 		add_child(npc)
 		if not npc.arrival_flag.is_empty():
 			_arrivals.append(npc)
 			npc.apply_flags({})
+		routines.add_villager(npc)
 	for enemy_data: Dictionary in layout["enemies"]:
 		var enemy := Enemy.new()
 		enemy.setup(enemy_data["type"], _ground_position(enemy_data["x"], enemy_data["z"]) + Vector3.UP * 0.2)
@@ -240,20 +248,25 @@ func _road_mesh(samples: PackedVector2Array, width: float) -> MeshInstance3D:
 	var surface := SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	surface.set_normal(Vector3.UP)
-	surface.set_color(ROAD_COLOR)
+	var solid := Color(ROAD_COLOR, 1.0)
+	var faded := Color(ROAD_COLOR, 0.0)
 	var was_over_river := false
 	for i in samples.size():
 		var tangent := (samples[mini(i + 1, samples.size() - 1)] - samples[maxi(i - 1, 0)]).normalized()
 		var side := Vector2(-tangent.y, tangent.x)
 		var half_width := width / 2.0 * (1.0 + sin(i * 0.37) * 0.1 + sin(i * 0.11) * 0.1)
-		for edge: Vector2 in [samples[i] + side * half_width, samples[i] - side * half_width]:
+		# Four vertices across: outer left, inner left, inner right, outer right.
+		for column: Array in [[ROAD_FEATHER, faded], [ROAD_CORE, solid], [-ROAD_CORE, solid], [-ROAD_FEATHER, faded]]:
+			var edge: Vector2 = samples[i] + side * half_width * column[0]
+			surface.set_color(column[1])
 			surface.add_vertex(Vector3(edge.x, terrain.height_at(edge.x, edge.y) + ROAD_LIFT, edge.y))
 		# The road stops at the river, and a bridge carries it over.
 		var over_river := terrain.river_clearance(samples[i].x, samples[i].y) < 0.0
 		if i > 0 and not over_river and not was_over_river:
-			var left := (i - 1) * 2
-			for index in [left, left + 1, left + 2, left + 1, left + 3, left + 2]:
-				surface.add_index(index)
+			for column in 3:
+				var left := (i - 1) * 4 + column
+				for index in [left, left + 1, left + 4, left + 1, left + 5, left + 4]:
+					surface.add_index(index)
 		was_over_river = over_river
 
 	var material := Surfaces.get_material(Surfaces.Pattern.ROAD, ROAD_COLOR)

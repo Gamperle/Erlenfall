@@ -8,6 +8,10 @@ const RUN := &"Sprint"
 const WALK_SPEED_LIMIT := 4.5
 const MOVING_SPEED := 0.2
 const BLEND_SECONDS := 0.15
+## Parts no larger than this (eyes, eyebrows) are too small to cast a visible shadow,
+## or to be seen from far away.
+const DETAIL_SIZE := 0.12
+const DETAIL_RANGE := 20.0
 
 ## Replaces the idle animation, for example while holding a torch up or blocking.
 var idle_override: StringName = &""
@@ -29,6 +33,7 @@ func load_model(path: String) -> void:
 	_player = CharacterAnimations.play(_model, IDLE)
 	add_modifier(PostureModifier.new())
 	_copy_materials()
+	_reduce_draw_calls()
 
 
 ## Adds something that adjusts the skeleton after the animations.
@@ -91,3 +96,32 @@ func _copy_materials() -> void:
 			if material != null:
 				mesh_instance.set_surface_override_material(surface, material)
 				_surfaces.append(material)
+
+
+## Every surface of every mesh is a draw call, and again in each shadow pass. Tiny parts skip
+## their shadow and vanish in the distance, and the body casts its shadow from one surface
+## instead of one each for its lips, nails and ears.
+func _reduce_draw_calls() -> void:
+	for mesh_instance: MeshInstance3D in _model.find_children("*", "MeshInstance3D", true, false):
+		var mesh := mesh_instance.mesh as ArrayMesh
+		if mesh == null:
+			continue
+		if _largest(mesh.get_aabb().size) < DETAIL_SIZE:
+			mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mesh_instance.visibility_range_end = DETAIL_RANGE
+		elif mesh.get_surface_count() > 1:
+			mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var caster := MeshInstance3D.new()
+			caster.name = mesh_instance.name + "Shadow"
+			var shadow_mesh := ArrayMesh.new()
+			shadow_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, mesh.surface_get_arrays(0))
+			shadow_mesh.custom_aabb = mesh.get_aabb()
+			caster.mesh = shadow_mesh
+			caster.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+			mesh_instance.get_parent().add_child(caster)
+			caster.skin = mesh_instance.skin
+			caster.skeleton = caster.get_path_to(mesh_instance.get_node(mesh_instance.skeleton))
+
+
+func _largest(size: Vector3) -> float:
+	return maxf(size.x, maxf(size.y, size.z))

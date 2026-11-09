@@ -211,6 +211,7 @@ func _begin_playing() -> void:
 	_menu.close()
 	_player.set_busy(false)
 	_player.give_starting_items()
+	_player.give_ranged_items()
 	_on_quests_changed()
 	_update_health_bar()
 	_show_controls_hint()

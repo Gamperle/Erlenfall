@@ -113,6 +113,7 @@ func _run() -> void:
 	_test_generated_props()
 	_test_feature_flags()
 	await _test_torch(player)
+	await _test_ranged(scene, player)
 	var torch: Torch = player._torch
 	day_night.hour = 12.0
 	var noon_share := torch.light_share()
@@ -1977,6 +1978,135 @@ func _under_ground(terrain: Terrain, player: Player) -> bool:
 		query.exclude = query.exclude + [hit["rid"]]
 		hit = space.intersect_ray(query)
 	return not hit.is_empty() or feet.y < terrain.height_at(feet.x, feet.z) - 20.0
+
+
+func _test_ranged(scene: Node, player: Player) -> void:
+	_check(player.ranged_given and player.inventory.count("short_bow") == 1 and player.inventory.count("arrow") == 10, "a new game starts with a bow and arrows")
+	_check(player.inventory.count("fire_flask") == 3, "a new game starts with fire flasks")
+	_check(player.inventory.best_weapon_damage() == 0.0, "a bow is not a melee weapon")
+	for action in ["shoot", "throw"]:
+		var kinds := {}
+		for input in InputMap.action_get_events(action):
+			kinds[input.get_class()] = true
+		_check(_has_joypad(kinds) and kinds.has("InputEventKey"), "%s has keyboard and controller bindings" % action)
+	for projectile_id: String in Projectile.type_ids():
+		var type := Projectile.stats(projectile_id)
+		var complete := true
+		for key in ["action", "requires_item", "ammo_item", "damage", "speed", "gravity", "lifetime", "radius", "splash_radius", "cooldown", "size", "color"]:
+			complete = complete and type.has(key)
+		_check(complete and CraftingData.item_name(type["ammo_item"]) != "", "%s is fully described by data" % projectile_id)
+
+	# A stand-in enemy on open ground, which does not move.
+	var terrain: Terrain = scene.get_node("Terrain")
+	var spot := _flat_open_spot(terrain, player)
+	_check(spot != Vector3.INF, "there is flat ground to test shooting on")
+	var dummy := Enemy.new()
+	scene.add_child(dummy)
+	dummy.setup("goblin", spot)
+	dummy.set_physics_process(false)
+	await _physics_frames(2)
+	var chest := spot + Vector3.UP * 0.8
+
+	var arrow := Projectile.launch("arrow", chest + Vector3(0.0, 0.0, 6.0), Vector3.FORWARD)
+	scene.add_child(arrow)
+	var before := dummy.health.current
+	await _physics_frames(20)
+	_check(dummy.health.current == before - float(Projectile.stats("arrow")["damage"]), "an arrow hurts the enemy it hits")
+	_check(not is_instance_valid(arrow) or arrow.is_queued_for_deletion(), "an arrow that hits an enemy is gone")
+
+	before = dummy.health.current
+	var wide := Projectile.launch("arrow", chest + Vector3(3.0, 0.0, 6.0), Vector3.FORWARD)
+	scene.add_child(wide)
+	await _physics_frames(20)
+	_check(dummy.health.current == before, "an arrow that passes beside the enemy misses")
+	wide.queue_free()
+
+	var high := Projectile.launch("arrow", chest + Vector3(0.0, 2.0, 40.0), Vector3.FORWARD)
+	scene.add_child(high)
+	var start_y := high.position.y
+	await _physics_frames(30)
+	_check(high.position.y < start_y - 0.5, "arrows fall under gravity")
+	high.queue_free()
+
+	var into_ground := Projectile.launch("arrow", spot + Vector3(10.0, 3.0, 0.0), Vector3.DOWN)
+	scene.add_child(into_ground)
+	await _physics_frames(30)
+	_check(into_ground.hit_something and into_ground.position.y < spot.y + 1.0, "an arrow stops in the ground")
+	into_ground.queue_free()
+
+	before = dummy.health.current
+	var flask := Projectile.launch("fire_flask", spot + Vector3(0.0, 5.0, 2.0), Vector3.DOWN)
+	scene.add_child(flask)
+	await _physics_frames(30)
+	_check(dummy.health.current == before - float(Projectile.stats("fire_flask")["damage"]), "a flask hurts an enemy near where it lands")
+	before = dummy.health.current
+	var far := Projectile.launch("fire_flask", spot + Vector3(20.0, 5.0, 0.0), Vector3.DOWN)
+	scene.add_child(far)
+	await _physics_frames(30)
+	_check(dummy.health.current == before, "a flask doesn't hurt an enemy outside its splash")
+
+	# Firing from the player.
+	var arrows := player.inventory.count("arrow")
+	_check(player.fire_ranged("shoot") and player.inventory.count("arrow") == arrows - 1, "shooting uses up an arrow")
+	_check(not player.fire_ranged("shoot") and player.inventory.count("arrow") == arrows - 1, "shooting waits for the cooldown")
+	_check(root.get_tree().get_nodes_in_group(Projectile.GROUP).size() > 0, "shooting launches a projectile")
+	await _physics_frames(90)
+	var flasks := player.inventory.count("fire_flask")
+	_check(player.fire_ranged("throw") and player.inventory.count("fire_flask") == flasks - 1, "throwing uses up a flask")
+	await _physics_frames(90)
+	var notices: Array[String] = []
+	player.notice.connect(func(key: String): notices.append(key))
+	player.inventory.remove("short_bow")
+	_check(not player.fire_ranged("shoot") and notices == ["UI_NEED_SHORT_BOW"], "an arrow can't be shot without a bow")
+	player.inventory.add("short_bow")
+	var quiver := player.inventory.count("arrow")
+	player.inventory.remove("arrow", quiver)
+	_check(not player.fire_ranged("shoot") and notices.back() == "UI_NO_ARROW", "an empty quiver can't shoot")
+	for key in ["UI_NEED_SHORT_BOW", "UI_NO_ARROW", "UI_NO_FIRE_FLASK", "ITEM_SHORT_BOW", "ITEM_ARROW", "ITEM_FIRE_FLASK"]:
+		TranslationServer.set_locale("de")
+		var german := tr(key)
+		TranslationServer.set_locale("en")
+		_check(german != key and german != tr(key) and tr(key) != key, "%s has English and German text" % key)
+
+	_write_flags(TEST_FLAGS_A, { "flags": { "ranged_weapons": false } })
+	FeatureFlags.load_layers([TEST_FLAGS_A])
+	player.inventory.add("arrow", 2)
+	_check(not player.fire_ranged("shoot") and player.inventory.count("arrow") == 2, "turning ranged weapons off stops shooting")
+	FeatureFlags.load_layers()
+	player.inventory.remove("arrow", 2)
+	player.inventory.add("arrow", quiver)
+
+	for projectile in root.get_tree().get_nodes_in_group(Projectile.GROUP):
+		projectile.queue_free()
+	dummy.remove_from_group(Enemy.GROUP)
+	dummy.queue_free()
+	await _physics_frames(2)
+
+
+## Ground near the village that is level for 12 m around, away from the river, or Vector3.INF.
+func _flat_open_spot(terrain: Terrain, player: Player) -> Vector3:
+	for ring in range(0, 400, 10):
+		for step in 16:
+			var angle := TAU * step / 16.0
+			var x := cos(angle) * ring
+			var z := sin(angle) * ring
+			var level := true
+			for dx in [-12.0, 0.0, 12.0]:
+				for dz in [-12.0, 0.0, 12.0]:
+					level = level and absf(terrain.height_at(x + dx, z + dz) - terrain.height_at(x, z)) < 0.5 and terrain.river_clearance(x + dx, z + dz) > 5.0
+			if level and not _blocked_above(terrain, Vector3(x, terrain.height_at(x, z), z)):
+				return Vector3(x, terrain.height_at(x, z), z)
+	return Vector3.INF
+
+
+## Whether anything but the terrain stands within 12 m of this point at chest height, so that a shot there could be stopped.
+func _blocked_above(terrain: Terrain, point: Vector3) -> bool:
+	var space := terrain.get_world_3d().direct_space_state
+	for offset in [Vector3(12, 0, 0), Vector3(-12, 0, 0), Vector3(0, 0, 12), Vector3(0, 0, -12)]:
+		var query := PhysicsRayQueryParameters3D.create(point + Vector3.UP, point + Vector3.UP + offset)
+		if not space.intersect_ray(query).is_empty():
+			return true
+	return false
 
 
 func _test_grass_cell_edge(scene: Node) -> void:

@@ -34,8 +34,9 @@ const START_HEIGHT_TOLERANCE := 0.6
 const LINE_SKIP_AT_START := 0.3
 const LINE_MAX_LENGTH := 40.0
 const START_SEARCH_CELLS := 2
-## Checking a new cell against the physics world costs about three times as much as a search step.
-const PROBE_COST := 3
+## Checking a new cell against the physics world (up to 6 rays and a shape query per floor) takes
+## about 40 to 115 microseconds, against about 8 to 13 for a search step, so it counts as about ten.
+const PROBE_COST := 10
 ## Slightly favors cells near the goal, which searches far fewer cells for a nearly as short path.
 const HEURISTIC_WEIGHT := 1.2
 const KEY_OFFSET := 1 << 15

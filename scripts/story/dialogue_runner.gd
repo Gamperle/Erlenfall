@@ -32,16 +32,22 @@ func text_key() -> String:
 ## Returns the player's reply options as translation keys. Empty means just continue.
 func choice_keys() -> PackedStringArray:
 	var keys := PackedStringArray()
-	for choice: Dictionary in _node.get("choices", []):
+	for choice: Dictionary in _choices():
 		keys.append(choice["text"])
 	return keys
 
 
 ## Moves on from the current line, using the given choice if it offers any.
 func advance(choice_index: int = 0) -> void:
-	var choices: Array = _node.get("choices", [])
+	var choices := _choices()
 	var next: String = choices[choice_index].get("next", "") if choices.size() > 0 else _node.get("next", "")
 	_enter(next)
+
+
+## A node lists its own choices, or borrows another node's with "choices_of".
+func _choices() -> Array:
+	var source: Dictionary = _nodes.get(_node["choices_of"], {}) if _node.has("choices_of") else _node
+	return source.get("choices", [])
 
 
 func _enter(node_id: String) -> void:
@@ -71,6 +77,8 @@ func _conditions_hold(when: Dictionary) -> bool:
 	if when.has("quest_done") and not quests.is_done(when["quest_done"]):
 		return false
 	if when.has("flag") and not quests.flags.has(when["flag"]):
+		return false
+	if when.has("not_flag") and quests.flags.has(when["not_flag"]):
 		return false
 	if when.has("has_item") and _player.inventory.count(when["has_item"][0]) < int(when["has_item"][1]):
 		return false

@@ -32,7 +32,7 @@ jobs:
           unzip -q "Godot_v$GODOT_VERSION-stable_linux.x86_64.zip"
           mv "Godot_v$GODOT_VERSION-stable_linux.x86_64" godot
           unzip -q -j "Godot_v$GODOT_VERSION-stable_export_templates.tpz" \
-            "templates/version.txt" "templates/linux_*x86_64*" "templates/windows_*x86_64*" \
+            "templates/version.txt" "templates/linux_*x86_64*" "templates/windows_*x86_64*" "templates/web_nothreads_release.zip" "templates/web_nothreads_debug.zip" \
             -d "$HOME/.local/share/godot/export_templates/$GODOT_VERSION.stable"
           echo "$HOME/godot" >> "$GITHUB_PATH"
 
@@ -44,9 +44,11 @@ jobs:
 
       - name: Export builds
         run: |
-          mkdir -p build/linux build/windows
+          mkdir -p build/linux build/windows build/web
           godot --headless --path . --export-release "Linux" build/linux/Erlenfall.x86_64
           godot --headless --path . --export-release "Windows" build/windows/Erlenfall.exe
+          godot --headless --path . --export-release "Web" build/web/index.html
+          test -s build/web/index.html
           test -s build/linux/Erlenfall.x86_64
           test -s build/windows/Erlenfall.exe
 
@@ -59,6 +61,11 @@ jobs:
         with:
           name: erlenfall-windows
           path: build/windows
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: erlenfall-web
+          path: build/web
 
   release:
     needs: build
@@ -75,5 +82,6 @@ jobs:
         run: |
           (cd erlenfall-linux && zip -q ../erlenfall-linux.zip *)
           (cd erlenfall-windows && zip -q ../erlenfall-windows.zip *)
+          (cd erlenfall-web && zip -q ../erlenfall-web.zip *)
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes \
-            erlenfall-linux.zip erlenfall-windows.zip
+            erlenfall-linux.zip erlenfall-windows.zip erlenfall-web.zip

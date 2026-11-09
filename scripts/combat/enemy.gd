@@ -153,6 +153,14 @@ func take_hit(amount: float, from_position := Vector3.INF) -> void:
 	health.damage(amount)
 
 
+func body_height() -> float:
+	return _stats["height"]
+
+
+func body_radius() -> float:
+	return _stats["radius"]
+
+
 ## Brings the enemy back at its home, at full health.
 func revive() -> void:
 	health.restore()
@@ -415,7 +423,7 @@ func _wait(goal: Vector3, reach: float, delta: float) -> Vector3:
 	_clear_way_wait -= delta
 	if _clear_way_wait <= 0.0:
 		_clear_way_wait = CLEAR_WAY_CHECK_SECONDS
-		var crowd := _update_crowd()
+		var crowd := _update_crowd(goal)
 		if _path.is_line_clear(global_position, goal, GOAL_LINE_SKIP):
 			_waiting = false
 			_path.cancel()
@@ -433,7 +441,7 @@ func _update_following(goal: Vector3, reach: float, delta: float) -> void:
 	_clear_way_wait -= delta
 	if _clear_way_wait <= 0.0:
 		_clear_way_wait = CLEAR_WAY_CHECK_SECONDS
-		_update_crowd()
+		_update_crowd(goal)
 		if _path.is_line_clear(global_position, goal, GOAL_LINE_SKIP):
 			_following = false
 			_wait_after_path = false
@@ -471,7 +479,7 @@ func _on_stuck(goal: Vector3, reach: float) -> void:
 func _start_search(goal: Vector3, reach: float) -> void:
 	_path_goal = goal
 	_search_wait = SEARCH_WAIT_SECONDS
-	_searched_crowd = _update_crowd()
+	_searched_crowd = _update_crowd(goal)
 	_path.begin(global_position, goal, reach * ARRIVE_FRACTION)
 
 
@@ -496,12 +504,14 @@ func _touches_scenery() -> bool:
 	return false
 
 
-## Others standing still nearby, for the path search to keep clear of.
-func _update_crowd() -> PackedVector3Array:
+## Others standing still near this one or near the goal, for the path search to keep clear of. Those
+## near the goal count even when they're far from this one, such as an enemy attacking from the far
+## end of a corridor, which the way ahead goes through unless the search knows it's there (#149).
+func _update_crowd(goal: Vector3) -> PackedVector3Array:
 	var points := PackedVector3Array()
 	var clearances := PackedFloat32Array()
 	for other: Enemy in get_tree().get_nodes_in_group(GROUP):
-		if other != self and other.is_holding_ground() and _flat_distance(other.global_position) < CROWD_RANGE:
+		if other != self and other.is_holding_ground() and (_flat_distance(other.global_position) < CROWD_RANGE or Vector2(goal.x, goal.z).distance_to(Vector2(other.global_position.x, other.global_position.z)) < CROWD_RANGE):
 			points.append(other.global_position)
 			clearances.append(float(_stats["radius"]) + float(other._stats["radius"]) + CROWD_MARGIN)
 	_path.set_crowd(points, clearances)

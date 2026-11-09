@@ -68,6 +68,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `performance_overlay` | `true` | Shows the performance measurements at the top right |
 | `river_fine_collision` | `true` | Makes the ground near the river collide exactly where it is drawn, using the mesh's own triangles. Off leaves the coarser collision for the whole map, which costs less to load and to simulate |
 | `terrain_seam_cells` | `true` | Gives each coarse terrain cell beside the river's fine ones a fine grid too, which meets the fine cells on the true ground and bends evenly towards the coarse cells beyond. Off keeps the fine cells' outer edges straight along the coarse cells, which creases the ground there, with about 15,000 fewer triangles and a little less loading time |
+| `rough_ground_fine_cells` | `true` | Makes the terrain cells fine where the landslide's rubble bends faster than a 4 m cell can follow, so the ground there no longer creases along the grid. Off keeps them coarse, with fewer triangles and a little less loading time |
 
 ## Graphics flags
 
@@ -114,6 +115,7 @@ Enemies walk straight at their target until something blocks them, then search a
 | `enemy_path_water_cost` | `3` | How many times as much a step through deep water counts as one on dry land, so enemies take a bridge unless it's far out of the way. Wading is about 1.8 times as slow, so values below that make enemies wade even where the bridge is quicker |
 | `enemy_crowd_wait_seconds` | `3` | How long an enemy that other enemies block, such as in a narrow gap, waits before it looks for a way again. It plans around enemies that stand still, and waits only when there's no other way. It looks again sooner when the way clears or one of them moves |
 | `river_fine_margin` | `3.0` | How many meters past the river's banks the terrain mesh, and its collision, stay finer. Below 3 some banks end up in coarse cells, where the ground is less exact |
+| `rough_ground_deviation` | `0.25` | How far in meters the ground at a cell's center may lie from the average of its four corners before the cell turns fine. Lower values make more cells fine |
 
 ## Grass values
 

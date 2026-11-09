@@ -107,6 +107,7 @@ func _run() -> void:
 	await _test_land_and_river(scene, player)
 	await _test_river_collision(terrain, player)
 	_test_terrain_seams(terrain)
+	_test_rubble_ground(terrain)
 	await _test_hud(scene, player)
 	_test_character_models(player)
 	_test_generated_props()
@@ -345,6 +346,9 @@ func _test_terrain_seams(terrain: Terrain) -> void:
 			var corner := Vector2(i * Terrain.STEP - Terrain.SIZE / 2.0, j * Terrain.STEP - Terrain.SIZE / 2.0)
 			if corner.length() > 500.0:
 				continue
+			# The rubble's cells are fine for another reason, and its ridges bend sharper than any grid (#137).
+			if terrain.is_on_landslide(corner.x, corner.y) or terrain.is_on_landslide(corner.x + 8.0, corner.y + 8.0) or terrain.is_on_landslide(corner.x - 8.0, corner.y - 8.0):
+				continue
 			if here == Terrain.SEAM_CELL:
 				for offset: Vector2 in [Vector2(0.6, 1.3), Vector2(2.1, 2.7), Vector2(3.4, 0.9)]:
 					inside_seam_cells.append(corner + offset)
@@ -386,6 +390,25 @@ func _test_terrain_seams(terrain: Terrain) -> void:
 		if not hit.is_empty() and hit["collider"] == terrain:
 			worst_collision = maxf(worst_collision, absf(hit["position"].y - height))
 	_check(inside_seam_cells.size() > 300 and worst_collision < 0.01, "collision matches the visible ground beside the fine terrain (%.3f m off)" % worst_collision)
+
+
+## The landslide's rubble changes faster than 4 m cells can follow, so its cells are fine (#137).
+# Without the fine cells the rubble was 1.6 m off at p95 and 5.3 m at worst; with them 0.36 and 1.6.
+func _test_rubble_ground(terrain: Terrain) -> void:
+	var points := PackedVector2Array()
+	for x in range(-45, 130, 3):
+		for z in range(-420, -180, 3):
+			var at := Vector2(x + 0.7, z + 0.7)
+			if terrain.is_on_landslide(at.x, at.y) and terrain.height_at(at.x, at.y) < 150.0:
+				points.append(at)
+	var ground := _seam_triangles(terrain, points)
+	var errors: Array[float] = []
+	for at in points:
+		errors.append(absf(_visible_height(ground, at) - terrain.height_at(at.x, at.y)))
+	errors.sort()
+	var p95: float = errors[int(errors.size() * 0.95)]
+	print("rubble ground: %d points, median %.3f, p95 %.3f, max %.3f m off" % [errors.size(), errors[errors.size() / 2], p95, errors[-1]])
+	_check(errors.size() > 1000 and p95 < 0.5, "the landslide's rubble is drawn close to the true ground (%.3f m off at p95)" % p95)
 
 
 ## Like _visible_triangles, for many points: reads each chunk the points fall in.

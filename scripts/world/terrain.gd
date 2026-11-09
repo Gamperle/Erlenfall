@@ -388,6 +388,21 @@ func _add_chunk_mesh(chunk: int, indices: PackedInt32Array, vertices: PackedVect
 	add_child(instance)
 
 
+## Makes the cells fine where the landslide's rubble bends faster than a 4 m cell can follow, which is
+## where the ground differs from the average of a cell's corners by more than the rough_ground_deviation value. Fine cells under the landslide get fine collision too.
+func _mark_rough_cells(cells: PackedByteArray, row: int) -> void:
+	var first := Vector2i(floori((LANDSLIDE_CENTER.x - LANDSLIDE_EXTENT.x * 1.4 + SIZE / 2.0) / STEP), floori((LANDSLIDE_CENTER.y - LANDSLIDE_EXTENT.y * 1.4 + SIZE / 2.0) / STEP))
+	var last := Vector2i(ceili((LANDSLIDE_CENTER.x + LANDSLIDE_EXTENT.x * 1.4 + SIZE / 2.0) / STEP), ceili((LANDSLIDE_CENTER.y + LANDSLIDE_EXTENT.y * 1.4 + SIZE / 2.0) / STEP))
+	var threshold: float = FeatureFlags.value("rough_ground_deviation")
+	for j in range(maxi(first.y, 0), mini(last.y, row)):
+		for i in range(maxi(first.x, 0), mini(last.x, row)):
+			var x := i * STEP - SIZE / 2.0
+			var z := j * STEP - SIZE / 2.0
+			var corners := (height_at(x, z) + height_at(x + STEP, z) + height_at(x, z + STEP) + height_at(x + STEP, z + STEP)) / 4.0
+			if absf(height_at(x + STEP / 2.0, z + STEP / 2.0) - corners) > threshold:
+				cells[j * row + i] = FINE_CELL
+
+
 ## Marks the cells near the river, and the coarse cells beside them that meet them along an edge.
 ## Each row of the result holds count - 1 cells.
 func _fine_cells(count: int) -> PackedByteArray:
@@ -401,6 +416,8 @@ func _fine_cells(count: int) -> PackedByteArray:
 			var z := (j + 0.5) * STEP - SIZE / 2.0
 			if river_clearance(x, z) < margin and Vector2(x, z).length() < RIVER_FINE_RADIUS:
 				cells[j * row + i] = FINE_CELL
+	if FeatureFlags.enabled("rough_ground_fine_cells"):
+		_mark_rough_cells(cells, row)
 	if not FeatureFlags.enabled("terrain_seam_cells"):
 		return cells
 	for j in row:

@@ -30,3 +30,5 @@ godot --headless --path . --import
 By contributing, you agree that your code is licensed under [MIT](LICENSE) and your creative content under [CC BY-SA 4.0](LICENSE-ASSETS), unless the file is listed otherwise in [ASSETS.md](ASSETS.md).
 
 Add every asset you did not create entirely yourself to [ASSETS.md](ASSETS.md), including AI-generated ones.
+
+Scripts that run inside Blender and import `bpy` (`tools/asset_pipeline/render_preview.py`, `adjust_glb.py`, `cleanup_mesh.py`, `size_glb.py`, and `tools/character_pipeline/build_character.py`, `build_goblin.py`) stay under MIT, like the rest of the code. [Blender says](https://www.blender.org/about/license/) that published scripts using its Python API must be shared under a GPL-compliant license. MIT is widely regarded as GPL-compatible, so MIT is kept, but the maintainer hasn't confirmed this, and it isn't legal advice ([#67](https://github.com/Gamperle/Erlenfall/issues/67)). For a new Blender script, write it yourself, don't copy code from add-ons or forum posts without checking their license, and if you do copy code, note its source and license in the file's header.

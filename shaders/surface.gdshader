@@ -49,16 +49,44 @@ void vertex() {
 	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 
-void fragment() {
-	vec3 facing = abs(world_normal);
-	vec2 uv = facing.x > facing.z ? world_position.zy : world_position.xy;
-	vec3 along_u = facing.x > facing.z ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
-	vec3 along_v = vec3(0.0, 1.0, 0.0);
-	if (facing.y > 0.85) {
-		uv = world_position.xz;
-		along_u = vec3(1.0, 0.0, 0.0);
-		along_v = vec3(0.0, 0.0, 1.0);
+// One projection's photo detail and relief, with the areas of other photos that keep large
+// walls and roads from repeating.
+void sample_photos(vec2 uv, vec2 dx, vec2 dy, out vec3 photo, out vec4 relief) {
+	float fine = textureGrad(detail_noise, uv * 0.61, dx * 0.61, dy * 0.61).r;
+	photo = photo_detail(surface_texture, uv / tile_metres, dx / tile_metres, dy / tile_metres);
+	relief = textureGrad(surface_relief, uv / tile_metres, dx / tile_metres, dy / tile_metres);
+	float area = textureGrad(detail_noise, uv * area_frequency, dx * area_frequency, dy * area_frequency).r + (fine - 0.5) * 0.15;
+	float other = smoothstep(0.5 - area_softness, 0.5 + area_softness, area);
+	if (other > 0.0) {
+		photo = mix(photo, photo_detail(surface_texture_2, uv / tile_metres_2, dx / tile_metres_2, dy / tile_metres_2), other);
+		relief = mix(relief, textureGrad(surface_relief_2, uv / tile_metres_2, dx / tile_metres_2, dy / tile_metres_2), other);
 	}
+	if (tile_metres_3 > 0.0) {
+		vec2 third_uv = uv.yx * area_frequency * 1.7 + vec2(0.37, 0.61);
+		float third_area = textureGrad(detail_noise, third_uv, dx.yx * area_frequency * 1.7, dy.yx * area_frequency * 1.7).r + (fine - 0.5) * 0.15;
+		float third = smoothstep(0.55 - area_softness, 0.55 + area_softness, third_area);
+		if (third > 0.0) {
+			photo = mix(photo, photo_detail(surface_texture_3, uv / tile_metres_3, dx / tile_metres_3, dy / tile_metres_3), third);
+			relief = mix(relief, textureGrad(surface_relief_3, uv / tile_metres_3, dx / tile_metres_3, dy / tile_metres_3), third);
+		}
+	}
+}
+
+void fragment() {
+	vec3 normal = normalize(world_normal);
+	// The photos are mapped from three sides and blended by the normal, so no face stretches
+	// a photo into streaks. Sides that face away hardly show and are skipped.
+	vec3 sides = pow(abs(normal), vec3(4.0));
+	sides = max(sides / (sides.x + sides.y + sides.z) - 0.05, 0.0);
+	sides /= sides.x + sides.y + sides.z;
+	vec2 side_uv[3] = vec2[3](world_position.zy, world_position.xz, world_position.xy);
+	vec3 side_u[3] = vec3[3](vec3(0.0, 0.0, 1.0), vec3(1.0, 0.0, 0.0), vec3(1.0, 0.0, 0.0));
+	vec3 side_v[3] = vec3[3](vec3(0.0, 1.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 0.0));
+	vec2 side_dx[3] = vec2[3](dFdx(side_uv[0]), dFdx(side_uv[1]), dFdx(side_uv[2]));
+	vec2 side_dy[3] = vec2[3](dFdy(side_uv[0]), dFdy(side_uv[1]), dFdy(side_uv[2]));
+	// The side that faces most squarely sets the noise and the crop rows.
+	int main_side = sides.y >= sides.x && sides.y >= sides.z ? 1 : (sides.x > sides.z ? 0 : 2);
+	vec2 uv = side_uv[main_side];
 	ROUGHNESS = 0.95;
 
 	float noise = texture(detail_noise, uv * 0.13).r;
@@ -70,31 +98,26 @@ void fragment() {
 		rows = mix(rows, 0.6, smoothstep(0.1, 0.45, fwidth(world_position.x * 0.8)));
 		ALBEDO = base_color * (0.8 + noise * 0.25 + fine * 0.15) * (0.55 + 0.45 * rows + fine * 0.2);
 	} else {
-		// The photo adds detail, and dividing by its average keeps base_color as the overall color.
-		vec3 photo = texture(surface_texture, uv / tile_metres).rgb;
-		photo /= max(textureLod(surface_texture, vec2(0.5), 12.0).rgb, vec3(0.02));
-		vec4 relief = texture(surface_relief, uv / tile_metres);
-		// Areas of other photos keep large walls and roads from repeating.
-		float area = texture(detail_noise, uv * area_frequency).r + (fine - 0.5) * 0.15;
-		float other = smoothstep(0.5 - area_softness, 0.5 + area_softness, area);
-		if (other > 0.0) {
-			photo = mix(photo, photo_detail(surface_texture_2, uv / tile_metres_2, dFdx(uv) / tile_metres_2, dFdy(uv) / tile_metres_2), other);
-			relief = mix(relief, textureGrad(surface_relief_2, uv / tile_metres_2, dFdx(uv) / tile_metres_2, dFdy(uv) / tile_metres_2), other);
-		}
-		if (tile_metres_3 > 0.0) {
-			float third_area = texture(detail_noise, uv.yx * area_frequency * 1.7 + vec2(0.37, 0.61)).r + (fine - 0.5) * 0.15;
-			float third = smoothstep(0.55 - area_softness, 0.55 + area_softness, third_area);
-			if (third > 0.0) {
-				photo = mix(photo, photo_detail(surface_texture_3, uv / tile_metres_3, dFdx(uv) / tile_metres_3, dFdy(uv) / tile_metres_3), third);
-				relief = mix(relief, textureGrad(surface_relief_3, uv / tile_metres_3, dFdx(uv) / tile_metres_3, dFdy(uv) / tile_metres_3), third);
+		vec3 photo = vec3(0.0);
+		vec4 relief = vec4(0.0);
+		vec3 bend_sum = vec3(0.0);
+		for (int i = 0; i < 3; i++) {
+			if (sides[i] <= 0.0) {
+				continue;
 			}
+			vec3 side_photo;
+			vec4 side_relief;
+			sample_photos(side_uv[i], side_dx[i], side_dy[i], side_photo, side_relief);
+			photo += sides[i] * side_photo;
+			relief.zw += sides[i] * side_relief.zw;
+			// The relief shows as strongly as the photo does.
+			bend_sum += sides[i] * bent_normal(normal, (side_relief.rg * 2.0 - 1.0) * relief_strength * photo_strength, side_u[i], side_v[i]);
 		}
+		// The photo adds detail, and dividing by its average keeps base_color as the overall color.
 		ALBEDO = base_color * mix(vec3(1.0), photo, photo_strength) * (0.85 + noise * 0.3);
-		// The relief shows as strongly as the photo does.
-		vec3 bent = bent_normal(normalize(world_normal), (relief.rg * 2.0 - 1.0) * relief_strength * photo_strength, along_u, along_v);
-		NORMAL = normalize((VIEW_MATRIX * vec4(bent, 0.0)).xyz);
-		ROUGHNESS = mix(0.95, relief.b, photo_strength);
-		AO = mix(1.0, relief.a, photo_strength);
+		NORMAL = normalize((VIEW_MATRIX * vec4(normalize(bend_sum), 0.0)).xyz);
+		ROUGHNESS = mix(0.95, relief.z, photo_strength);
+		AO = mix(1.0, relief.w, photo_strength);
 		AO_LIGHT_AFFECT = relief_light_affect;
 	}
 	SPECULAR = 0.2;

@@ -3,7 +3,8 @@ extends Node3D
 ## Grows grass across the whole map, but only keeps the part around the camera. Each cell of
 ## ground always gets the same grass, and worker threads place it so that walking doesn't stutter.
 ## Distant cells stay cheap: they skip the tufts that have already sunk into the ground (see
-## grass.gdshader), and the ones left use a simpler tuft that looks the same from that far away.
+## grass.gdshader), and the ones left use one simple tuft for every species, tinted and sized per
+## species, so that a far cell is a single draw call instead of one per species.
 
 const SHADER := preload("res://shaders/grass.gdshader")
 const CELL_SIZE := 48.0
@@ -18,6 +19,13 @@ const DETAIL_UPDATE_STEP := 2.0
 const DETAIL_BAND := 8.0
 ## A whole blade covers about this much more area than a single triangle of the same width.
 const FAR_BLADE_AREA := 1.3
+## The far tuft has this many blades before the share is applied, and is drawn at this height and
+## blade width. Every species is scaled from it.
+const FAR_TUFT_BLADES := 8
+const FAR_TUFT_HEIGHT := 0.5
+const FAR_TUFT_WIDTH := 0.03
+## How dark the far tuft is at its foot, as a share of its tip color.
+const FAR_TUFT_FOOT := 0.55
 const CELLS_PER_BATCH := 8
 const ROAD_CLEARANCE := 3.0
 const BUILDING_CLEARANCE := 8.0
@@ -37,7 +45,8 @@ var _max_height: float
 var _thinning_height: float
 var _attempts_per_cell: int
 var _meshes: Array[ArrayMesh] = []
-var _far_meshes: Array[ArrayMesh] = []
+var _far_mesh: ArrayMesh
+var _far_looks: Array[Dictionary] = []
 var _far_distance: float
 var _draw_distance := DRAW_DISTANCE
 var _early_fade := EARLY_FADE
@@ -65,9 +74,11 @@ func setup(terrain_node: Terrain, data: Dictionary, fields: Array, road_samples:
 	_material = ShaderMaterial.new()
 	_material.shader = SHADER
 	_far_distance = FeatureFlags.value("grass_far_distance", 60.0)
+	var far_blade_share: float = FeatureFlags.value("grass_far_blade_share", 0.5)
 	for species: Dictionary in data["species"]:
-		_meshes.append(_tuft_mesh(species, 1.0))
-		_far_meshes.append(_tuft_mesh(species, FeatureFlags.value("grass_far_blade_share", 0.5)))
+		_meshes.append(_tuft_mesh(species))
+		_far_looks.append(_far_look(species, far_blade_share))
+	_far_mesh = _far_tuft_mesh(far_blade_share)
 	set_draw_scale(1.0)
 
 
@@ -198,11 +209,13 @@ func _plant(cell: Vector2i, spots: Array) -> void:
 		instance.material_override = _material
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		group.add_child(instance)
+		planted.instances.append(instance)
 		planted.multimeshes.append(multimesh)
 		planted.species.append(species)
 
 
-## Draws only the tufts above ground from the cell's nearest edge, with the simple tuft if it's far.
+## Draws only the tufts above ground from the cell's nearest edge. Far away, all species of the
+## cell share one multimesh of simple tufts.
 func _fit_detail(cell: Vector2i, center: Vector2) -> void:
 	var planted: PlantedCell = _planted[cell]
 	var band := floori(maxf(_cell_nearest_distance(cell, center) - DETAIL_UPDATE_STEP, 0.0) / DETAIL_BAND)
@@ -212,12 +225,56 @@ func _fit_detail(cell: Vector2i, center: Vector2) -> void:
 	var distance := band * DETAIL_BAND
 	var share := tuft_share(distance)
 	planted.group.visible = share > 0.0
+	var far := distance >= _far_distance
+	if far and planted.far_instance == null and not planted.multimeshes.is_empty():
+		_grow_far_tufts(planted)
+	if planted.far_instance != null:
+		planted.far_instance.visible = far
+		planted.far_multimesh.visible_instance_count = ceili(planted.far_multimesh.instance_count * share)
 	for i in planted.multimeshes.size():
+		planted.instances[i].visible = not far
+		planted.multimeshes[i].visible_instance_count = ceili(planted.multimeshes[i].instance_count * share)
+
+
+## Gathers the tufts of every species of the cell into one multimesh of the simple tuft, in random
+## order so that the luck (see grass.gdshader) is spread over all species.
+func _grow_far_tufts(planted: PlantedCell) -> void:
+	var random := RandomNumberGenerator.new()
+	random.seed = hash([planted.group.get_instance_id(), planted.multimeshes.size()])
+	var tufts: Array[Transform3D] = []
+	var colors: Array[Color] = []
+	for i in planted.multimeshes.size():
+		var look: Dictionary = _far_looks[planted.species[i]]
 		var multimesh := planted.multimeshes[i]
-		multimesh.visible_instance_count = ceili(multimesh.instance_count * share)
-		var mesh := _far_meshes[planted.species[i]] if distance >= _far_distance else _meshes[planted.species[i]]
-		if multimesh.mesh != mesh:
-			multimesh.mesh = mesh
+		var tint: Color = look["color"]
+		var scaling := Transform3D(Basis.from_scale(look["scale"]), Vector3.ZERO)
+		for j in multimesh.instance_count:
+			tufts.append(multimesh.get_instance_transform(j) * scaling)
+			var brightness := multimesh.get_instance_color(j).r
+			colors.append(Color(tint.r * brightness, tint.g * brightness, tint.b * brightness))
+	var order := range(tufts.size())
+	for i in range(order.size() - 1, 0, -1):
+		var other := random.randi_range(0, i)
+		var swapped: int = order[i]
+		order[i] = order[other]
+		order[other] = swapped
+	var far := MultiMesh.new()
+	far.transform_format = MultiMesh.TRANSFORM_3D
+	far.use_colors = true
+	far.mesh = _far_mesh
+	far.instance_count = tufts.size()
+	for i in order.size():
+		var color := colors[order[i]]
+		color.a = 1.0 - (i + 0.5) / order.size()
+		far.set_instance_transform(i, tufts[order[i]])
+		far.set_instance_color(i, color)
+	var instance := MultiMeshInstance3D.new()
+	instance.multimesh = far
+	instance.material_override = _material
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	planted.group.add_child(instance)
+	planted.far_multimesh = far
+	planted.far_instance = instance
 
 
 func _drop_far_cells(center: Vector2) -> void:
@@ -291,9 +348,7 @@ func _choose_species(point: Vector2, chosen: float) -> int:
 	return 0
 
 
-## A share of 1 gives the whole tuft. Less gives a tuft of that share of the same blades, each a
-## single triangle and wider, so that it covers the same area.
-func _tuft_mesh(species: Dictionary, blade_share: float) -> ArrayMesh:
+func _tuft_mesh(species: Dictionary) -> ArrayMesh:
 	var surface := SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	surface.set_normal(Vector3.UP)
@@ -302,19 +357,47 @@ func _tuft_mesh(species: Dictionary, blade_share: float) -> ArrayMesh:
 	var base := Color(species["base"])
 	var tip := Color(species["tip"])
 	var width := float(species["width"])
-	var blades := ceili(int(species["blades"]) * blade_share)
-	for blade in blades:
+	for blade in int(species["blades"]):
 		var angle := jitter.randf() * TAU
 		var side := Vector3.RIGHT.rotated(Vector3.UP, angle)
 		var lean := Vector3.FORWARD.rotated(Vector3.UP, angle + jitter.randf_range(-0.6, 0.6)) * jitter.randf_range(0.3, 1.0) * float(species["lean"])
 		var foot := Vector3(jitter.randf_range(-1.0, 1.0), 0.0, jitter.randf_range(-1.0, 1.0)) * float(species["spread"])
 		var height := jitter.randf_range(species["height"][0], species["height"][1])
-		if blade_share < 1.0:
-			_add_far_blade(surface, foot, side * width * FAR_BLADE_AREA * int(species["blades"]) / blades, lean, height, base, tip)
-		else:
-			_add_blade(surface, foot, side * width, lean, height, base, tip)
+		_add_blade(surface, foot, side * width, lean, height, base, tip)
 		if species.get("seed_heads", false):
 			_add_seed_head(surface, foot + lean + Vector3.UP * height, side, Color(species["seed_color"]))
+	return surface.commit()
+
+
+## How a species looks as a far tuft: its tint, and how much the far tuft is scaled to match its
+## height and the area its blades cover.
+func _far_look(species: Dictionary, blade_share: float) -> Dictionary:
+	var height: Array = species["height"]
+	var mean_height := (float(height[0]) + float(height[1])) * 0.5
+	var coverage := float(species["width"]) * int(species["blades"]) * FAR_BLADE_AREA
+	var far_coverage := FAR_TUFT_WIDTH * ceili(FAR_TUFT_BLADES * blade_share)
+	var across := clampf(sqrt(coverage / far_coverage), 0.6, 1.6)
+	return {
+		"color": Color(species["tip"]).lerp(Color(species["base"]), 0.15),
+		"scale": Vector3(across, mean_height / FAR_TUFT_HEIGHT, across),
+	}
+
+
+## One simple tuft of single-triangle blades, in gray so that each species can tint it.
+func _far_tuft_mesh(blade_share: float) -> ArrayMesh:
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	surface.set_normal(Vector3.UP)
+	var jitter := RandomNumberGenerator.new()
+	jitter.seed = 1
+	var foot_color := Color(FAR_TUFT_FOOT, FAR_TUFT_FOOT, FAR_TUFT_FOOT)
+	for blade in ceili(FAR_TUFT_BLADES * blade_share):
+		var angle := jitter.randf() * TAU
+		var side := Vector3.RIGHT.rotated(Vector3.UP, angle)
+		var lean := Vector3.FORWARD.rotated(Vector3.UP, angle + jitter.randf_range(-0.6, 0.6)) * jitter.randf_range(0.3, 1.0) * 0.2
+		var foot := Vector3(jitter.randf_range(-1.0, 1.0), 0.0, jitter.randf_range(-1.0, 1.0)) * 0.14
+		var height := FAR_TUFT_HEIGHT * jitter.randf_range(0.7, 1.3)
+		_add_far_blade(surface, foot, side * FAR_TUFT_WIDTH * FAR_BLADE_AREA, lean, height, foot_color, Color.WHITE)
 	return surface.commit()
 
 
@@ -349,6 +432,10 @@ func _add_seed_head(surface: SurfaceTool, at: Vector3, side: Vector3, color: Col
 
 class PlantedCell:
 	var group: Node3D
+	var instances: Array[MultiMeshInstance3D] = []
+	## Every species together as simple tufts, made when the cell is first seen from far away.
+	var far_instance: MultiMeshInstance3D
+	var far_multimesh: MultiMesh
 	var multimeshes: Array[MultiMesh] = []
 	var species: PackedInt32Array = []
 	## Which distance band the cell last fitted itself to.

@@ -2,12 +2,13 @@ extends Node3D
 ## Shows three copies of one character side by side, playing their animation in place. Each has a
 ## different value of the chosen posture setting: lower than the base value, the base value, and higher.
 ## Every other setting has its base value in all three. Changes show at once, while they move.
-## The table at the left lists every setting with its base value.
+## The table at the left lists every setting with its base value. Every change is saved to
+## data/posture_tuning.json at once, and the game uses it.
 ##   Left / Right    choose the setting to compare
 ##   Up / Down       raise or lower its base value (with Shift: ten times as much)
 ##   [ / ]           make the gap between the three copies smaller or bigger
-##   R               set the chosen setting back to the game's value (with Shift: all settings)
-##   P               print the base values, and put them on the clipboard
+##   R               set the chosen setting back to its original value (with Shift: all settings)
+##   P               print the saved values, and put them on the clipboard
 ##   A               change the animation: idle, walk, run
 ##   M               change the character
 ##   Q / E           turn the characters, to look at them from the front, the side, or the back
@@ -29,10 +30,18 @@ const SETTINGS: Array[Dictionary] = [
 	{"name": "Spine lean", "property": &"spine_lean", "unit": "°", "gap": 6.0, "step": 1.0, "min": -30.0, "max": 40.0},
 	{"name": "Chest lean", "property": &"chest_lean", "unit": "°", "gap": 6.0, "step": 1.0, "min": -30.0, "max": 40.0},
 	{"name": "Neck lean", "property": &"neck_lean", "unit": "°", "gap": 8.0, "step": 1.0, "min": -30.0, "max": 50.0},
-	{"name": "Shoulder turn", "property": &"shoulder_turn_degrees", "unit": "°", "gap": 12.0, "step": 1.0, "min": -10.0, "max": 60.0},
-	{"name": "Arm swing", "property": &"arm_swing_degrees", "unit": "°", "gap": 6.0, "step": 1.0, "min": -10.0, "max": 40.0},
+	{"name": "Shoulder turn", "property": &"shoulder_turn_degrees", "unit": "°", "gap": 12.0, "step": 1.0, "min": -30.0, "max": 60.0},
+	{"name": "Shoulder raise", "property": &"shoulder_raise_degrees", "unit": "°", "gap": 6.0, "step": 1.0, "min": -30.0, "max": 30.0},
+	{"name": "Arm swing", "property": &"arm_swing_degrees", "unit": "°", "gap": 6.0, "step": 1.0, "min": -30.0, "max": 40.0},
+	{"name": "Arm out", "property": &"arm_out_degrees", "unit": "°", "gap": 6.0, "step": 1.0, "min": -30.0, "max": 40.0},
+	{"name": "Arm twist", "property": &"arm_twist_degrees", "unit": "°", "gap": 15.0, "step": 1.0, "min": -80.0, "max": 80.0},
 	{"name": "Hanging from", "property": &"hanging_from", "unit": "", "gap": 0.15, "step": 0.01, "min": 0.0, "max": 0.95},
 	{"name": "Hanging to", "property": &"hanging_to", "unit": "", "gap": 0.1, "step": 0.01, "min": 0.05, "max": 1.0},
+	{"name": "Hanging only", "property": &"arm_hanging_only", "unit": "", "gap": 0.5, "step": 0.1, "min": 0.0, "max": 1.0},
+	{"name": "Thigh in", "property": &"thigh_in_degrees", "unit": "°", "gap": 6.0, "step": 1.0, "min": -30.0, "max": 40.0},
+	{"name": "Thigh twist", "property": &"thigh_twist_degrees", "unit": "°", "gap": 8.0, "step": 1.0, "min": -50.0, "max": 50.0},
+	{"name": "Shin in", "property": &"shin_in_degrees", "unit": "°", "gap": 6.0, "step": 1.0, "min": -30.0, "max": 40.0},
+	{"name": "Foot in", "property": &"foot_in_degrees", "unit": "°", "gap": 8.0, "step": 1.0, "min": -40.0, "max": 40.0},
 ]
 const COLUMN_NAMES: Array[String] = ["lower", "base", "higher"]
 const ANIMATIONS: Array[Dictionary] = [
@@ -53,7 +62,7 @@ var _setting := 0
 var _gap_index := 2
 ## The value of each setting, by its property.
 var _base := {}
-## The same, as in the game.
+## The same, as written in PostureModifier, before any saved change.
 var _game := {}
 var _model_index := 0
 var _animation_index := 0
@@ -67,11 +76,13 @@ var _resync := false
 
 
 func _ready() -> void:
-	var defaults := PostureModifier.new()
+	var original := PostureModifier.new(false)
+	var saved := PostureModifier.new()
 	for setting in SETTINGS:
-		_game[setting["property"]] = defaults.get(setting["property"])
-	defaults.free()
-	_base = _game.duplicate()
+		_game[setting["property"]] = original.get(setting["property"])
+		_base[setting["property"]] = saved.get(setting["property"])
+	original.free()
+	saved.free()
 	_build_scene()
 	_build_characters()
 	_update_texts()
@@ -142,23 +153,42 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func _change_base(setting: Dictionary, steps: float) -> void:
 	var property: StringName = setting["property"]
-	_base[property] = clampf(_base[property] + steps * setting["step"], setting["min"], setting["max"])
+	_base[property] = clampf(snappedf(_base[property] + steps * setting["step"], setting["step"]), setting["min"], setting["max"])
+	_save()
 
 
 func _reset(everything: bool) -> void:
 	if everything:
 		_base = _game.duplicate()
+		_save()
 	else:
 		var property: StringName = SETTINGS[_setting]["property"]
 		_base[property] = _game[property]
+	_save()
 
 
-## Lists the values as code, to copy into PostureModifier.
-func _print_values() -> void:
-	var lines: Array[String] = []
+## The values that differ from the original ones, as they are written to the file.
+func _changes() -> Dictionary:
+	var changes := {}
 	for setting in SETTINGS:
-		lines.append("%s = %s" % [setting["property"], _format(_base[setting["property"]], setting, false)])
-	var text := "\n".join(lines)
+		var property: StringName = setting["property"]
+		if not is_equal_approx(_base[property], _game[property]):
+			changes[property] = snappedf(_base[property], 0.001)
+	return changes
+
+
+## Writes the file the game reads. Values back at their original are left out.
+func _save() -> void:
+	var file := FileAccess.open(PostureModifier.TUNING_PATH, FileAccess.WRITE)
+	if file == null:
+		push_error("Can't write %s" % PostureModifier.TUNING_PATH)
+		return
+	file.store_string(JSON.stringify(_changes(), "\t") + "\n")
+
+
+## Prints the saved values, and puts them on the clipboard.
+func _print_values() -> void:
+	var text := "%s\n%s" % [ProjectSettings.globalize_path(PostureModifier.TUNING_PATH), JSON.stringify(_changes(), "\t")]
 	print(text)
 	DisplayServer.clipboard_set(text)
 
@@ -200,14 +230,14 @@ func _update_texts() -> void:
 	]
 	for index in SETTINGS.size():
 		var setting := SETTINGS[index]
-		var changed: bool = not is_equal_approx(_base[setting["property"]], _game[setting["property"]])
+		var changed := not is_equal_approx(_base[setting["property"]], _game[setting["property"]])
 		lines.append("%s%-14s %8s %8s %8s%s" % [
 			">" if index == _setting else " ", setting["name"],
 			_format(_value(setting, 0), setting), _format(_value(setting, 1), setting), _format(_value(setting, 2), setting),
 			" *" if changed else "",
 		])
 	lines.append("")
-	lines.append("* differs from the game")
+	lines.append("* differs from the original, saved to data/posture_tuning.json")
 	lines.append("Left/Right setting  Up/Down value (Shift x10)")
 	lines.append("[ ] gap x%s  R reset (Shift: all)  P copy values" % GAPS[_gap_index])
 	lines.append("A animation  M character  Q/E turn  Z/X zoom")
@@ -216,10 +246,10 @@ func _update_texts() -> void:
 		_captions[column].text = "%s\n%s" % [COLUMN_NAMES[column], _format(_value(SETTINGS[_setting], column), SETTINGS[_setting])]
 
 
-func _format(value: float, setting: Dictionary, with_unit := true) -> String:
+func _format(value: float, setting: Dictionary) -> String:
 	if setting["unit"] == "":
 		return "%.2f" % value
-	return "%.0f%s" % [value, setting["unit"] if with_unit else ""]
+	return "%.0f%s" % [value, setting["unit"]]
 
 
 func _build_scene() -> void:

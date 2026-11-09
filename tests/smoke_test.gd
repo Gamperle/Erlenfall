@@ -52,6 +52,17 @@ func _run() -> void:
 	var building_parts := village.get_node("forge").find_children("*", "MeshInstance3D", true, false)
 	var bridge_parts := village.get_node("Bridge").find_children("*", "MeshInstance3D", true, false)
 	_check(building_parts.size() == 1 and building_parts[0].mesh.get_surface_count() <= 6 and bridge_parts.size() == 1, "buildings and bridges are joined into one mesh each")
+	var stone_wall := ModelBuilder.stone_wall(8.0, 2.4, 0.6, 1)
+	var wall_parts := stone_wall.find_children("*", "MeshInstance3D", true, false)
+	var wall_bounds: AABB = wall_parts[0].mesh.get_aabb()
+	_check(wall_parts.size() == 1 and wall_parts[0].mesh.get_surface_count() <= 3 and wall_bounds.size.x > 7.9 and wall_bounds.size.x < 8.1 and absf(wall_bounds.size.y - 2.4) < 0.15, "a code-built stone wall is one mesh of the size asked for")
+	var same_wall := ModelBuilder.stone_wall(8.0, 2.4, 0.6, 1).find_children("*", "MeshInstance3D", true, false)[0]
+	_check(same_wall.mesh.get_faces() == wall_parts[0].mesh.get_faces(), "the same seed builds the same wall")
+	var palisade := ModelBuilder.palisade(6.0, 3.0, 1).find_children("*", "MeshInstance3D", true, false)
+	_check(palisade.size() == 1 and absf(palisade[0].mesh.get_aabb().size.x - 6.0) < 0.1, "a code-built palisade is one mesh of the size asked for")
+	stone_wall.free()
+	same_wall.get_parent().get_parent().free()
+	palisade[0].get_parent().get_parent().free()
 	var bowl: MeshInstance3D = village.get_node("Props/bowl_1").find_children("*", "MeshInstance3D", true, false)[0]
 	var door: MeshInstance3D = village.get_node("Props/door_3").find_children("*", "MeshInstance3D", true, false)[0]
 	_check(bowl.visibility_range_end > 0.0 and door.visibility_range_end == 0.0, "only small props stop being drawn far away")
@@ -107,6 +118,7 @@ func _run() -> void:
 	await _test_land_and_river(scene, player)
 	await _test_river_collision(terrain, player)
 	_test_terrain_seams(terrain)
+	_test_rubble_ground(terrain)
 	await _test_hud(scene, player)
 	_test_character_models(player)
 	_test_generated_props()
@@ -132,10 +144,12 @@ func _run() -> void:
 	day_night.hour = 9.0
 	await _test_crafting(scene, player)
 	await _test_story(scene, player)
+	await _test_villager_routines(scene)
 	await _test_combat(scene, player)
 	await _test_enemy_navigation(scene, player)
 	await _test_enemy_crowds_and_bridges(scene, player)
 	await _test_enemies_make_way(player)
+	await _test_enemies_go_around_a_corridor(player)
 	await _test_gathering_collision(scene, player)
 	await _test_forest(scene, player)
 	await _test_player_fixes(scene, player)
@@ -146,6 +160,7 @@ func _run() -> void:
 	await _test_settings(scene, player)
 	_test_translations()
 	_test_dialogue_data()
+	_test_dialogue_conditions()
 
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")
 	quit(1 if _failures > 0 else 0)
@@ -176,6 +191,15 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 			if terrain.river_clearance(at.x, at.y) > 0.0:
 				steepest_road = maxf(steepest_road, _slope_degrees(terrain, at.x, at.y))
 	_check(steepest_road < 20.0, "roads stay gentle (steepest %.1f degrees)" % steepest_road)
+
+	# The valley sides must not be steeper than the 45 degree limit the player can walk up (#126).
+	var steepest_side := 0.0
+	for x in range(-480, 481, 6):
+		for z in range(-120, 400, 6):
+			var clearance := terrain.river_clearance(x, z)
+			if clearance > 0.0 and clearance < 30.0 and Vector2(x, z).length() < 480.0:
+				steepest_side = maxf(steepest_side, _slope_degrees(terrain, x, z))
+	_check(steepest_side < 45.0, "the river's valley sides can be climbed (steepest %.1f degrees)" % steepest_side)
 
 	_check(terrain.building_sites.size() == 2, "the assembly building and the fort each have a site")
 	for site: Dictionary in terrain.building_sites:
@@ -345,6 +369,9 @@ func _test_terrain_seams(terrain: Terrain) -> void:
 			var corner := Vector2(i * Terrain.STEP - Terrain.SIZE / 2.0, j * Terrain.STEP - Terrain.SIZE / 2.0)
 			if corner.length() > 500.0:
 				continue
+			# The rubble's cells are fine for another reason, and its ridges bend sharper than any grid (#137).
+			if terrain.is_on_landslide(corner.x, corner.y) or terrain.is_on_landslide(corner.x + 8.0, corner.y + 8.0) or terrain.is_on_landslide(corner.x - 8.0, corner.y - 8.0):
+				continue
 			if here == Terrain.SEAM_CELL:
 				for offset: Vector2 in [Vector2(0.6, 1.3), Vector2(2.1, 2.7), Vector2(3.4, 0.9)]:
 					inside_seam_cells.append(corner + offset)
@@ -386,6 +413,25 @@ func _test_terrain_seams(terrain: Terrain) -> void:
 		if not hit.is_empty() and hit["collider"] == terrain:
 			worst_collision = maxf(worst_collision, absf(hit["position"].y - height))
 	_check(inside_seam_cells.size() > 300 and worst_collision < 0.01, "collision matches the visible ground beside the fine terrain (%.3f m off)" % worst_collision)
+
+
+## The landslide's rubble changes faster than 4 m cells can follow, so its cells are fine (#137).
+# Without the fine cells the rubble was 1.6 m off at p95 and 5.3 m at worst; with them 0.36 and 1.6.
+func _test_rubble_ground(terrain: Terrain) -> void:
+	var points := PackedVector2Array()
+	for x in range(-45, 130, 3):
+		for z in range(-420, -180, 3):
+			var at := Vector2(x + 0.7, z + 0.7)
+			if terrain.is_on_landslide(at.x, at.y) and terrain.height_at(at.x, at.y) < 150.0:
+				points.append(at)
+	var ground := _seam_triangles(terrain, points)
+	var errors: Array[float] = []
+	for at in points:
+		errors.append(absf(_visible_height(ground, at) - terrain.height_at(at.x, at.y)))
+	errors.sort()
+	var p95: float = errors[int(errors.size() * 0.95)]
+	print("rubble ground: %d points, median %.3f, p95 %.3f, max %.3f m off" % [errors.size(), errors[errors.size() / 2], p95, errors[-1]])
+	_check(errors.size() > 1000 and p95 < 0.5, "the landslide's rubble is drawn close to the true ground (%.3f m off at p95)" % p95)
 
 
 ## Like _visible_triangles, for many points: reads each chunk the points fall in.
@@ -596,6 +642,34 @@ func _test_feature_flags() -> void:
 	_check(CraftingData.find_recipe("furnace", { "wood": 1, "coal": 1 }).is_empty(), "a disabled flag removes a recipe")
 	FeatureFlags.load_layers()
 	_check(not CraftingData.find_recipe("furnace", { "wood": 1, "coal": 1 }).is_empty(), "the torch recipe is on by default")
+	_test_mod_loader()
+
+
+func _test_mod_loader() -> void:
+	var dir := "user://smoke_test_mods"
+	DirAccess.make_dir_recursive_absolute(dir.path_join("first"))
+	DirAccess.make_dir_recursive_absolute(dir.path_join("second"))
+	DirAccess.make_dir_recursive_absolute(dir.path_join("empty"))
+	_check(ModLoader.flag_files(dir).is_empty(), "no load order means no mods")
+	_write_flags(dir.path_join("first/feature_flags.json"), { "values": { "torch_burn_seconds": 5 } })
+	_write_flags(dir.path_join("second/feature_flags.json"), { "values": { "torch_burn_seconds": 9 } })
+	_write_flags(dir.path_join(ModLoader.LOAD_ORDER_FILE), { "mods": ["first", "second"] })
+	var files := ModLoader.flag_files(dir)
+	_check(files.size() == 2 and files[0].contains("first") and files[1].contains("second"), "mods come back in load order")
+	FeatureFlags.load_layers(files)
+	_check(FeatureFlags.value("torch_burn_seconds") == 9, "the last listed mod wins")
+	_write_flags(dir.path_join(ModLoader.LOAD_ORDER_FILE), { "mods": ["second", "first"] })
+	FeatureFlags.load_layers(ModLoader.flag_files(dir))
+	_check(FeatureFlags.value("torch_burn_seconds") == 5, "reordering the list reorders the mods")
+	_write_flags(dir.path_join(ModLoader.LOAD_ORDER_FILE), { "mods": ["../escape", "/abs", ".hidden", "a\\b", "empty", "missing", "first", "first"] })
+	_check(ModLoader.flag_files(dir).size() == 1, "unsafe, missing, empty, and repeated mods are skipped")
+	_check(ModLoader.is_safe_name("my_mod") and not ModLoader.is_safe_name("") and not ModLoader.is_safe_name(3), "mod names must be plain folder names")
+	FeatureFlags.load_layers()
+	for sub in ["first", "second", "empty"]:
+		DirAccess.remove_absolute(dir.path_join(sub).path_join("feature_flags.json"))
+		DirAccess.remove_absolute(dir.path_join(sub))
+	DirAccess.remove_absolute(dir.path_join(ModLoader.LOAD_ORDER_FILE))
+	DirAccess.remove_absolute(dir)
 
 
 func _test_torch(player: Player) -> void:
@@ -697,12 +771,59 @@ func _test_crafting(scene: Node, player: Player) -> void:
 	_check(player.inventory.count("iron_ingot") == ingots - 1 and player.inventory.count("wood") == wood - 1, "abandoning saves half the materials")
 	ui.close()
 
+	_check(player.skill_xp.get("smithing", 0) > 0, "crafting gives practice")
+	var skilled := HammerGame.new(3, 1.0, 0.03, 0.06)
+	var plain := HammerGame.new(3, 1.0)
+	_check(skilled.target_width > plain.target_width and skilled.speed < plain.speed, "skill widens the target and slows the marker")
+	_check(CraftingData.skill_level("smithing", 0) == 1 and CraftingData.skill_level("smithing", 10) == 2, "practice raises the skill level")
+	_check(CraftingData.skill_level("smithing", 100000) == CraftingData.skill_max_level("smithing"), "skill level stops at the highest")
+	player.skill_xp.clear()
+	_check(player.practice("smithing", 10) == 2 and player.practice("smithing", 1) == 0, "practice reports a rise only once")
+	player.skill_xp.clear()
 	var clumsy := HammerGame.new(2, 1.0)
 	clumsy.marker = clamp(clumsy.target + 0.5, 0.0, 1.0) if clumsy.target < 0.5 else clumsy.target - 0.5
 	clumsy.strike()
 	_check(CraftingData.quality_for_score(clumsy.score()) == "crude", "bad forging gives crude quality")
 	_check(CraftingData.find_recipe("anvil", {"coal": 1}).is_empty(), "unknown combinations match nothing")
 	_check(CraftingData.item_name("iron_sword") != "ITEM_IRON_SWORD", "item names are translated")
+
+
+func _test_villager_routines(scene: Node) -> void:
+	var village: Village = scene.get_node("Village")
+	var routines: VillagerRoutines = village.get_node("VillagerRoutines")
+	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Village.LAYOUT_PATH))
+	var ids := []
+	for npc_data: Dictionary in layout["npcs"]:
+		ids.append(npc_data["id"])
+	var data := VillagerRoutines.load_routines()
+	var problems := VillagerRoutines.problems(data, ids)
+	_check(problems.is_empty(), "the villager routines are valid: %s" % [problems])
+	_check(not VillagerRoutines.problems({ "nobody": [{ "from": 5.0 }, { "from": 4.0, "x": 1.0 }] }, ids).is_empty(), "invalid routines are reported")
+
+	var stops := [{ "from": 6.0, "id": "a" }, { "from": 18.0, "id": "b" }]
+	_check(VillagerRoutines.active_stop(stops, 12.0)["id"] == "a", "a stop lasts until the next begins")
+	_check(VillagerRoutines.active_stop(stops, 23.0)["id"] == "b", "the last stop runs on past midnight")
+	_check(VillagerRoutines.active_stop(stops, 2.0)["id"] == "b", "and into the early morning")
+	_check(VillagerRoutines.active_stop([], 2.0).is_empty(), "no stops, no stop")
+
+	var bertram: Npc = village.get_node("bertram")
+	var evening := VillagerRoutines.active_stop(data["bertram"], 19.0)
+	var spot := Vector2(evening["x"], evening["z"])
+	routines.set_process(false)
+	routines.update(9.0)
+	routines.update(9.1)
+	_check(Vector2(bertram.position.x, bertram.position.z).is_equal_approx(bertram.home), "villagers stand at home by day")
+	routines.update(18.4)
+	routines.update(18.6)
+	_check(bertram.is_processing(), "a villager sets off when their stop changes")
+	var start := Vector2(bertram.position.x, bertram.position.z).distance_to(spot)
+	for i in 30:
+		await process_frame
+	_check(Vector2(bertram.position.x, bertram.position.z).distance_to(spot) < start, "and walks towards it")
+	_check(absf(bertram.position.y - village.terrain.height_at(bertram.position.x, bertram.position.z)) < 0.01, "following the ground")
+	routines.update(6.5)
+	_check(not bertram.is_processing() and Vector2(bertram.position.x, bertram.position.z).is_equal_approx(bertram.home), "a jump in time puts villagers straight at their places")
+	routines.set_process(FeatureFlags.enabled("villager_routines"))
 
 
 func _test_story(scene: Node, player: Player) -> void:
@@ -718,6 +839,15 @@ func _test_story(scene: Node, player: Player) -> void:
 	var hedda_player: AnimationPlayer = hedda_model.get_node("Animations")
 	_check(hedda_player.is_playing() and hedda_player.current_animation == "Idle", "a villager with a model plays its idle animation")
 	_check(hedda_model.find_child("GeneralSkeleton", true, false) != null, "the model's skeleton is set up for shared animations")
+	var casters := 0
+	var shadows_only := 0
+	for part: MeshInstance3D in hedda_model.find_children("*", "MeshInstance3D", true, false):
+		if part.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON:
+			casters += part.mesh.get_surface_count()
+		elif part.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY:
+			shadows_only += part.mesh.get_surface_count()
+	_check(casters + shadows_only <= 6, "a villager casts its shadow with few draw calls (%d)" % (casters + shadows_only))
+	_check(shadows_only == 1, "a villager's body casts its shadow from one surface")
 	for villager: String in ["bertram", "mira", "greta", "brandt"]:
 		_check(village.get_node(villager).find_child("Model", true, false) != null, "%s has a model" % villager)
 	var pivot: Node3D = player.get_node("CameraPivot")
@@ -1189,6 +1319,48 @@ func _test_enemies_make_way(player: Player) -> void:
 	EnemyPath.forget_all()
 	await _physics_frames(1)
 
+## The camp's three goblins walk one behind the other through a 16 m long corridor, 1.2 m wide, toward
+## a player 2 m past its far end. The first attacks from the end, and the others take the way around
+## the outside of the walls, about 20 m longer (#149).
+func _test_enemies_go_around_a_corridor(player: Player) -> void:
+	var enemies := root.get_tree().get_nodes_in_group(Enemy.GROUP)
+	var home: Vector3 = enemies[0]._home
+	var homes: Array[Vector3] = []
+	var site := Vector3(home.x + 12.0, home.y, home.z + 12.0)
+	var walls := Node3D.new()
+	root.add_child(walls)
+	_add_test_box(walls, site + Vector3(-0.8, 0.0, 0.0), Vector3(0.4, 6.0, 16.0))
+	_add_test_box(walls, site + Vector3(0.8, 0.0, 0.0), Vector3(0.4, 6.0, 16.0))
+	await _physics_frames(2)
+	EnemyPath.forget_all()
+	for i in enemies.size():
+		var enemy: Enemy = enemies[i]
+		homes.append(enemy._home)
+		enemy.revive()
+		enemy._home = site + Vector3(0.0, 0.5, -7.0 - i * 1.5)
+		enemy.position = enemy._home
+		enemy.state = Enemy.State.CHASE
+	var goal := site + Vector3(0.0, 0.5, 10.0)
+	player.health.restore()
+	player.position = goal
+	var arrived := {}
+	for i in 2400:
+		await physics_frame
+		player.position = goal
+		player.health.restore()
+		for enemy: Enemy in enemies:
+			if enemy.state != Enemy.State.CHASE:
+				arrived[enemy] = true
+		if arrived.size() == enemies.size():
+			break
+	_check(arrived.size() == enemies.size(), "goblins behind one attacking at a corridor's end go around the long way (%d of %d reached the player)" % [arrived.size(), enemies.size()])
+	walls.free()
+	for i in enemies.size():
+		enemies[i]._home = homes[i]
+		enemies[i].revive()
+	EnemyPath.forget_all()
+	await _physics_frames(1)
+
 
 func _add_test_box(parent: Node3D, at: Vector3, size: Vector3) -> void:
 	var body := StaticBody3D.new()
@@ -1434,6 +1606,8 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	var saved_position := player.position
 	var saved_coal := player.inventory.count("coal")
 	var recipes := player.known_recipes.size()
+	player.skill_xp["smithing"] = 27
+	scene.save_game()
 	player.set_torch_lit(true)
 	player.torch_burned_seconds = 12.0
 	scene.save_game()
@@ -1443,6 +1617,7 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	player.position += Vector3(5.0, 0.0, 5.0)
 	player.inventory.add("coal", 7)
 	player.known_recipes.clear()
+	player.skill_xp.clear()
 	player.health.current = 1.0
 	player.set_torch_lit(false)
 	player.torch_burned_seconds = 0.0
@@ -1462,6 +1637,7 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	scene.save_game()
 	_check(player.inventory.count("coal") == saved_coal, "inventory is restored")
 	_check(player.known_recipes.size() == recipes, "recipes are restored")
+	_check(player.skill_xp.get("smithing", 0) == 27, "skill practice is restored")
 	_check(player.health.current == 100.0, "health is restored")
 	_check(player.torch_lit and player.torch_burned_seconds == 12.0 and player.torch_given, "the torch is restored")
 	player.set_torch_lit(false)
@@ -1593,21 +1769,25 @@ func _test_grass_cost(scene: Node) -> void:
 	var cell_center := (Vector2(cell) + Vector2(0.5, 0.5)) * GrassField.CELL_SIZE
 
 	var whole_tris := 0
-	var far_tris := 0
 	for species in grass._meshes.size():
 		whole_tris += grass._meshes[species].surface_get_array_len(0) / 3
-		far_tris += grass._far_meshes[species].surface_get_array_len(0) / 3
-	_check(far_tris * 3 < whole_tris, "distant grass tufts cost far less (%d against %d triangles)" % [far_tris, whole_tris])
+	var far_tris: int = grass._far_mesh.surface_get_array_len(0) / 3
+	_check(far_tris * 3 < whole_tris / grass._meshes.size(), "distant grass tufts cost far less (%d against %d triangles)" % [far_tris, whole_tris / grass._meshes.size()])
 
 	grass._fit_detail(cell, cell_center)
 	var multimesh := planted.multimeshes[0]
-	_check(multimesh.visible_instance_count == multimesh.instance_count and multimesh.mesh == grass._meshes[planted.species[0]], "grass around the camera is drawn whole")
+	_check(multimesh.visible_instance_count == multimesh.instance_count and planted.instances[0].visible, "grass around the camera is drawn whole")
+	_check(planted.far_instance == null or not planted.far_instance.visible, "grass around the camera doesn't use the far tufts")
 	grass._fit_detail(cell, cell_center + Vector2(160.0, 0.0))
-	_check(multimesh.visible_instance_count < multimesh.instance_count and multimesh.mesh == grass._far_meshes[planted.species[0]], "distant grass draws fewer, simpler tufts")
+	var total := 0
+	for each in planted.multimeshes:
+		total += each.instance_count
+	_check(planted.far_instance != null and planted.far_instance.visible and planted.far_multimesh.instance_count == total, "distant grass puts every species in one multimesh")
+	_check(planted.far_multimesh.visible_instance_count < total and not planted.instances[0].visible, "distant grass draws fewer, simpler tufts")
 	grass._fit_detail(cell, cell_center + Vector2(600.0, 0.0))
 	_check(not planted.group.visible, "grass beyond the draw distance isn't drawn")
 	grass._fit_detail(cell, cell_center)
-	_check(planted.group.visible and multimesh.mesh == grass._meshes[planted.species[0]], "grass returns when the camera comes back")
+	_check(planted.group.visible and planted.instances[0].visible and not planted.far_instance.visible, "grass returns when the camera comes back")
 
 	var distances: Array[float] = []
 	for level in 3:
@@ -1721,12 +1901,36 @@ func _test_dialogue_data() -> void:
 			var targets: Array = [conversation["start"]]
 			for node: Dictionary in nodes.values():
 				targets.append(node.get("next", ""))
+				targets.append(node.get("choices_of", ""))
 				for choice: Dictionary in node.get("choices", []):
 					targets.append(choice.get("next", ""))
 			for target: String in targets:
 				if target != "" and not nodes.has(target):
 					problems.append("%s leads to missing %s" % [npc_id, target])
 	_check(problems.is_empty(), "dialogue data is complete %s" % ", ".join(problems))
+
+
+## A line can play once with set_flag and not_flag, and a node can borrow another's choices.
+func _test_dialogue_conditions() -> void:
+	var player := Player.new()
+	var saved := DialogueRunner._data
+	DialogueRunner._data = { "npc": [
+		{ "when": { "not_flag": "met" }, "start": "hello", "nodes": {
+			"hello": { "text": "FIRST", "effects": [{ "type": "set_flag", "flag": "met" }] } } },
+		{ "start": "menu", "nodes": {
+			"menu": { "text": "MENU", "choices": [{ "text": "A", "next": "more" }, { "text": "BYE" }] },
+			"more": { "text": "MORE", "choices_of": "menu" } } },
+	] }
+	var first := DialogueRunner.new("npc", player)
+	_check(first.text_key() == "FIRST" and player.quests.flags.has("met"), "a not_flag line plays while the flag is unset")
+	var again := DialogueRunner.new("npc", player)
+	_check(again.text_key() == "MENU", "a not_flag line gives way once the flag is set")
+	again.advance(0)
+	_check(again.text_key() == "MORE" and again.choice_keys() == PackedStringArray(["A", "BYE"]), "a node can borrow another node's choices")
+	again.advance(1)
+	_check(again.is_finished(), "a borrowed choice list leads on as usual")
+	DialogueRunner._data = saved
+	player.free()
 
 
 func _first_of(parent: Node, type: Variant) -> Node:

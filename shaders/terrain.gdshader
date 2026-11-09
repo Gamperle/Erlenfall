@@ -102,10 +102,16 @@ void fragment() {
 	vec2 flat_uv = world_position.xz;
 	vec2 flat_dx = dFdx(flat_uv);
 	vec2 flat_dy = dFdy(flat_uv);
-	// Shifting by height stops the rock from stretching down steep slopes.
+	// Shifting by height stops snow from stretching down slopes.
 	vec2 slope_uv = flat_uv + world_position.y;
 	vec2 slope_dx = dFdx(slope_uv);
 	vec2 slope_dy = dFdy(slope_uv);
+	// Rock is mapped from three sides, so these are the photo coordinates on each.
+	vec2 side_uv[3] = vec2[3](world_position.zy, world_position.xz, world_position.xy);
+	vec3 side_u[3] = vec3[3](vec3(0.0, 0.0, 1.0), vec3(1.0, 0.0, 0.0), vec3(1.0, 0.0, 0.0));
+	vec3 side_v[3] = vec3[3](vec3(0.0, 1.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 0.0));
+	vec2 side_dx[3] = vec2[3](dFdx(side_uv[0]), dFdx(side_uv[1]), dFdx(side_uv[2]));
+	vec2 side_dy[3] = vec2[3](dFdy(side_uv[0]), dFdy(side_uv[1]), dFdy(side_uv[2]));
 
 	// Each cover has its own weight, and a photo is only read where its cover shows.
 	// Surfaces.ground_dryness works this out the same way, so that the grass matches the ground.
@@ -176,23 +182,50 @@ void fragment() {
 	// Rock shows on steep ground and takes over high up.
 	if (rocky > 0.0) {
 		float strata = texture(detail_noise, vec2(world_position.x * 0.01, world_position.y * 0.12)).r;
-		float rock_detail = brightness(rock_texture, slope_uv / 2.4, slope_dx / 2.4, slope_dy / 2.4);
 		float other_rock = smoothstep(0.42, 0.58, patches * 0.6 + strata * 0.4) * near;
-		if (other_rock > 0.0) {
-			rock_detail = mix(rock_detail, brightness(rock_texture_2, TURN * slope_uv / 3.3, TURN * slope_dx / 3.3, TURN * slope_dy / 3.3), other_rock);
-		}
-		vec3 rock = rock_color * (0.55 + strata * 0.9) * rock_detail * brightness(rock_texture, TURN * slope_uv / 37.0, TURN * slope_dx / 37.0, TURN * slope_dy / 37.0);
-		if (near > 0.0) {
-			vec4 rock_surface = vec4(0.0, 0.0, 0.0, 1.0);
-			vec4 relief = textureGrad(rock_relief, slope_uv / 2.4, slope_dx / 2.4, slope_dy / 2.4);
-			add_relief(rock_surface, relief, normal, SLOPE_U, SLOPE_V, 1.0);
-			float rock_occlusion = relief.a;
-			rocky = mix(rocky, by_height(rocky, rock_relief, relief), near);
-			if (other_rock > 0.0) {
-				vec4 other_relief = textureGrad(rock_relief_2, TURN * slope_uv / 3.3, TURN * slope_dx / 3.3, TURN * slope_dy / 3.3);
-				add_relief(rock_surface, other_relief, normal, TURNED_SLOPE_U, TURNED_SLOPE_V, other_rock);
-				rock_occlusion = mix(rock_occlusion, other_relief.a, other_rock);
+		// Rock is mapped from three sides and blended by the normal, so no face stretches the photo
+		// into streaks. Sides that face away hardly show and are skipped.
+		vec3 sides = pow(abs(normal), vec3(4.0));
+		sides = max(sides / (sides.x + sides.y + sides.z) - 0.05, 0.0);
+		sides /= sides.x + sides.y + sides.z;
+		float rock_detail = 0.0;
+		float rock_large = 0.0;
+		vec4 rock_surface = vec4(0.0);
+		float rock_occlusion = 0.0;
+		float rock_height = 0.0;
+		for (int i = 0; i < 3; i++) {
+			if (sides[i] <= 0.0) {
+				continue;
 			}
+			vec2 uv = side_uv[i];
+			vec2 dx = side_dx[i];
+			vec2 dy = side_dy[i];
+			vec3 u = side_u[i];
+			vec3 v = side_v[i];
+			float detail_here = brightness(rock_texture, uv / 2.4, dx / 2.4, dy / 2.4);
+			if (other_rock > 0.0) {
+				detail_here = mix(detail_here, brightness(rock_texture_2, TURN * uv / 3.3, TURN * dx / 3.3, TURN * dy / 3.3), other_rock);
+			}
+			rock_detail += sides[i] * detail_here;
+			rock_large += sides[i] * brightness(rock_texture, TURN * uv / 37.0, TURN * dx / 37.0, TURN * dy / 37.0);
+			if (near > 0.0) {
+				vec4 relief = textureGrad(rock_relief, uv / 2.4, dx / 2.4, dy / 2.4);
+				vec4 here = vec4(bend(relief, normal, u, v), relief.b);
+				float occluded = relief.a;
+				rock_height += sides[i] * relief.a;
+				if (other_rock > 0.0) {
+					vec4 other_relief = textureGrad(rock_relief_2, TURN * uv / 3.3, TURN * dx / 3.3, TURN * dy / 3.3);
+					vec4 other_here = vec4(bend(other_relief, normal, 0.8 * u + 0.6 * v, -0.6 * u + 0.8 * v), other_relief.b);
+					here = mix(here, other_here, other_rock);
+					occluded = mix(occluded, other_relief.a, other_rock);
+				}
+				rock_surface += sides[i] * here;
+				rock_occlusion += sides[i] * occluded;
+			}
+		}
+		vec3 rock = rock_color * (0.55 + strata * 0.9) * rock_detail * rock_large;
+		if (near > 0.0) {
+			rocky = mix(rocky, by_height(rocky, rock_relief, vec4(0.0, 0.0, 0.0, rock_height)), near);
 			surface = mix(surface, rock_surface, rocky * near);
 			occlusion = mix(occlusion, rock_occlusion, rocky * near);
 		}

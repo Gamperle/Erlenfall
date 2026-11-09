@@ -391,5 +391,32 @@
 				"years": { "text": "DLG_BRANDT_YEARS" }
 			}
 		}
+	],
+	"konrad": [
+		{ "start": "idle", "nodes": { "idle": { "text": "DLG_KONRAD_IDLE" } } }
+	],
+	"agnes": [
+		{ "start": "idle", "nodes": { "idle": { "text": "DLG_AGNES_IDLE" } } }
+	],
+	"wendel": [
+		{ "start": "idle", "nodes": { "idle": { "text": "DLG_WENDEL_IDLE" } } }
+	],
+	"oswin": [
+		{ "start": "idle", "nodes": { "idle": { "text": "DLG_OSWIN_IDLE" } } }
+	],
+	"albrecht": [
+		{ "start": "idle", "nodes": { "idle": { "text": "DLG_ALBRECHT_IDLE" } } }
+	],
+	"jakob": [
+		{ "start": "idle", "nodes": { "idle": { "text": "DLG_JAKOB_IDLE" } } }
+	],
+	"falk": [
+		{ "start": "idle", "nodes": { "idle": { "text": "DLG_FALK_IDLE" } } }
+	],
+	"marek": [
+		{ "start": "idle", "nodes": { "idle": { "text": "DLG_MAREK_IDLE" } } }
+	],
+	"lene": [
+		{ "start": "idle", "nodes": { "idle": { "text": "DLG_LENE_IDLE" } } }
 	]
 }

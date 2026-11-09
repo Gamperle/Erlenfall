@@ -18,6 +18,12 @@ const WINDOW_SIZE := Vector2(0.9, 0.9)
 const ROOF_HEIGHT := 2.5
 const ROOF_OVERHANG := 1.0
 const TORCH_FLAME_HEIGHT := 0.62
+const WALL_COURSE_HEIGHT := 0.4
+const WALL_BLOCK_LENGTH := Vector2(0.45, 0.9)
+const WALL_GAP := 0.03
+## Blocks and logs take one of a few tints, since each color is a material of its own.
+const WALL_TINTS: Array[float] = [-0.1, 0.0, 0.1]
+const PALISADE_POST_WIDTH := 0.28
 const BRIDGE_SEGMENTS := 8
 const BRIDGE_DECK_THICKNESS := 0.25
 const BRIDGE_RAIL_HEIGHT := 1.0
@@ -106,6 +112,66 @@ static func house_walls(size: Vector3, wall_color: Color, ruined: bool) -> Node3
 		house.add_child(_window(Vector3(side * size.x * 0.3, window_height, half.z)))
 		house.add_child(_window(Vector3(side * size.x * 0.3, window_height, -half.z)))
 	return house
+
+
+## A free-standing wall of rough stone blocks laid in courses, with every other course offset
+## and each block a little off in size and tilt. Like the houses, it joins into one mesh.
+## The same seed always gives the same wall. Blocks stick out of the front and back by a few
+## centimeters, so the wall is a bit thicker than `thickness`.
+static func stone_wall(length: float, height: float, thickness: float, seed_value: int) -> StaticBody3D:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var wall := Node3D.new()
+	var course_count := maxi(1, roundi(height / WALL_COURSE_HEIGHT))
+	var course_height := height / course_count
+	for course in course_count:
+		var x := -length / 2.0
+		if course % 2 == 1:
+			x -= rng.randf_range(0.1, WALL_BLOCK_LENGTH.x)
+		while x < length / 2.0 - 0.01:
+			var block_length := rng.randf_range(WALL_BLOCK_LENGTH.x, WALL_BLOCK_LENGTH.y)
+			var left := maxf(x, -length / 2.0)
+			var right := minf(x + block_length, length / 2.0)
+			x += block_length
+			if right - left < 0.15:
+				continue
+			var size := Vector3(right - left - WALL_GAP, course_height - WALL_GAP, thickness + rng.randf_range(-0.04, 0.04))
+			var at := Vector3((left + right) / 2.0, (course + 0.5) * course_height, 0.0)
+			var block := box(size, Surfaces.Pattern.STONE, STONE_COLOR.lightened(WALL_TINTS[rng.randi() % WALL_TINTS.size()]), at)
+			block.rotation = Vector3(rng.randf_range(-0.03, 0.03), rng.randf_range(-0.03, 0.03), rng.randf_range(-0.02, 0.02))
+			wall.add_child(block)
+	merged(wall)
+	return _solid(wall, Vector3(length, height, thickness))
+
+
+## A fence of upright logs with a rail across them, for forts and enclosures. The
+## logs are close together and differ a little in height.
+static func palisade(length: float, height: float, seed_value: int) -> StaticBody3D:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var fence := Node3D.new()
+	var count := maxi(1, ceili(length / PALISADE_POST_WIDTH))
+	var step := length / count
+	for i in count:
+		var post_height := height * rng.randf_range(0.9, 1.0)
+		var at := Vector3(-length / 2.0 + (i + 0.5) * step, post_height / 2.0, 0.0)
+		fence.add_child(box(Vector3(step - 0.02, post_height, PALISADE_POST_WIDTH), Surfaces.Pattern.WOOD, TIMBER_COLOR.lightened(WALL_TINTS[rng.randi() % WALL_TINTS.size()]), at))
+	fence.add_child(box(Vector3(length, BEAM, 0.1), Surfaces.Pattern.WOOD, WOOD_COLOR, Vector3(0.0, height * 0.6, PALISADE_POST_WIDTH / 2.0 + 0.04)))
+	merged(fence)
+	return _solid(fence, Vector3(length, height, PALISADE_POST_WIDTH))
+
+
+## The model on a body that stops people with a box the size of the wall.
+static func _solid(model: Node3D, size: Vector3) -> StaticBody3D:
+	var body := StaticBody3D.new()
+	body.add_child(model)
+	var shape := CollisionShape3D.new()
+	var box_shape := BoxShape3D.new()
+	box_shape.size = size
+	shape.shape = box_shape
+	shape.position = Vector3.UP * size.y / 2.0
+	body.add_child(shape)
+	return body
 
 
 static func house_roof(width: float, depth: float, wall_height: float) -> MeshInstance3D:

@@ -1564,21 +1564,25 @@ func _test_grass_cost(scene: Node) -> void:
 	var cell_center := (Vector2(cell) + Vector2(0.5, 0.5)) * GrassField.CELL_SIZE
 
 	var whole_tris := 0
-	var far_tris := 0
 	for species in grass._meshes.size():
 		whole_tris += grass._meshes[species].surface_get_array_len(0) / 3
-		far_tris += grass._far_meshes[species].surface_get_array_len(0) / 3
-	_check(far_tris * 3 < whole_tris, "distant grass tufts cost far less (%d against %d triangles)" % [far_tris, whole_tris])
+	var far_tris: int = grass._far_mesh.surface_get_array_len(0) / 3
+	_check(far_tris * 3 < whole_tris / grass._meshes.size(), "distant grass tufts cost far less (%d against %d triangles)" % [far_tris, whole_tris / grass._meshes.size()])
 
 	grass._fit_detail(cell, cell_center)
 	var multimesh := planted.multimeshes[0]
-	_check(multimesh.visible_instance_count == multimesh.instance_count and multimesh.mesh == grass._meshes[planted.species[0]], "grass around the camera is drawn whole")
+	_check(multimesh.visible_instance_count == multimesh.instance_count and planted.instances[0].visible, "grass around the camera is drawn whole")
+	_check(planted.far_instance == null or not planted.far_instance.visible, "grass around the camera doesn't use the far tufts")
 	grass._fit_detail(cell, cell_center + Vector2(160.0, 0.0))
-	_check(multimesh.visible_instance_count < multimesh.instance_count and multimesh.mesh == grass._far_meshes[planted.species[0]], "distant grass draws fewer, simpler tufts")
+	var total := 0
+	for each in planted.multimeshes:
+		total += each.instance_count
+	_check(planted.far_instance != null and planted.far_instance.visible and planted.far_multimesh.instance_count == total, "distant grass puts every species in one multimesh")
+	_check(planted.far_multimesh.visible_instance_count < total and not planted.instances[0].visible, "distant grass draws fewer, simpler tufts")
 	grass._fit_detail(cell, cell_center + Vector2(600.0, 0.0))
 	_check(not planted.group.visible, "grass beyond the draw distance isn't drawn")
 	grass._fit_detail(cell, cell_center)
-	_check(planted.group.visible and multimesh.mesh == grass._meshes[planted.species[0]], "grass returns when the camera comes back")
+	_check(planted.group.visible and planted.instances[0].visible and not planted.far_instance.visible, "grass returns when the camera comes back")
 
 	var distances: Array[float] = []
 	for level in 3:

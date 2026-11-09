@@ -119,8 +119,8 @@ Enemies walk straight at their target until something blocks them, then search a
 
 | Name | Default | Effect |
 |---|---|---|
-| `grass_far_distance` | `60` | From this many meters away, a cell of grass uses simpler tufts |
-| `grass_far_blade_share` | `0.5` | The share of a tuft's blades that simpler tufts keep. Each is one wider triangle instead of three |
+| `grass_far_distance` | `60` | From this many meters away, a cell of grass draws one simpler tuft for all its species, in a single draw call |
+| `grass_far_blade_share` | `0.5` | The share of blades that the simpler tuft has (of 8). Each is one wider triangle instead of three |
 | `grass_draw_scale_low` | `0.6` | How far grass reaches on low graphics, as a share of the full 220 meters |
 | `grass_draw_scale_medium` | `0.8` | The same on medium graphics |
 | `grass_draw_scale_high` | `1.0` | The same on high graphics |

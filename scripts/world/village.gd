@@ -82,11 +82,16 @@ func _ready() -> void:
 	_set_small_plants(bushes, BUSH_DRAW_DISTANCE)
 	_add_grass(layout["grass"], layout["fields"])
 	_add_boulders(layout["boulders"])
+	var routines := VillagerRoutines.new()
+	routines.name = "VillagerRoutines"
+	add_child(routines)
 	for npc_data: Dictionary in layout["npcs"]:
 		var npc := Npc.new()
 		npc.setup(npc_data)
 		npc.position = _ground_position(npc_data["x"], npc_data["z"])
+		npc.ground_height = terrain.height_at
 		add_child(npc)
+		routines.add_villager(npc)
 	for enemy_data: Dictionary in layout["enemies"]:
 		var enemy := Enemy.new()
 		enemy.setup(enemy_data["type"], _ground_position(enemy_data["x"], enemy_data["z"]) + Vector3.UP * 0.2)

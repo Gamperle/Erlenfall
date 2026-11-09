@@ -1,6 +1,7 @@
 {
 	"flags": {
 		"forest": true,
+		"villager_routines": true,
 		"compass": true,
 		"compass_objectives": true,
 		"realistic_villagers": true,
@@ -44,6 +45,8 @@
 		"grass_draw_scale_low": 0.6,
 		"grass_draw_scale_medium": 0.8,
 		"grass_draw_scale_high": 1.0,
-		"small_prop_draw_distance": 80
+		"small_prop_draw_distance": 80,
+		"villager_walk_speed": 1.2,
+		"villager_routine_tick_seconds": 0.5
 	}
 }

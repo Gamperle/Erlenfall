@@ -45,6 +45,7 @@ Crafting is the core of the game. It combines **free experimentation** (combine 
 
 - **Quality:** items have tiers, determined by materials and minigame performance.
 - **Customization:** selected parts, such as blade and handle, can be chosen and change the 3D model.
+  - **Implemented:** weapons have a grip and a blade, each with options listed in `data/crafting.json` (`parts` on the item, `part_options` for the options). The choice appears on the crafting screen once the materials match a recipe. Options change the model's color and shape and can change damage. The choice is kept with the item, so a stack is per item, quality, and parts. Turn it off with the `crafting_parts` flag.
 - **Materials:** gathering (mining, chopping, foraging, farming, hunting) and trading are both viable.
 - **Progression:** skill grows through practice, better tools, processed materials, and improvement items.
 

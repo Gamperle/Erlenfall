@@ -65,6 +65,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `realistic_villagers` | `true` | Uses the MakeHuman models for villagers who have one, instead of the simple figures |
 | `realistic_enemies` | `true` | Uses rigged models for enemies who have one |
 | `realistic_player` | `true` | Uses a rigged model for the player |
+| `crafting_parts` | `true` | Lets the player choose the parts (grip, blade) of a weapon when crafting it. Off makes every weapon with its plain parts. Weapons already made keep their parts |
 | `performance_overlay` | `true` | Shows the performance measurements at the top right |
 | `river_fine_collision` | `true` | Makes the ground near the river collide exactly where it is drawn, using the mesh's own triangles. Off leaves the coarser collision for the whole map, which costs less to load and to simulate |
 | `terrain_seam_cells` | `true` | Gives each coarse terrain cell beside the river's fine ones a fine grid too, which meets the fine cells on the true ground and bends evenly towards the coarse cells beyond. Off keeps the fine cells' outer edges straight along the coarse cells, which creases the ground there, with about 15,000 fewer triangles and a little less loading time |

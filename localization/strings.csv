@@ -39,6 +39,14 @@ ITEM_IRON_DAGGER,Iron dagger,Eisendolch
 ITEM_IRON_SWORD,Iron sword,Eisenschwert
 ITEM_IRON_AXE,Iron axe,Eisenaxt
 ITEM_TORCH,Torch,Fackel
+SLOT_GRIP,Grip,Griff
+SLOT_BLADE,Blade,Klinge
+PART_OAK,Oak,Eiche
+PART_ASH,Ash,Esche
+PART_EBONY,Ebony,Ebenholz
+PART_STRAIGHT,Straight,Gerade
+PART_BROAD,Broad (+10% damage),Breit (+10 % Schaden)
+PART_DARKENED,Darkened,Brüniert
 UI_COMPASS_N,N,N
 UI_COMPASS_NE,NE,NO
 UI_COMPASS_E,E,O

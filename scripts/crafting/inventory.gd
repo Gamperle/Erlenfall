@@ -1,14 +1,14 @@
 class_name Inventory
 extends RefCounted
-## Item stacks, kept separately per item and quality.
+## Item stacks, kept separately per item, quality, and chosen parts. A stack is saved as "item:quality" or "item:quality:parts".
 
 signal changed
 
 var _stacks: Dictionary = {}
 
 
-func add(item_id: String, amount: int = 1, quality: String = "") -> void:
-	var stack_key := _key(item_id, quality)
+func add(item_id: String, amount: int = 1, quality: String = "", variant: String = "") -> void:
+	var stack_key := _key(item_id, quality, variant)
 	_stacks[stack_key] = int(_stacks.get(stack_key, 0)) + amount
 	changed.emit()
 
@@ -30,7 +30,7 @@ func remove(item_id: String, amount: int = 1) -> bool:
 		if entry["id"] != item_id or remaining == 0:
 			continue
 		var taken := mini(remaining, int(entry["count"]))
-		var stack_key := _key(item_id, entry["quality"])
+		var stack_key := _key(item_id, entry["quality"], entry["variant"])
 		_stacks[stack_key] -= taken
 		if _stacks[stack_key] == 0:
 			_stacks.erase(stack_key)
@@ -43,7 +43,7 @@ func remove(item_id: String, amount: int = 1) -> bool:
 func best_weapon_damage() -> float:
 	var best := 0.0
 	for entry in entries():
-		best = maxf(best, CraftingData.weapon_damage(entry["id"], entry["quality"]))
+		best = maxf(best, CraftingData.weapon_damage(entry["id"], entry["quality"], entry["variant"]))
 	return best
 
 
@@ -52,18 +52,23 @@ func weapon_damage(item_id: String) -> float:
 	var best := 0.0
 	for entry in entries():
 		if entry["id"] == item_id:
-			best = maxf(best, CraftingData.weapon_damage(item_id, entry["quality"]))
+			best = maxf(best, CraftingData.weapon_damage(item_id, entry["quality"], entry["variant"]))
 	return best
 
 
 ## Returns the strongest carried weapon, or "" if there is none. Quality doesn't change how it looks.
 func best_weapon_id() -> String:
-	var best := ""
+	return best_weapon()["id"]
+
+
+## Returns the strongest carried weapon as a stack entry, or one with an empty "id" if there is none.
+func best_weapon() -> Dictionary:
+	var best := { "id": "", "quality": "", "variant": "", "count": 0 }
 	var best_damage := 0.0
 	for entry in entries():
-		var damage := CraftingData.weapon_damage(entry["id"], entry["quality"])
+		var damage := CraftingData.weapon_damage(entry["id"], entry["quality"], entry["variant"])
 		if damage > best_damage:
-			best = entry["id"]
+			best = entry
 			best_damage = damage
 	return best
 
@@ -72,9 +77,10 @@ func best_weapon_id() -> String:
 func lose_materials(share: float) -> void:
 	for entry in entries():
 		if CraftingData.is_material(entry["id"]):
-			_stacks[_key(entry["id"], entry["quality"])] -= ceili(int(entry["count"]) * share)
-			if _stacks[_key(entry["id"], entry["quality"])] <= 0:
-				_stacks.erase(_key(entry["id"], entry["quality"]))
+			var stack_key := _key(entry["id"], entry["quality"], entry["variant"])
+			_stacks[stack_key] -= ceili(int(entry["count"]) * share)
+			if _stacks[stack_key] <= 0:
+				_stacks.erase(stack_key)
 	changed.emit()
 
 
@@ -89,16 +95,16 @@ func load_data(data: Dictionary) -> void:
 	changed.emit()
 
 
-## Returns dictionaries with "id", "quality", and "count", sorted for stable display.
+## Returns dictionaries with "id", "quality", "variant", and "count", sorted for stable display.
 func entries() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	var keys := _stacks.keys()
 	keys.sort()
 	for stack_key: String in keys:
 		var parts := stack_key.split(":")
-		result.append({ "id": parts[0], "quality": parts[1], "count": _stacks[stack_key] })
+		result.append({ "id": parts[0], "quality": parts[1], "variant": parts[2] if parts.size() > 2 else "", "count": _stacks[stack_key] })
 	return result
 
 
-func _key(item_id: String, quality: String) -> String:
-	return "%s:%s" % [item_id, quality]
+func _key(item_id: String, quality: String, variant: String = "") -> String:
+	return "%s:%s:%s" % [item_id, quality, variant] if variant != "" else "%s:%s" % [item_id, quality]

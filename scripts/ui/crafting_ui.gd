@@ -12,6 +12,9 @@ var _station := ""
 var _selected: Dictionary = {}
 var _game: HammerGame
 var _recipe: Dictionary = {}
+var _choices: Dictionary = {}
+var _variant := ""
+var _parts_item := ""
 
 var _panel: FittedPanel
 var _title: Label
@@ -19,6 +22,7 @@ var _inventory_label: Label
 var _materials_label: Label
 var _materials: HFlowContainer
 var _selection_label: Label
+var _parts: GridContainer
 var _actions: HBoxContainer
 var _clear_button: Button
 var _craft_button: Button
@@ -65,6 +69,15 @@ func add_material(item_id: String) -> void:
 	_refresh()
 
 
+## Picks the option for one part of the item about to be made. Ignored if the item has no such choice.
+func choose_part(slot: String, option_id: String) -> void:
+	var item_id := _pending_item()
+	if item_id == "" or not CraftingData.part_options(item_id, slot).has(option_id):
+		return
+	_choices[slot] = option_id
+	_update_part_buttons()
+
+
 func clear_selection() -> void:
 	_selected.clear()
 	_message.text = ""
@@ -79,6 +92,7 @@ func craft() -> void:
 		return
 	for item_id: String in recipe["inputs"]:
 		_player.inventory.remove(item_id, int(recipe["inputs"][item_id]))
+	_variant = CraftingData.variant_key(recipe["result"], _choices)
 	_selected.clear()
 	_recipe = recipe
 	if recipe.has("strikes"):
@@ -144,6 +158,7 @@ func _open(player: Player, station_id: String, title: String) -> void:
 	_player = player
 	_station = station_id
 	_selected.clear()
+	_choices.clear()
 	_title.text = title
 	_message.text = ""
 	_panel.visible = true
@@ -163,6 +178,7 @@ func _refresh() -> void:
 	_close_button.visible = not forging
 	_known_page.visible = at_station and not forging
 	if not at_station or forging:
+		_parts.visible = false
 		if not forging:
 			_close_button.grab_focus()
 		return
@@ -186,6 +202,7 @@ func _refresh() -> void:
 		parts.append("%d x %s" % [_selected[item_id], CraftingData.item_name(item_id)])
 	_selection_label.text = tr("UI_SELECTED") % (", ".join(parts) if parts.size() > 0 else "-")
 	_craft_button.disabled = _selected.is_empty()
+	_refresh_parts()
 	_known_label.text = _known_recipes_text()
 
 	var focus_target: Control = _close_button
@@ -200,6 +217,49 @@ func _refresh() -> void:
 				focus_target = child
 				break
 	focus_target.grab_focus()
+
+
+## The item the selected materials would make, or "" if they make nothing.
+func _pending_item() -> String:
+	if _station == "" or is_forging():
+		return ""
+	return String(CraftingData.find_recipe(_station, _selected).get("result", ""))
+
+
+## Shows a choice for each part of the item about to be made, and nothing for items without parts.
+func _refresh_parts() -> void:
+	var item_id := _pending_item()
+	var slots: Array[String] = []
+	if item_id != "":
+		slots = CraftingData.part_slots(item_id)
+	_parts.visible = not slots.is_empty()
+	if item_id == _parts_item:
+		return
+	_parts_item = item_id
+	_choices.clear()
+	for child in _parts.get_children():
+		_parts.remove_child(child)
+		child.queue_free()
+	for slot: String in slots:
+		var label := Label.new()
+		label.text = CraftingData.slot_name(slot)
+		_parts.add_child(label)
+		var picker := OptionButton.new()
+		picker.name = slot
+		for option_id in CraftingData.part_options(item_id, slot):
+			picker.add_item(CraftingData.option_name(option_id))
+			picker.set_item_metadata(picker.item_count - 1, option_id)
+		picker.item_selected.connect(func(index: int): choose_part(slot, picker.get_item_metadata(index)))
+		_parts.add_child(picker)
+
+
+func _update_part_buttons() -> void:
+	for child in _parts.get_children():
+		if child is OptionButton:
+			var chosen: String = _choices.get(child.name, "")
+			for index in child.item_count:
+				if child.get_item_metadata(index) == chosen:
+					child.select(index)
 
 
 func _focused_material() -> String:
@@ -220,8 +280,13 @@ func _inventory_text() -> String:
 	for entry in _player.inventory.entries():
 		var quality := CraftingData.quality_name(entry["quality"])
 		var label := CraftingData.item_name(entry["id"])
+		var details := PackedStringArray()
 		if quality != "":
-			label = "%s (%s)" % [label, quality]
+			details.append(quality)
+		if entry["variant"] != "":
+			details.append(CraftingData.variant_text(entry["id"], entry["variant"]))
+		if not details.is_empty():
+			label = "%s (%s)" % [label, ", ".join(details)]
 		lines.append("%d x %s" % [entry["count"], label])
 	return tr("UI_CARRYING") % (", ".join(lines) if lines.size() > 0 else tr("UI_NOTHING"))
 
@@ -256,11 +321,17 @@ func _update_strike_text() -> void:
 func _finish_recipe(quality: String) -> void:
 	var is_new := not _player.known_recipes.has(_recipe["id"])
 	_player.known_recipes[_recipe["id"]] = true
-	_player.inventory.add(_recipe["result"], int(_recipe["count"]), quality)
-	get_tree().call_group(CraftingStation.STATION_GROUP, "show_made", _station, _recipe["result"])
+	_player.inventory.add(_recipe["result"], int(_recipe["count"]), quality, _variant)
+	get_tree().call_group(CraftingStation.STATION_GROUP, "show_made", _station, _recipe["result"], _variant)
 	var made := CraftingData.item_name(_recipe["result"])
+	var details := PackedStringArray()
 	if quality != "":
-		made = "%s (%s)" % [made, CraftingData.quality_name(quality)]
+		details.append(CraftingData.quality_name(quality))
+	if _variant != "":
+		details.append(CraftingData.variant_text(_recipe["result"], _variant))
+	if not details.is_empty():
+		made = "%s (%s)" % [made, ", ".join(details)]
+	_variant = ""
 	_message.text = tr("UI_MADE_NEW" if is_new else "UI_MADE") % made
 	_title.text = tr("UI_" + _station.to_upper())
 	_refresh()
@@ -298,6 +369,11 @@ func _build() -> void:
 	column.add_child(_materials)
 
 	_selection_label = _wrapped_label(column)
+
+	_parts = GridContainer.new()
+	_parts.columns = 2
+	_parts.add_theme_constant_override("h_separation", 12)
+	column.add_child(_parts)
 
 	_bar = Control.new()
 	_bar.custom_minimum_size = Vector2(0.0, BAR_HEIGHT)

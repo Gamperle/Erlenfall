@@ -946,6 +946,35 @@ func _test_enemy_navigation(scene: Node, player: Player) -> void:
 	_check(await _enemy_reaches(enemy, site + Vector3(-1.0, 0.5, -12.0), site + Vector3(1.0, 0.5, 12.0), player, 1200), "enemies find their way through dense trees")
 	obstacles.free()
 
+	# A wall with a 1.0 m gap, set at several offsets so it lines up differently with the grid. The
+	# search itself is checked, since a body pushing at a wall can slip through a gap it never planned for.
+	var terrain: Terrain = scene.get_node("Terrain")
+	var gaps_found := 0
+	var gaps_missed := ""
+	for step in 10:
+		var offset := step * 0.05
+		obstacles = Node3D.new()
+		root.add_child(obstacles)
+		var gap_at: float = offset + 3.0
+		# The site's height is the camp's, so the walls are tall enough for the ground to rise and fall.
+		var wall_at := Vector3(site.x, terrain.height_at(site.x, site.z), site.z)
+		_add_test_box(obstacles, wall_at + Vector3(gap_at - 0.5 - 30.0, 0.0, 0.0), Vector3(60.0, 40.0, 0.6))
+		_add_test_box(obstacles, wall_at + Vector3(gap_at + 0.5 + 30.0, 0.0, 0.0), Vector3(60.0, 40.0, 0.6))
+		await _physics_frames(2)
+		EnemyPath.forget_all()
+		var start := site + Vector3(gap_at + 5.0, 0.0, -5.0)
+		start.y = terrain.height_at(start.x, start.z) + 0.1
+		var path := EnemyPath.new(enemy, enemy._stats["radius"])
+		path.begin(start, site + Vector3(gap_at - 5.0, 0.0, 5.0), 0.5)
+		while not path.advance():
+			await physics_frame
+		if path.reached:
+			gaps_found += 1
+		else:
+			gaps_missed += " %.1f" % offset
+		obstacles.free()
+	_check(gaps_found == 10, "enemies plan their way through a 1.0 m gap however it lines up with the grid (missed at offsets:%s)" % gaps_missed)
+
 	# With no way in, the enemy gets as near as it can.
 	obstacles = Node3D.new()
 	root.add_child(obstacles)

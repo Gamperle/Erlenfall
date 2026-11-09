@@ -898,6 +898,16 @@ func _test_villager_routines(scene: Node) -> void:
 	_check(absf(bertram.position.y - village.terrain.height_at(bertram.position.x, bertram.position.z)) < 0.01, "following the ground")
 	routines.update(6.5)
 	_check(not bertram.is_processing() and Vector2(bertram.position.x, bertram.position.z).is_equal_approx(bertram.home), "a jump in time puts villagers straight at their places")
+	var absent := Npc.new()
+	absent.setup({ "id": "absent", "name": "NPC_MAREK", "x": 0.0, "z": 0.0, "color": "#808080", "appears_when": { "flag": "nothing_yet" } })
+	absent.apply_flags({})
+	routines.add_villager(absent)
+	routines._routines["absent"] = [{ "from": 0.0, "x": 5.0, "z": 5.0 }]
+	routines.update(9.0)
+	_check(not absent.is_processing() and not absent.is_available(), "a villager who has not arrived does not walk")
+	routines._routines.erase("absent")
+	routines._villagers.erase("absent")
+	absent.free()
 	routines.set_process(FeatureFlags.enabled("villager_routines"))
 
 
@@ -925,6 +935,7 @@ func _test_story(scene: Node, player: Player) -> void:
 	_check(shadows_only == 1, "a villager's body casts its shadow from one surface")
 	for villager: String in ["bertram", "mira", "greta", "brandt"]:
 		_check(village.get_node(villager).find_child("Model", true, false) != null, "%s has a model" % villager)
+	_check(not village.get_node("marek").visible and not village.get_node("marek").is_available(), "the peddler stays away while the roof leaks")
 	var pivot: Node3D = player.get_node("CameraPivot")
 	pivot.rotation = Vector3.ZERO
 	player.position = hedda.position + Vector3(0.0, 0.5, 2.0)
@@ -983,6 +994,10 @@ func _test_story(scene: Node, player: Player) -> void:
 	_check(repaired_roof.visible and not damaged_roof.visible, "the repair shows on the inn")
 	_check(not site.is_available(), "the repair can't be repeated")
 	_check(DialogueRunner.new("greta", player).text_key() == "DLG_GRETA_GRATEFUL", "the innkeeper thanks the player")
+	var marek: Npc = village.get_node("marek")
+	var oswin: Npc = village.get_node("oswin")
+	_check(marek.visible and oswin.visible and marek.is_available(), "the repaired inn brings in the peddler and the old foreman")
+	_check(DialogueRunner.new("marek", player).text_key() == "DLG_MAREK_ARRIVE", "the peddler talks about the inn")
 	_check(quests.flags.has("mayor_annoyed"), "the player's choice is remembered")
 	var cold := DialogueRunner.new("brandt", player)
 	_check(cold.text_key() == "DLG_BRANDT_COLD", "the mayor reacts to the choice")

@@ -92,6 +92,9 @@ func update(hour: float) -> void:
 		if not _villagers.has(id):
 			continue
 		var npc: Npc = _villagers[id]
+		# Someone who has not arrived yet does not walk.
+		if not npc.is_available():
+			continue
 		var stop := active_stop(_routines[id], hour)
 		if stop.is_empty():
 			continue

@@ -7,6 +7,8 @@ const BODY_RADIUS := 0.35
 const BODY_HEIGHT := 1.75
 
 var npc_id := ""
+## The story flag that brings this villager to the village. Empty means they are always there.
+var arrival_flag := ""
 ## Where the layout file puts them, in x and z: the place of a routine stop that names none.
 var home := Vector2.ZERO
 ## Looks up the ground's height at an x and a z, so that walkers follow the land.
@@ -23,6 +25,7 @@ func setup(data: Dictionary) -> void:
 	npc_id = data["id"]
 	prompt_key = data["name"]
 	name = npc_id
+	arrival_flag = data.get("appears_when", {}).get("flag", "")
 	home = Vector2(data["x"], data["z"])
 
 	if data.has("model") and FeatureFlags.enabled("realistic_villagers"):
@@ -52,6 +55,23 @@ func setup(data: Dictionary) -> void:
 	label.pixel_size = 0.006
 	label.outline_size = 8
 	add_child(label)
+
+
+## Shows or hides the villager for the story flag that brings them, and makes them unreachable while away.
+func apply_flags(flags: Dictionary) -> void:
+	if arrival_flag.is_empty():
+		return
+	var here := flags.has(arrival_flag)
+	visible = here
+	if not here:
+		set_process(false)
+	for child in get_children():
+		if child is CollisionShape3D:
+			(child as CollisionShape3D).set_deferred("disabled", not here)
+
+
+func is_available() -> bool:
+	return arrival_flag.is_empty() or visible
 
 
 func _ready() -> void:

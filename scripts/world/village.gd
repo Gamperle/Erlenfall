@@ -58,6 +58,7 @@ const WOOD_PILE_SHAPE := Vector3(1.0, 0.9, 1.5)
 
 var _road_samples: Array[PackedVector2Array] = []
 var _repairs: Array[Dictionary] = []
+var _arrivals: Array[Npc] = []
 var _building_spots: Array[Vector2] = []
 var _busy_spots: Array[Vector2] = []
 
@@ -94,6 +95,9 @@ func _ready() -> void:
 		npc.position = _ground_position(npc_data["x"], npc_data["z"])
 		npc.ground_height = terrain.height_at
 		add_child(npc)
+		if not npc.arrival_flag.is_empty():
+			_arrivals.append(npc)
+			npc.apply_flags({})
 		routines.add_villager(npc)
 	for enemy_data: Dictionary in layout["enemies"]:
 		var enemy := Enemy.new()
@@ -162,6 +166,8 @@ func apply_flags(flags: Dictionary) -> void:
 		var repaired: bool = flags.has(repair["flag"])
 		repair["repaired"].visible = repaired
 		repair["damaged"].visible = not repaired
+	for npc in _arrivals:
+		npc.apply_flags(flags)
 
 
 func _add_box_interactable(node: Interactable, data: Dictionary) -> void:

@@ -146,6 +146,7 @@ func _run() -> void:
 	await _test_settings(scene, player)
 	_test_translations()
 	_test_dialogue_data()
+	_test_dialogue_conditions()
 
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")
 	quit(1 if _failures > 0 else 0)
@@ -1692,12 +1693,36 @@ func _test_dialogue_data() -> void:
 			var targets: Array = [conversation["start"]]
 			for node: Dictionary in nodes.values():
 				targets.append(node.get("next", ""))
+				targets.append(node.get("choices_of", ""))
 				for choice: Dictionary in node.get("choices", []):
 					targets.append(choice.get("next", ""))
 			for target: String in targets:
 				if target != "" and not nodes.has(target):
 					problems.append("%s leads to missing %s" % [npc_id, target])
 	_check(problems.is_empty(), "dialogue data is complete %s" % ", ".join(problems))
+
+
+## A line can play once with set_flag and not_flag, and a node can borrow another's choices.
+func _test_dialogue_conditions() -> void:
+	var player := Player.new()
+	var saved := DialogueRunner._data
+	DialogueRunner._data = { "npc": [
+		{ "when": { "not_flag": "met" }, "start": "hello", "nodes": {
+			"hello": { "text": "FIRST", "effects": [{ "type": "set_flag", "flag": "met" }] } } },
+		{ "start": "menu", "nodes": {
+			"menu": { "text": "MENU", "choices": [{ "text": "A", "next": "more" }, { "text": "BYE" }] },
+			"more": { "text": "MORE", "choices_of": "menu" } } },
+	] }
+	var first := DialogueRunner.new("npc", player)
+	_check(first.text_key() == "FIRST" and player.quests.flags.has("met"), "a not_flag line plays while the flag is unset")
+	var again := DialogueRunner.new("npc", player)
+	_check(again.text_key() == "MENU", "a not_flag line gives way once the flag is set")
+	again.advance(0)
+	_check(again.text_key() == "MORE" and again.choice_keys() == PackedStringArray(["A", "BYE"]), "a node can borrow another node's choices")
+	again.advance(1)
+	_check(again.is_finished(), "a borrowed choice list leads on as usual")
+	DialogueRunner._data = saved
+	player.free()
 
 
 func _first_of(parent: Node, type: Variant) -> Node:

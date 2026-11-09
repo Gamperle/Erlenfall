@@ -22,7 +22,9 @@
 		{ "id": "bertram", "model": "res://assets/characters/bertram.glb", "name": "NPC_BERTRAM", "x": 12.5, "z": 21, "color": "#4a3b30" },
 		{ "id": "mira", "model": "res://assets/characters/mira.glb", "name": "NPC_MIRA", "x": -9, "z": 30, "color": "#3f7a6a", "hair": "#8a4f24" },
 		{ "id": "greta", "model": "res://assets/characters/greta.glb", "name": "NPC_GRETA", "x": 17, "z": -8, "color": "#a0703a" },
-		{ "id": "brandt", "model": "res://assets/characters/brandt.glb", "name": "NPC_BRANDT", "x": 4, "z": -19, "color": "#7a2e2e", "hair": "#6e6a64" }
+		{ "id": "brandt", "model": "res://assets/characters/brandt.glb", "name": "NPC_BRANDT", "x": 4, "z": -19, "color": "#7a2e2e", "hair": "#6e6a64" },
+		{ "id": "marek", "name": "NPC_MAREK", "x": 19.5, "z": -17.5, "color": "#8a4f6a", "hair": "#3a3330", "appears_when": { "flag": "inn_roof_repaired" } },
+		{ "id": "oswin", "name": "NPC_OSWIN", "x": 21, "z": -21, "color": "#6a5f50", "hair": "#d8d5d0", "appears_when": { "flag": "inn_roof_repaired" } }
 	],
 	"enemies": [
 		{ "type": "goblin", "x": 118, "z": -150 },

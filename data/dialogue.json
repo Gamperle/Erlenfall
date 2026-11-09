@@ -392,4 +392,50 @@
 			}
 		}
 	]
+	,
+	"marek": [
+		{
+			"start": "arrive",
+			"nodes": {
+				"arrive": {
+					"text": "DLG_MAREK_ARRIVE",
+					"choices": [
+						{ "text": "DLG_MAREK_ASK_NEWS", "next": "news" },
+						{ "text": "DLG_MAREK_ASK_WARES", "next": "wares" },
+						{ "text": "DLG_MAREK_ASK_INN", "next": "inn" },
+						{ "text": "DLG_MAREK_CHOICE_BYE" }
+					]
+				},
+				"news": { "text": "DLG_MAREK_NEWS", "next": "more" },
+				"wares": { "text": "DLG_MAREK_WARES", "next": "more" },
+				"inn": { "text": "DLG_MAREK_INN", "next": "more" },
+				"more": {
+					"text": "DLG_MAREK_MORE",
+					"choices": [
+						{ "text": "DLG_MAREK_ASK_NEWS", "next": "news" },
+						{ "text": "DLG_MAREK_ASK_WARES", "next": "wares" },
+						{ "text": "DLG_MAREK_ASK_INN", "next": "inn" },
+						{ "text": "DLG_MAREK_CHOICE_BYE" }
+					]
+				}
+			}
+		}
+	],
+	"oswin": [
+		{
+			"start": "draughts",
+			"nodes": {
+				"draughts": {
+					"text": "DLG_OSWIN_DRAUGHTS",
+					"choices": [
+						{ "text": "DLG_OSWIN_ASK_INN", "next": "inn" },
+						{ "text": "DLG_OSWIN_ASK_MINE", "next": "mine" },
+						{ "text": "DLG_OSWIN_CHOICE_BYE" }
+					]
+				},
+				"inn": { "text": "DLG_OSWIN_INN" },
+				"mine": { "text": "DLG_OSWIN_MINE" }
+			}
+		}
+	]
 }

@@ -720,6 +720,7 @@ func _test_story(scene: Node, player: Player) -> void:
 	_check(hedda_model.find_child("GeneralSkeleton", true, false) != null, "the model's skeleton is set up for shared animations")
 	for villager: String in ["bertram", "mira", "greta", "brandt"]:
 		_check(village.get_node(villager).find_child("Model", true, false) != null, "%s has a model" % villager)
+	_check(not village.get_node("marek").visible and not village.get_node("marek").is_available(), "the peddler stays away while the roof leaks")
 	var pivot: Node3D = player.get_node("CameraPivot")
 	pivot.rotation = Vector3.ZERO
 	player.position = hedda.position + Vector3(0.0, 0.5, 2.0)
@@ -778,6 +779,10 @@ func _test_story(scene: Node, player: Player) -> void:
 	_check(repaired_roof.visible and not damaged_roof.visible, "the repair shows on the inn")
 	_check(not site.is_available(), "the repair can't be repeated")
 	_check(DialogueRunner.new("greta", player).text_key() == "DLG_GRETA_GRATEFUL", "the innkeeper thanks the player")
+	var marek: Npc = village.get_node("marek")
+	var oswin: Npc = village.get_node("oswin")
+	_check(marek.visible and oswin.visible and marek.is_available(), "the repaired inn brings in the peddler and the old foreman")
+	_check(DialogueRunner.new("marek", player).text_key() == "DLG_MAREK_ARRIVE", "the peddler talks about the inn")
 	_check(quests.flags.has("mayor_annoyed"), "the player's choice is remembered")
 	var cold := DialogueRunner.new("brandt", player)
 	_check(cold.text_key() == "DLG_BRANDT_COLD", "the mayor reacts to the choice")

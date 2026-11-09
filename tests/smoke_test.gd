@@ -177,6 +177,15 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 				steepest_road = maxf(steepest_road, _slope_degrees(terrain, at.x, at.y))
 	_check(steepest_road < 20.0, "roads stay gentle (steepest %.1f degrees)" % steepest_road)
 
+	# The valley sides must not be steeper than the 45 degree limit the player can walk up (#126).
+	var steepest_side := 0.0
+	for x in range(-480, 481, 6):
+		for z in range(-120, 400, 6):
+			var clearance := terrain.river_clearance(x, z)
+			if clearance > 0.0 and clearance < 30.0 and Vector2(x, z).length() < 480.0:
+				steepest_side = maxf(steepest_side, _slope_degrees(terrain, x, z))
+	_check(steepest_side < 45.0, "the river's valley sides can be climbed (steepest %.1f degrees)" % steepest_side)
+
 	_check(terrain.building_sites.size() == 2, "the assembly building and the fort each have a site")
 	for site: Dictionary in terrain.building_sites:
 		_test_building_site(terrain, site)

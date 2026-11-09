@@ -47,6 +47,10 @@ const SPOT_FLAT_BLEND := 7.0
 const ROAD_SPACING := 2.0
 const ROAD_SHOULDER := 1.0
 const ROAD_BLEND := 11.0
+## How many meters of valley side the river gets per meter the land lies above its banks, so the
+## sides stay below the player's 45 degree floor limit, and the most they spread.
+const VALLEY_RUN_PER_DROP := 3.4
+const MAX_VALLEY_WIDTH := 160.0
 const ROAD_SMOOTH_SAMPLES := 14
 const ROAD_SMOOTH_PASSES := 3
 const RIVER_SPACING := 8.0
@@ -188,7 +192,11 @@ func _along_river(height: float, x: float, z: float) -> float:
 	var edge := found.z + _bank_width
 	var bank := smoothstep(found.z, edge, found.x)
 	var channel := lerpf(found.y - _river_depth, found.y + _bank_height, bank)
-	return lerpf(channel, height, smoothstep(edge, edge + _valley_width, found.x))
+	# Where the river runs far below the land, as in the mountains, the valley sides spread wider so
+	# they stay walkable instead of dropping in a cliff.
+	var drop := maxf(height - (found.y + _bank_height), 0.0)
+	var valley := clampf(drop * VALLEY_RUN_PER_DROP, _valley_width, MAX_VALLEY_WIDTH)
+	return lerpf(channel, height, smoothstep(edge, edge + valley, found.x))
 
 
 func _add_flat_areas(layout: Dictionary) -> void:
@@ -258,7 +266,7 @@ func _add_river(data: Dictionary) -> void:
 	var widest := 0.0
 	for point: Array in data["points"]:
 		widest = maxf(widest, point[3])
-	river = TerrainPath.new(data["points"], RIVER_SPACING, widest + _bank_width + _valley_width)
+	river = TerrainPath.new(data["points"], RIVER_SPACING, widest + _bank_width + MAX_VALLEY_WIDTH)
 
 
 ## True on the debris field and on the bare scar the slide tore into the mountain above it.

@@ -15,6 +15,8 @@ const DETAIL_RANGE := 20.0
 
 ## Replaces the idle animation, for example while holding a torch up or blocking.
 var idle_override: StringName = &""
+## Straightens the back, neck, and shoulders.
+var posture: PostureModifier
 ## How strongly the model glows is applied to a copy of each material.
 var _surfaces: Array[StandardMaterial3D] = []
 var _model: Node3D
@@ -31,7 +33,8 @@ func load_model(path: String) -> void:
 	add_child(_model)
 	_skeleton = _model.find_child("GeneralSkeleton", true, false)
 	_player = CharacterAnimations.play(_model, IDLE)
-	add_modifier(PostureModifier.new())
+	posture = PostureModifier.new()
+	add_modifier(posture)
 	_copy_materials()
 	_reduce_draw_calls()
 

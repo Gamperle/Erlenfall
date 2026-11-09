@@ -25,6 +25,29 @@ godot --headless --path . --import
 - Add all player-facing text to `localization/strings.csv`, in English and German.
 - Large binary files go through Git LFS. See `.gitattributes`.
 
+## Issue labels
+
+Give every issue at least one area label. Add more when it fits, for example `graphics` and `world` for terrain creasing.
+
+| Label | Covers |
+|---|---|
+| `gameplay` | Systems, combat, crafting, enemy behavior |
+| `graphics` | Rendering, shaders, lighting, how the world looks |
+| `performance` | Frame rate, draw calls, load times, search cost |
+| `world` | Terrain, river, roads, buildings, village layout |
+| `ui` | HUD, menus, compass |
+| `art` | Models, textures, characters, other content art |
+| `asset-pipeline` | Generating and importing models, textures, characters |
+| `story` | Writing and characters |
+| `audio` | Music and sound |
+| `modding` | Mod loader and mod support |
+| `legal` | Licenses and copyright |
+| `platform` | Windows, Web, controllers, hardware |
+| `tech` | Build, tooling, tests, engine |
+| `accessibility` | Barriers for people with disabilities |
+
+`needs testing`, `bug`, and the other labels say what kind of work or what state, and go on top of an area label.
+
 ## Licensing
 
 By contributing, you agree that your code is licensed under [MIT](LICENSE) and your creative content under [CC BY-SA 4.0](LICENSE-ASSETS), unless the file is listed otherwise in [ASSETS.md](ASSETS.md).

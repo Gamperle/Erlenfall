@@ -165,6 +165,12 @@ func _start_batch(center: Vector2) -> void:
 	wanted.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return _cell_nearest_distance(a, center) < _cell_nearest_distance(b, center))
 	_batch = wanted.slice(0, CELLS_PER_BATCH)
 	_batch_results.resize(_batch.size())
+	if OS.has_feature("web"):
+		# The Web build has no threads, so a pool task could wait forever. Grow the cells now.
+		for i in _batch.size():
+			_grow_batch_cell(i)
+		_finish_batch()
+		return
 	_task = WorkerThreadPool.add_group_task(_grow_batch_cell, _batch.size())
 
 
@@ -173,8 +179,9 @@ func _grow_batch_cell(index: int) -> void:
 
 
 func _finish_batch() -> void:
-	WorkerThreadPool.wait_for_group_task_completion(_task)
-	_task = -1
+	if _task >= 0:
+		WorkerThreadPool.wait_for_group_task_completion(_task)
+		_task = -1
 	for i in _batch.size():
 		_plant(_batch[i], _batch_results[i])
 		if _detail_center.is_finite():

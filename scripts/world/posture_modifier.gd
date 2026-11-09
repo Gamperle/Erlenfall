@@ -33,6 +33,9 @@ var hanging_to := 0.85
 ## How much of the arms' sideways swing, in and out of the body, is removed: 0 keeps it, and 1 holds each upper arm at the angle it has had on average over the last moments.
 ## Arms raised above the shoulder are left alone.
 var arm_sideways_damping := 0.0
+## How far each elbow is brought toward the body, in every pose but with the arms raised above the shoulder.
+## Arm out does the same only for arms hanging straight down, which running's arms are not.
+var elbow_in_degrees := 0.0
 ## 1 changes only hanging arms, so a raised torch or sword stays where the animation holds it, and 0 changes the arms in every pose.
 var arm_hanging_only := 1.0
 ## How far each thigh is brought toward the middle, each thigh is twisted around its length so the knee turns in,
@@ -108,6 +111,7 @@ func _process_arm(skeleton: Skeleton3D, side: String, mirror: float) -> void:
 	_average_out[side] = lerp_angle(average, out, _average_blend)
 	var held := lerp_angle(out, average, arm_sideways_damping * smoothstep(0.2, -0.2, axis.y))
 	_turn(skeleton, upper, Quaternion(Vector3.BACK, mirror * (held - out)))
+	_turn(skeleton, upper, Quaternion(Vector3.BACK, -mirror * deg_to_rad(elbow_in_degrees) * smoothstep(0.2, -0.2, axis.y)))
 	# The twist is around the arm as it is now, after the turns above.
 	axis = _direction(skeleton, upper, StringName(side + "LowerArm"))
 	_turn(skeleton, upper, Quaternion(axis, mirror * strength * deg_to_rad(arm_twist_degrees)))

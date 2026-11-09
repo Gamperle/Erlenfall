@@ -35,6 +35,7 @@ const SETTINGS: Array[Dictionary] = [
 	{"name": "Arm swing", "property": &"arm_swing_degrees", "unit": "°", "gap": 6.0, "step": 1.0, "min": -30.0, "max": 40.0},
 	{"name": "Arm out", "property": &"arm_out_degrees", "unit": "°", "gap": 6.0, "step": 1.0, "min": -30.0, "max": 40.0},
 	{"name": "Arm sway", "property": &"arm_sideways_damping", "unit": "", "gap": 0.25, "step": 0.05, "min": 0.0, "max": 1.0},
+	{"name": "Elbow in", "property": &"elbow_in_degrees", "unit": "°", "gap": 6.0, "step": 1.0, "min": -20.0, "max": 40.0},
 	{"name": "Arm twist", "property": &"arm_twist_degrees", "unit": "°", "gap": 15.0, "step": 1.0, "min": -80.0, "max": 80.0},
 	{"name": "Hanging from", "property": &"hanging_from", "unit": "", "gap": 0.15, "step": 0.01, "min": 0.0, "max": 0.95},
 	{"name": "Hanging to", "property": &"hanging_to", "unit": "", "gap": 0.1, "step": 0.01, "min": 0.05, "max": 1.0},

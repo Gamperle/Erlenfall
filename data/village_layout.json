@@ -75,7 +75,7 @@
 		]
 	},
 	"building_sites": [
-		{ "id": "assembly_hall", "x": 34, "z": -58, "radius": 11, "blend": 24, "rise": 9 },
+		{ "id": "assembly_hall", "x": 34, "z": -58, "radius": 11, "blend": 32, "rise": 7 },
 		{ "id": "wooden_fort", "x": -45, "z": 68, "radius": 9, "blend": 21, "rise": 10 }
 	],
 	"hills": [

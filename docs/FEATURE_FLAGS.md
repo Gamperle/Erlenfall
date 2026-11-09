@@ -141,8 +141,8 @@ Enemies walk straight at their target until something blocks them, then search a
 
 | Name | Default | Effect |
 |---|---|---|
-| `enemy_path_cell_size` | `0.5` | The size in meters of a grid cell. Smaller cells find narrower gaps but search more cells |
-| `enemy_path_max_nodes` | `1500` | How many cells one search looks at before it settles for the nearest point it found |
+| `enemy_path_cell_size` | `0.35` | The size in meters of a grid cell. A gap is certain to be found when it's at least a body's width plus one cell wide, which is 1 m for a goblin at 0.35. Narrower gaps are found only when they line up with the grid. Smaller cells find narrower gaps but search more cells, so scale `enemy_path_max_nodes` by the square of the change |
+| `enemy_path_max_nodes` | `3000` | How many cells one search looks at before it settles for the nearest point it found |
 | `enemy_path_budget_steps` | `100` | How much work all searches may do per physics frame. A search step counts 1 and checking a new cell counts 10. On a Radeon 680M laptop, 100 is about 1 ms whether it goes to search steps or to new cells (#148); line checks still check new cells outside the budget. A search that runs out carries on in the next frame |
 | `enemy_path_cache_seconds` | `5` | How long enemies remember which cells are blocked before checking them again |
 | `enemy_path_water_cost` | `3` | How many times as much a step through deep water counts as one on dry land, so enemies take a bridge unless it's far out of the way. Wading is about 1.8 times as slow, so values below that make enemies wade even where the bridge is quicker |

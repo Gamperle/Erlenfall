@@ -12,15 +12,18 @@ var target := 0.5
 var strikes_done := 0
 var strikes_total: int
 var speed: float
+var target_width := TARGET_WIDTH
 
 var _direction := 1.0
 var _total_accuracy := 0.0
 var _random := RandomNumberGenerator.new()
 
 
-func _init(strikes: int, speed_factor: float) -> void:
+## A skilled smith gets a wider target and a slower marker. These are the skill's shares of the plain ones.
+func _init(strikes: int, speed_factor: float, width_bonus := 0.0, speed_reduction := 0.0) -> void:
 	strikes_total = strikes
-	speed = BASE_SPEED * speed_factor
+	target_width = TARGET_WIDTH + width_bonus
+	speed = BASE_SPEED * speed_factor * (1.0 - speed_reduction)
 	_pick_target()
 
 
@@ -37,7 +40,7 @@ func update(delta: float) -> void:
 
 ## Scores a strike at the marker's position and returns its accuracy from 0 to 1.
 func strike() -> float:
-	var distance := maxf(absf(marker - target) - TARGET_WIDTH / 2.0, 0.0)
+	var distance := maxf(absf(marker - target) - target_width / 2.0, 0.0)
 	var accuracy := clampf(1.0 - distance / MISS_DISTANCE, 0.0, 1.0)
 	_total_accuracy += accuracy
 	strikes_done += 1

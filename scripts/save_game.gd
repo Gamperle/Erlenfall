@@ -44,6 +44,7 @@ static func write(path: String, player: Player, day_night: DayNight, village: Vi
 		"health": player.health.current,
 		"inventory": player.inventory.to_data(),
 		"known_recipes": player.known_recipes.keys(),
+		"skill_xp": player.skill_xp,
 		"torch_given": player.torch_given,
 		"torch_lit": player.torch_lit,
 		"torch_burned_seconds": player.torch_burned_seconds,
@@ -75,6 +76,11 @@ static func apply(path: String, player: Player, day_night: DayNight, village: Vi
 	player.known_recipes.clear()
 	for recipe_id: String in data["known_recipes"]:
 		player.known_recipes[recipe_id] = true
+	# Games saved before skills existed don't have this.
+	player.skill_xp.clear()
+	for skill_id: String in data.get("skill_xp", {}):
+		if CraftingData.skill_ids().has(skill_id):
+			player.skill_xp[skill_id] = int(data["skill_xp"][skill_id])
 	# Games saved before torches existed don't have these.
 	player.torch_given = data.get("torch_given", false)
 	player.torch_burned_seconds = data.get("torch_burned_seconds", 0.0)

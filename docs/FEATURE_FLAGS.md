@@ -66,6 +66,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `realistic_villagers` | `true` | Uses the MakeHuman models for villagers who have one, instead of the simple figures |
 | `realistic_enemies` | `true` | Uses rigged models for enemies who have one |
 | `realistic_player` | `true` | Uses a rigged model for the player |
+| `crafting_parts` | `true` | Lets the player choose the parts (grip, blade) of a weapon when crafting it. Off makes every weapon with its plain parts. Weapons already made keep their parts |
 | `performance_overlay` | `true` | Shows the performance measurements at the top right |
 | `river_fine_collision` | `true` | Makes the ground near the river collide exactly where it is drawn, using the mesh's own triangles. Off leaves the coarser collision for the whole map, which costs less to load and to simulate |
 | `terrain_seam_cells` | `true` | Gives each coarse terrain cell beside the river's fine ones a fine grid too, which meets the fine cells on the true ground and bends evenly towards the coarse cells beyond. Off keeps the fine cells' outer edges straight along the coarse cells, which creases the ground there, with about 15,000 fewer triangles and a little less loading time |
@@ -86,6 +87,16 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `buried_player_depth` | `0.1` | How many meters the ground has to reach above the player's feet before they are lifted |
 | `buried_player_ray_height` | `6.0` | How many meters above the land, or the feet if they are higher, the ray starts. It has to start above the collision, which can lie a little higher than the land's exact height |
 | `axe_in_hand_seconds` | `1.5` | How long the axe stays in hand after a chop, before the strongest weapon comes back |
+
+## Sneaking
+
+Holding the sneak key (Ctrl, or pressing the left stick) slows the player and makes enemies notice them from less far away. It does not stop an enemy that is already chasing, and it can't be used while rolling or blocking. Talking as a way out of fights is not built yet: see [#206](https://github.com/Gamperle/Erlenfall/issues/206).
+
+| Name | Default | Effect |
+|---|---|---|
+| `sneaking` | `true` | Turns the sneak stance on or off. Off ignores the sneak key |
+| `sneak_speed_factor` | `0.5` | The share of walking speed that a sneaking player moves at. Sneaking replaces sprinting. A default pick, for the maintainer to balance |
+| `sneak_notice_factor` | `0.35` | The share of an enemy's `aggro_range` at which it notices a sneaking player: 14 m becomes 4.9 m for a goblin. A default pick, for the maintainer to balance |
 
 ## Ranged flags and values
 

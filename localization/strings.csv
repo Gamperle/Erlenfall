@@ -1,6 +1,6 @@
 keys,en,de
 UI_WELCOME,Welcome to Erlenfall,Willkommen in Erlenfall
-UI_CONTROLS,"WASD / left stick: walk   Mouse / right stick: look   Shift / LB: sprint   Space / A: jump   Left click / RT: attack   Right click / LT: block   C / B: dodge   E / X: use   I / Back: inventory   V / Y: switch camera   F / D-pad up: torch   T / RB: speed up time   R / D-pad down: shoot bow   G / D-pad right: throw flask   Esc / Start: menu","WASD / linker Stick: gehen   Maus / rechter Stick: umsehen   Umschalt / LB: sprinten   Leertaste / A: springen   Linksklick / RT: angreifen   Rechtsklick / LT: blocken   C / B: ausweichen   E / X: benutzen   I / Back: Inventar   V / Y: Kamera wechseln   F / Steuerkreuz hoch: Fackel   T / RB: Zeit vorspulen   R / Steuerkreuz unten: Bogen schießen   G / Steuerkreuz rechts: Flasche werfen   Esc / Start: Menü"
+UI_CONTROLS,"WASD / left stick: walk   Mouse / right stick: look   Shift / LB: sprint   Ctrl / L3: sneak   Space / A: jump   Left click / RT: attack   Right click / LT: block   C / B: dodge   E / X: use   I / Back: inventory   V / Y: switch camera   F / D-pad up: torch   T / RB: speed up time   R / D-pad down: shoot bow   G / D-pad right: throw flask   Esc / Start: menu","WASD / linker Stick: gehen   Maus / rechter Stick: umsehen   Umschalt / LB: sprinten   Strg / L3: schleichen   Leertaste / A: springen   Linksklick / RT: angreifen   Rechtsklick / LT: blocken   C / B: ausweichen   E / X: benutzen   I / Back: Inventar   V / Y: Kamera wechseln   F / Steuerkreuz hoch: Fackel   T / RB: Zeit vorspulen   R / Steuerkreuz unten: Bogen schießen   G / Steuerkreuz rechts: Flasche werfen   Esc / Start: Menü"
 UI_INTERACT_PROMPT,E / X: %s,E / X: %s
 UI_INVENTORY,Inventory,Inventar
 UI_CARRYING,Carrying: %s,Dabei: %s
@@ -43,6 +43,14 @@ ITEM_IRON_DAGGER,Iron dagger,Eisendolch
 ITEM_IRON_SWORD,Iron sword,Eisenschwert
 ITEM_IRON_AXE,Iron axe,Eisenaxt
 ITEM_TORCH,Torch,Fackel
+SLOT_GRIP,Grip,Griff
+SLOT_BLADE,Blade,Klinge
+PART_OAK,Oak,Eiche
+PART_ASH,Ash,Esche
+PART_EBONY,Ebony,Ebenholz
+PART_STRAIGHT,Straight,Gerade
+PART_BROAD,Broad (+10% damage),Breit (+10 % Schaden)
+PART_DARKENED,Darkened,Brüniert
 UI_COMPASS_N,N,N
 UI_COMPASS_NE,NE,NO
 UI_COMPASS_E,E,O

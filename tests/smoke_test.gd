@@ -144,6 +144,7 @@ func _run() -> void:
 	player.inventory.remove(Player.TORCH_ITEM)
 	day_night.hour = 9.0
 	await _test_crafting(scene, player)
+	_test_crafting_parts(scene, player)
 	await _test_story(scene, player)
 	await _test_villager_routines(scene)
 	await _test_combat(scene, player)
@@ -789,6 +790,79 @@ func _test_crafting(scene: Node, player: Player) -> void:
 	_check(CraftingData.item_name("iron_sword") != "ITEM_IRON_SWORD", "item names are translated")
 
 
+func _test_crafting_parts(scene: Node, player: Player) -> void:
+	var ui: CraftingUI = scene.get_node("CraftingUI")
+	_check(CraftingData.part_slots("iron_sword") == ["grip", "blade"] and CraftingData.part_slots("iron_nails").is_empty(), "weapons have parts to choose and nails do not")
+	_check(CraftingData.variant_key("iron_sword", {}) == "" and CraftingData.variant_key("iron_sword", {"blade": "straight", "grip": "oak"}) == "", "default parts add nothing to the item")
+	_check(CraftingData.variant_key("iron_sword", {"grip": "ebony", "blade": "broad", "nonsense": "x"}) == "blade=broad,grip=ebony", "chosen parts are written in a fixed order")
+	_check(CraftingData.variant_choices("iron_sword", "blade=gone,grip=ebony,junk") == {"grip": "ebony"}, "unknown parts in a save are ignored")
+	_check(is_equal_approx(CraftingData.weapon_damage("iron_sword", "common", "blade=broad"), 22.0), "a broad blade hits harder")
+	_check(is_equal_approx(CraftingData.weapon_damage("iron_sword", "common", "grip=ebony"), 20.0), "a grip changes the look only")
+	var plain := CraftingData.item_model("iron_sword")
+	var custom := CraftingData.item_model("iron_sword", "blade=broad,grip=ebony")
+	var plain_blade: MeshInstance3D = plain.get_child(2)
+	var custom_blade: MeshInstance3D = custom.get_child(2)
+	_check(custom_blade.mesh.size.x > plain_blade.mesh.size.x, "a broad blade is wider")
+	_check((custom.get_child(0).mesh.material as StandardMaterial3D).albedo_color != (plain.get_child(0).mesh.material as StandardMaterial3D).albedo_color, "an ebony grip is darker")
+	_check(is_equal_approx(CraftingData.item_length("iron_sword"), custom_blade.position.y + custom_blade.mesh.size.y / 2.0), "parts keep the weapon's length")
+	plain.free()
+	custom.free()
+
+	var inventory := Inventory.new()
+	inventory.add("iron_sword", 1, "fine")
+	inventory.add("iron_sword", 1, "fine", "blade=broad")
+	inventory.add("iron_sword", 1, "fine", "blade=broad")
+	_check(inventory.entries().size() == 2 and inventory.count("iron_sword") == 3, "different parts are different stacks")
+	_check(inventory.best_weapon()["variant"] == "blade=broad", "the best weapon includes its parts")
+	var restored := Inventory.new()
+	restored.load_data(inventory.to_data())
+	_check(restored.entries() == inventory.entries(), "stacks with parts survive saving")
+	restored.load_data({ "iron_sword:fine": 2, "iron_dagger:": 1 })
+	_check(restored.count("iron_sword") == 2 and restored.entries()[0]["variant"] == "", "saves from before parts still load")
+	_check(restored.remove("iron_sword", 2) and restored.count("iron_sword") == 0, "stacks without parts are removed")
+	inventory.remove("iron_sword", 3)
+	_check(inventory.entries().is_empty(), "stacks with parts are removed")
+
+	var carried := player.inventory.to_data()
+	player.inventory.add("iron_ingot", 6)
+	player.inventory.add("wood", 3)
+	ui.open_station("anvil", "Anvil", player)
+	ui.add_material("iron_ingot")
+	ui.add_material("iron_ingot")
+	ui.add_material("wood")
+	_check(ui._parts.visible and ui._parts.get_child_count() == 4, "the crafting screen offers a choice per part")
+	ui.choose_part("blade", "broad")
+	ui.choose_part("grip", "bogus")
+	ui.craft()
+	while ui.is_forging():
+		ui._game.marker = ui._game.target
+		ui.strike()
+	var forged := player.inventory.entries().filter(func(entry): return entry["id"] == "iron_sword")
+	_check(forged.size() == 1 and forged[0]["variant"] == "blade=broad" and forged[0]["quality"] == "masterwork", "the chosen parts are kept on the forged weapon")
+	_check(ui._inventory_label.text.contains(CraftingData.option_name("broad")), "the inventory names the parts: " + ui._inventory_label.text)
+	ui.add_material("iron_ingot")
+	ui.add_material("iron_ingot")
+	ui.add_material("wood")
+	ui.craft()
+	ui.abandon_forging()
+	ui.add_material("iron_ingot")
+	ui.add_material("wood")
+	_check(ui._parts.visible and ui._choices.is_empty(), "choices start from the defaults again")
+	ui.close()
+	player.inventory.load_data({})
+	player.inventory.add("iron_sword", 1, "common", "blade=broad")
+	player.inventory.add("iron_sword", 1, "common")
+	player._update_weapon_model()
+	_check(player._weapon.get_children().back().get_child(2).mesh.size.x > 0.06, "the hand holds the weapon with its parts")
+	player.inventory.load_data(carried)
+	player._update_weapon_model()
+
+	_write_flags(TEST_FLAGS_A, { "flags": { "crafting_parts": false } })
+	FeatureFlags.load_layers([TEST_FLAGS_A])
+	_check(CraftingData.part_slots("iron_sword").is_empty(), "the flag turns part choices off")
+	FeatureFlags.load_layers()
+
+
 func _test_villager_routines(scene: Node) -> void:
 	var village: Village = scene.get_node("Village")
 	var routines: VillagerRoutines = village.get_node("VillagerRoutines")
@@ -962,6 +1036,8 @@ func _test_combat(scene: Node, player: Player) -> void:
 	await _physics_frames(5)
 	_check(enemy.state != Enemy.State.IDLE, "goblins notice a nearby player")
 
+	await _test_sneaking(player, enemy)
+
 	# Hold block through the goblin's attack.
 	Input.action_press("block")
 	await _physics_frames(90)
@@ -1059,6 +1135,36 @@ func _test_combat(scene: Node, player: Player) -> void:
 	enemy._home = home
 	enemy.revive()
 	await _physics_frames(1)
+
+
+func _test_sneaking(player: Player, enemy: Enemy) -> void:
+	enemy.revive()
+	var normal_range := float(enemy._stats["aggro_range"])
+	player.position = enemy.position + Vector3(0.0, 0.3, 8.0)
+	Input.action_press("sneak")
+	await _physics_frames(5)
+	_check(player.is_sneaking(), "holding the sneak key sneaks")
+	_check(is_equal_approx(enemy.notice_range(player), normal_range * float(FeatureFlags.value("sneak_notice_factor"))), "sneaking shortens the range goblins notice at")
+	_check(enemy.state == Enemy.State.IDLE, "goblins don't notice a sneaking player at 8 m")
+	var sneak_speed := Vector2(player.velocity.x, player.velocity.z).length()
+	Input.action_release("sneak")
+	await _physics_frames(5)
+	_check(not player.is_sneaking() and enemy.notice_range(player) == normal_range, "letting go of the key ends sneaking")
+	_check(enemy.state != Enemy.State.IDLE, "goblins notice the same player at 8 m when not sneaking")
+	_check(sneak_speed <= Player.WALK_SPEED * float(FeatureFlags.value("sneak_speed_factor")) + 0.01, "sneaking is slower than walking")
+
+	# Turned off, the key does nothing.
+	FeatureFlags._flags["sneaking"] = false
+	Input.action_press("sneak")
+	await _physics_frames(2)
+	_check(not player.is_sneaking(), "the sneaking flag turns sneaking off")
+	Input.action_release("sneak")
+	FeatureFlags._flags["sneaking"] = true
+	# Back to the start of the fight the next checks expect.
+	enemy.revive()
+	player.health.restore()
+	player.position = enemy.position + Vector3(0.0, 0.3, 1.5)
+	await _physics_frames(5)
 
 
 func _test_enemy_navigation(scene: Node, player: Player) -> void:

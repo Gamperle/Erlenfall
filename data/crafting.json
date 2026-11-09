@@ -17,19 +17,31 @@
 		"arrow": { "name": "ITEM_ARROW", "material": true },
 		"fire_flask": { "name": "ITEM_FIRE_FLASK" },
 		"iron_dagger": { "name": "ITEM_IRON_DAGGER", "damage": 10, "model": [
-			{ "size": [0.03, 0.14, 0.03], "at": [0, 0.07, 0], "color": "#3b3026" },
+			{ "size": [0.03, 0.14, 0.03], "at": [0, 0.07, 0], "color": "#3b3026", "slot": "grip" },
 			{ "size": [0.09, 0.02, 0.03], "at": [0, 0.15, 0], "color": "#6f7276" },
-			{ "size": [0.045, 0.32, 0.012], "at": [0, 0.32, 0], "color": "#a9acb0" }
-		] },
+			{ "size": [0.045, 0.32, 0.012], "at": [0, 0.32, 0], "color": "#a9acb0", "slot": "blade" }
+		], "parts": { "grip": ["oak", "ash", "ebony"], "blade": ["straight", "broad", "darkened"] } },
 		"iron_sword": { "name": "ITEM_IRON_SWORD", "damage": 20, "model": [
-			{ "size": [0.03, 0.18, 0.03], "at": [0, 0.09, 0], "color": "#3b3026" },
+			{ "size": [0.03, 0.18, 0.03], "at": [0, 0.09, 0], "color": "#3b3026", "slot": "grip" },
 			{ "size": [0.16, 0.025, 0.035], "at": [0, 0.19, 0], "color": "#6f7276" },
-			{ "size": [0.06, 0.75, 0.014], "at": [0, 0.575, 0], "color": "#a9acb0" }
-		] },
+			{ "size": [0.06, 0.75, 0.014], "at": [0, 0.575, 0], "color": "#a9acb0", "slot": "blade" }
+		], "parts": { "grip": ["oak", "ash", "ebony"], "blade": ["straight", "broad", "darkened"] } },
 		"iron_axe": { "name": "ITEM_IRON_AXE", "damage": 16, "model": [
-			{ "size": [0.03, 0.62, 0.03], "at": [0, 0.31, 0], "color": "#3b3026" },
-			{ "size": [0.17, 0.13, 0.02], "at": [0.09, 0.55, 0], "color": "#a9acb0" }
-		] }
+			{ "size": [0.03, 0.62, 0.03], "at": [0, 0.31, 0], "color": "#3b3026", "slot": "grip" },
+			{ "size": [0.17, 0.13, 0.02], "at": [0.09, 0.55, 0], "color": "#a9acb0", "slot": "blade" }
+		], "parts": { "grip": ["oak", "ash", "ebony"], "blade": ["straight", "broad", "darkened"] } }
+	},
+	"part_options": {
+		"oak": { "name": "PART_OAK", "color": "#3b3026" },
+		"ash": { "name": "PART_ASH", "color": "#a8896a" },
+		"ebony": { "name": "PART_EBONY", "color": "#1c1815" },
+		"straight": { "name": "PART_STRAIGHT", "color": "#a9acb0" },
+		"broad": { "name": "PART_BROAD", "color": "#a9acb0", "size_scale": [1.5, 1.0, 1.0], "damage_multiplier": 1.1 },
+		"darkened": { "name": "PART_DARKENED", "color": "#55585d" }
+	},
+	"part_slots": {
+		"grip": "SLOT_GRIP",
+		"blade": "SLOT_BLADE"
 	},
 	"skills": {
 		"smithing": { "name": "SKILL_SMITHING", "level_xp": [0, 10, 25, 50, 90, 150] }

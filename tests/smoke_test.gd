@@ -132,6 +132,7 @@ func _run() -> void:
 	day_night.hour = 9.0
 	await _test_crafting(scene, player)
 	await _test_story(scene, player)
+	await _test_villager_routines(scene)
 	await _test_combat(scene, player)
 	await _test_enemy_navigation(scene, player)
 	await _test_enemy_crowds_and_bridges(scene, player)
@@ -703,6 +704,44 @@ func _test_crafting(scene: Node, player: Player) -> void:
 	_check(CraftingData.quality_for_score(clumsy.score()) == "crude", "bad forging gives crude quality")
 	_check(CraftingData.find_recipe("anvil", {"coal": 1}).is_empty(), "unknown combinations match nothing")
 	_check(CraftingData.item_name("iron_sword") != "ITEM_IRON_SWORD", "item names are translated")
+
+
+func _test_villager_routines(scene: Node) -> void:
+	var village: Village = scene.get_node("Village")
+	var routines: VillagerRoutines = village.get_node("VillagerRoutines")
+	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Village.LAYOUT_PATH))
+	var ids := []
+	for npc_data: Dictionary in layout["npcs"]:
+		ids.append(npc_data["id"])
+	var data := VillagerRoutines.load_routines()
+	var problems := VillagerRoutines.problems(data, ids)
+	_check(problems.is_empty(), "the villager routines are valid: %s" % [problems])
+	_check(not VillagerRoutines.problems({ "nobody": [{ "from": 5.0 }, { "from": 4.0, "x": 1.0 }] }, ids).is_empty(), "invalid routines are reported")
+
+	var stops := [{ "from": 6.0, "id": "a" }, { "from": 18.0, "id": "b" }]
+	_check(VillagerRoutines.active_stop(stops, 12.0)["id"] == "a", "a stop lasts until the next begins")
+	_check(VillagerRoutines.active_stop(stops, 23.0)["id"] == "b", "the last stop runs on past midnight")
+	_check(VillagerRoutines.active_stop(stops, 2.0)["id"] == "b", "and into the early morning")
+	_check(VillagerRoutines.active_stop([], 2.0).is_empty(), "no stops, no stop")
+
+	var bertram: Npc = village.get_node("bertram")
+	var evening := VillagerRoutines.active_stop(data["bertram"], 19.0)
+	var spot := Vector2(evening["x"], evening["z"])
+	routines.set_process(false)
+	routines.update(9.0)
+	routines.update(9.1)
+	_check(Vector2(bertram.position.x, bertram.position.z).is_equal_approx(bertram.home), "villagers stand at home by day")
+	routines.update(18.4)
+	routines.update(18.6)
+	_check(bertram.is_processing(), "a villager sets off when their stop changes")
+	var start := Vector2(bertram.position.x, bertram.position.z).distance_to(spot)
+	for i in 30:
+		await process_frame
+	_check(Vector2(bertram.position.x, bertram.position.z).distance_to(spot) < start, "and walks towards it")
+	_check(absf(bertram.position.y - village.terrain.height_at(bertram.position.x, bertram.position.z)) < 0.01, "following the ground")
+	routines.update(6.5)
+	_check(not bertram.is_processing() and Vector2(bertram.position.x, bertram.position.z).is_equal_approx(bertram.home), "a jump in time puts villagers straight at their places")
+	routines.set_process(FeatureFlags.enabled("villager_routines"))
 
 
 func _test_story(scene: Node, player: Player) -> void:

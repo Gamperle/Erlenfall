@@ -62,6 +62,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | Name | Default | Effect |
 |---|---|---|
 | `compass` | `true` | Shows the compass at the top of the screen |
+| `villager_routines` | `true` | Villagers follow their daily routines from [`data/villager_routines.json`](../data/villager_routines.json), walking to a place at the hours it names. Off keeps everyone where the layout puts them |
 | `realistic_villagers` | `true` | Uses the MakeHuman models for villagers who have one, instead of the simple figures |
 | `realistic_enemies` | `true` | Uses rigged models for enemies who have one |
 | `realistic_player` | `true` | Uses a rigged model for the player |
@@ -130,3 +131,9 @@ Enemies walk straight at their target until something blocks them, then search a
 | Name | Default | Effect |
 |---|---|---|
 | `small_prop_draw_distance` | `80` | How many meters away props smaller than 0.6 m, such as bowls and hammers, stop being drawn, along with their shadows. At 80 m they are a few pixels across |
+| `villager_walk_speed` | `1.2` | How fast villagers walk to their next place, in meters per second |
+| `villager_routine_tick_seconds` | `0.5` | How often the clock is checked for a villager's next stop. Villagers only do work while they are walking |
+
+### Villager routines
+
+A routine is a list of stops in `data/villager_routines.json`, by villager id. A stop starts at an hour (`from`, 0 to 24, increasing) and lasts until the next one, wrapping past midnight. It gives a place (`x`, `z`) and which way to face there (`facing`, degrees). A stop with no place means home, where `data/village_layout.json` puts the villager. Villagers walk in a straight line, stop while a conversation is open, and are put straight at their place if the time jumps by more than two hours, such as when sleeping.

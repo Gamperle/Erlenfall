@@ -136,6 +136,7 @@ func _run() -> void:
 	await _test_enemy_navigation(scene, player)
 	await _test_enemy_crowds_and_bridges(scene, player)
 	await _test_enemies_make_way(player)
+	await _test_enemies_go_around_a_corridor(player)
 	await _test_gathering_collision(scene, player)
 	await _test_forest(scene, player)
 	await _test_player_fixes(scene, player)
@@ -1153,6 +1154,48 @@ func _test_enemies_make_way(player: Player) -> void:
 		if arrived.size() == enemies.size():
 			break
 	_check(arrived.size() == enemies.size() and touching <= 10, "goblins let each other through a gap (%d of %d through, %d frames touching)" % [arrived.size(), enemies.size(), touching])
+	walls.free()
+	for i in enemies.size():
+		enemies[i]._home = homes[i]
+		enemies[i].revive()
+	EnemyPath.forget_all()
+	await _physics_frames(1)
+
+## The camp's three goblins walk one behind the other through a 16 m long corridor, 1.2 m wide, toward
+## a player 2 m past its far end. The first attacks from the end, and the others take the way around
+## the outside of the walls, about 20 m longer (#149).
+func _test_enemies_go_around_a_corridor(player: Player) -> void:
+	var enemies := root.get_tree().get_nodes_in_group(Enemy.GROUP)
+	var home: Vector3 = enemies[0]._home
+	var homes: Array[Vector3] = []
+	var site := Vector3(home.x + 12.0, home.y, home.z + 12.0)
+	var walls := Node3D.new()
+	root.add_child(walls)
+	_add_test_box(walls, site + Vector3(-0.8, 0.0, 0.0), Vector3(0.4, 6.0, 16.0))
+	_add_test_box(walls, site + Vector3(0.8, 0.0, 0.0), Vector3(0.4, 6.0, 16.0))
+	await _physics_frames(2)
+	EnemyPath.forget_all()
+	for i in enemies.size():
+		var enemy: Enemy = enemies[i]
+		homes.append(enemy._home)
+		enemy.revive()
+		enemy._home = site + Vector3(0.0, 0.5, -7.0 - i * 1.5)
+		enemy.position = enemy._home
+		enemy.state = Enemy.State.CHASE
+	var goal := site + Vector3(0.0, 0.5, 10.0)
+	player.health.restore()
+	player.position = goal
+	var arrived := {}
+	for i in 2400:
+		await physics_frame
+		player.position = goal
+		player.health.restore()
+		for enemy: Enemy in enemies:
+			if enemy.state != Enemy.State.CHASE:
+				arrived[enemy] = true
+		if arrived.size() == enemies.size():
+			break
+	_check(arrived.size() == enemies.size(), "goblins behind one attacking at a corridor's end go around the long way (%d of %d reached the player)" % [arrived.size(), enemies.size()])
 	walls.free()
 	for i in enemies.size():
 		enemies[i]._home = homes[i]

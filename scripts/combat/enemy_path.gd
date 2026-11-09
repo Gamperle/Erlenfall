@@ -142,6 +142,7 @@ func crowd_size() -> int:
 ## Starts a search that ends within `arrive_distance` of the goal. Call `advance` until it's done.
 func begin(from: Vector3, goal: Vector3, arrive_distance: float) -> void:
 	_refresh_grids()
+	_clear_start_of_crowd(from)
 	_know_crowd()
 	_goal = Vector2(goal.x, goal.z)
 	_arrive_distance = arrive_distance
@@ -170,6 +171,21 @@ func begin(from: Vector3, goal: Vector3, arrive_distance: float) -> void:
 			var between := start + offset / 2
 			if floor_index >= 0 and (between == start or _floor_near(between, from.y) >= 0):
 				_add_open(_node_key(cell, floor_index), -1, Vector2(offset).length())
+
+
+## A body pressed against someone in the crowd stands inside the space kept clear of them, which
+## would leave it no way out. Its way away from them is free, but not past them (#149).
+func _clear_start_of_crowd(from: Vector3) -> void:
+	var shrunk := false
+	var start := Vector2(from.x, from.z)
+	for i in _crowd.size():
+		var near := Vector2(_crowd[i].x, _crowd[i].z).distance_to(start)
+		if near < _crowd_clearance[i] and absf(_crowd[i].y - from.y) < PROBE_HEIGHT:
+			_crowd_clearance[i] = near
+			shrunk = true
+	if shrunk:
+		_crowded.clear()
+		_crowded_known = false
 
 
 ## Does search work until it finishes, which returns true, or the frame's budget runs out.

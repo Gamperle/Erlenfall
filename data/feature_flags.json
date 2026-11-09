@@ -12,6 +12,7 @@
 		"lift_buried_player": true,
 		"surface_relief": true,
 		"screen_ambient_occlusion": true,
+		"sneaking": true,
 		"torches": true,
 		"torch_crafting_enabled": true,
 		"torch_starting_item_enabled": true,
@@ -22,6 +23,8 @@
 	},
 	"values": {
 		"torch_burn_seconds": 600,
+		"sneak_speed_factor": 0.5,
+		"sneak_notice_factor": 0.35,
 		"buried_player_depth": 0.1,
 		"buried_player_ray_height": 6.0,
 		"axe_in_hand_seconds": 1.5,

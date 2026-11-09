@@ -193,13 +193,22 @@ func load_data(data: Dictionary) -> void:
 
 
 func _process_idle(player: Player) -> void:
-	if player != null and _distance_to(player) < float(_stats["aggro_range"]):
+	if player != null and _distance_to(player) < notice_range(player):
 		state = State.CHASE
 		return
 	if _flat_distance(_home) > HOME_TOLERANCE:
 		_move_toward_point(_home, HOME_TOLERANCE)
 	else:
 		_stop()
+
+
+## How far away this enemy notices the player. A sneaking player is noticed from less far.
+## An enemy already chasing keeps chasing, so sneaking only helps before a fight starts.
+func notice_range(player: Player) -> float:
+	var notice := float(_stats["aggro_range"])
+	if player.is_sneaking():
+		notice *= float(FeatureFlags.value("sneak_notice_factor", 0.35))
+	return notice
 
 
 func _process_chase(player: Player) -> void:

@@ -816,6 +816,8 @@ func _test_combat(scene: Node, player: Player) -> void:
 	await _physics_frames(5)
 	_check(enemy.state != Enemy.State.IDLE, "goblins notice a nearby player")
 
+	await _test_sneaking(player, enemy)
+
 	# Hold block through the goblin's attack.
 	Input.action_press("block")
 	await _physics_frames(90)
@@ -913,6 +915,36 @@ func _test_combat(scene: Node, player: Player) -> void:
 	enemy._home = home
 	enemy.revive()
 	await _physics_frames(1)
+
+
+func _test_sneaking(player: Player, enemy: Enemy) -> void:
+	enemy.revive()
+	var normal_range := float(enemy._stats["aggro_range"])
+	player.position = enemy.position + Vector3(0.0, 0.3, 8.0)
+	Input.action_press("sneak")
+	await _physics_frames(5)
+	_check(player.is_sneaking(), "holding the sneak key sneaks")
+	_check(is_equal_approx(enemy.notice_range(player), normal_range * float(FeatureFlags.value("sneak_notice_factor"))), "sneaking shortens the range goblins notice at")
+	_check(enemy.state == Enemy.State.IDLE, "goblins don't notice a sneaking player at 8 m")
+	var sneak_speed := Vector2(player.velocity.x, player.velocity.z).length()
+	Input.action_release("sneak")
+	await _physics_frames(5)
+	_check(not player.is_sneaking() and enemy.notice_range(player) == normal_range, "letting go of the key ends sneaking")
+	_check(enemy.state != Enemy.State.IDLE, "goblins notice the same player at 8 m when not sneaking")
+	_check(sneak_speed <= Player.WALK_SPEED * float(FeatureFlags.value("sneak_speed_factor")) + 0.01, "sneaking is slower than walking")
+
+	# Turned off, the key does nothing.
+	FeatureFlags._flags["sneaking"] = false
+	Input.action_press("sneak")
+	await _physics_frames(2)
+	_check(not player.is_sneaking(), "the sneaking flag turns sneaking off")
+	Input.action_release("sneak")
+	FeatureFlags._flags["sneaking"] = true
+	# Back to the start of the fight the next checks expect.
+	enemy.revive()
+	player.health.restore()
+	player.position = enemy.position + Vector3(0.0, 0.3, 1.5)
+	await _physics_frames(5)
 
 
 func _test_enemy_navigation(scene: Node, player: Player) -> void:

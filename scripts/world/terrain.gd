@@ -47,6 +47,10 @@ const SPOT_FLAT_BLEND := 7.0
 const ROAD_SPACING := 2.0
 const ROAD_SHOULDER := 1.0
 const ROAD_BLEND := 11.0
+## How many meters of valley side the river gets per meter the land lies above its banks, so the
+## sides stay below the player's 45 degree floor limit, and the most they spread.
+const VALLEY_RUN_PER_DROP := 3.4
+const MAX_VALLEY_WIDTH := 160.0
 const ROAD_SMOOTH_SAMPLES := 14
 const ROAD_SMOOTH_PASSES := 3
 const RIVER_SPACING := 8.0
@@ -188,7 +192,11 @@ func _along_river(height: float, x: float, z: float) -> float:
 	var edge := found.z + _bank_width
 	var bank := smoothstep(found.z, edge, found.x)
 	var channel := lerpf(found.y - _river_depth, found.y + _bank_height, bank)
-	return lerpf(channel, height, smoothstep(edge, edge + _valley_width, found.x))
+	# Where the river runs far below the land, as in the mountains, the valley sides spread wider so
+	# they stay walkable instead of dropping in a cliff.
+	var drop := maxf(height - (found.y + _bank_height), 0.0)
+	var valley := clampf(drop * VALLEY_RUN_PER_DROP, _valley_width, MAX_VALLEY_WIDTH)
+	return lerpf(channel, height, smoothstep(edge, edge + valley, found.x))
 
 
 func _add_flat_areas(layout: Dictionary) -> void:
@@ -258,7 +266,7 @@ func _add_river(data: Dictionary) -> void:
 	var widest := 0.0
 	for point: Array in data["points"]:
 		widest = maxf(widest, point[3])
-	river = TerrainPath.new(data["points"], RIVER_SPACING, widest + _bank_width + _valley_width)
+	river = TerrainPath.new(data["points"], RIVER_SPACING, widest + _bank_width + MAX_VALLEY_WIDTH)
 
 
 ## True on the debris field and on the bare scar the slide tore into the mountain above it.
@@ -388,6 +396,21 @@ func _add_chunk_mesh(chunk: int, indices: PackedInt32Array, vertices: PackedVect
 	add_child(instance)
 
 
+## Makes the cells fine where the landslide's rubble bends faster than a 4 m cell can follow, which is
+## where the ground differs from the average of a cell's corners by more than the rough_ground_deviation value. Fine cells under the landslide get fine collision too.
+func _mark_rough_cells(cells: PackedByteArray, row: int) -> void:
+	var first := Vector2i(floori((LANDSLIDE_CENTER.x - LANDSLIDE_EXTENT.x * 1.4 + SIZE / 2.0) / STEP), floori((LANDSLIDE_CENTER.y - LANDSLIDE_EXTENT.y * 1.4 + SIZE / 2.0) / STEP))
+	var last := Vector2i(ceili((LANDSLIDE_CENTER.x + LANDSLIDE_EXTENT.x * 1.4 + SIZE / 2.0) / STEP), ceili((LANDSLIDE_CENTER.y + LANDSLIDE_EXTENT.y * 1.4 + SIZE / 2.0) / STEP))
+	var threshold: float = FeatureFlags.value("rough_ground_deviation")
+	for j in range(maxi(first.y, 0), mini(last.y, row)):
+		for i in range(maxi(first.x, 0), mini(last.x, row)):
+			var x := i * STEP - SIZE / 2.0
+			var z := j * STEP - SIZE / 2.0
+			var corners := (height_at(x, z) + height_at(x + STEP, z) + height_at(x, z + STEP) + height_at(x + STEP, z + STEP)) / 4.0
+			if absf(height_at(x + STEP / 2.0, z + STEP / 2.0) - corners) > threshold:
+				cells[j * row + i] = FINE_CELL
+
+
 ## Marks the cells near the river, and the coarse cells beside them that meet them along an edge.
 ## Each row of the result holds count - 1 cells.
 func _fine_cells(count: int) -> PackedByteArray:
@@ -401,6 +424,8 @@ func _fine_cells(count: int) -> PackedByteArray:
 			var z := (j + 0.5) * STEP - SIZE / 2.0
 			if river_clearance(x, z) < margin and Vector2(x, z).length() < RIVER_FINE_RADIUS:
 				cells[j * row + i] = FINE_CELL
+	if FeatureFlags.enabled("rough_ground_fine_cells"):
+		_mark_rough_cells(cells, row)
 	if not FeatureFlags.enabled("terrain_seam_cells"):
 		return cells
 	for j in row:

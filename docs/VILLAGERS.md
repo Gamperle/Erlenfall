@@ -2,7 +2,7 @@
 
 Status: draft for review, like the rest of the story (see issue #20). Every name and backstory here is a proposal. The five villagers already in the game keep everything their dialogue says about them, and the rest is built around that.
 
-The design asks for 10-15 named characters. This document describes 20 so there is room to choose: the five in the game, the ones their dialogue already mentions, and others who fit later crafts, quests, and the town's growth. Only the first five are in the world for now.
+The design asks for 10-15 named characters. This document describes 20 so there is room to choose: the five in the game, the ones their dialogue already mentions, and others who fit later crafts, quests, and the town's growth. Fourteen are in the world for now (see the end of this document).
 
 ## How to use this document
 
@@ -230,7 +230,9 @@ Only Brandt and Oswin know that the slope was reported the autumn before. That s
 
 ## In the game now
 
-The world has Hedda, Mira, Bertram, Greta, and Brandt (`data/village_layout.json`). Their dialogue is in `data/dialogue.json`. It mentions Konrad, Agnes, Wendel, Oswin, Albrecht, Jakob, Falk, Marek, and Lene as people the player will meet later, and uses the draft names Anselm, Jorin, Talbrück, and The Alder Bough. Changing any of these names means changing those lines in `localization/strings.csv` too. Adding the other fifteen villagers to the world is a separate step.
+The world has fourteen villagers (`data/village_layout.json`): the five from the start, and Konrad, Agnes, Wendel, Oswin, Albrecht, Jakob, Falk, Marek, and Lene, the nine their dialogue already mentions. That is within the design's 10-15, and leaves room for one or two more. Tobi, Rudi, Runa, Hanne, Veit, and Gerold stay in the draft for now.
+
+The new nine have recipes in `tools/character_pipeline/villagers.json`, written from the appearance notes above, but no models yet, so they appear as the plain placeholder figures. Their dialogue is a single placeholder line each. Both are tracked in the issues "Build the models for the nine new villagers" and "Write the dialogue for the nine new villagers". Their places are rough, and their daily routines are issue #16. The dialogue mentions Konrad, Agnes, Wendel, Oswin, Albrecht, Jakob, Falk, Marek, and Lene by those draft names, and uses the draft names Anselm, Jorin, Talbrück, and The Alder Bough. Changing any of these names means changing those lines in `localization/strings.csv` too.
 
 ### What each villager says, and when
 

@@ -66,6 +66,8 @@ const WEAPON_BLADE_IN_HAND := Vector3(0.96, 0.15, -0.22)
 const TORCH_GRIP_POSITION := Vector3(0.0, 0.095, 0.035)
 const TORCH_GRIP_SCALE := 0.75
 const TORCH_ITEM := "torch"
+## How high above the feet projectiles start.
+const RANGED_ORIGIN_HEIGHT := 1.4
 const TORCH_ARM_RAISE := 1.2
 const TORCH_HAND_POSITION := Vector3(0.0, -0.58, -0.05)
 const TORCH_FIRST_PERSON_POSITION := Vector3(-0.4, -0.5, -0.7)
@@ -80,11 +82,15 @@ var _shown_variant := ""
 var _tool_in_hand := ""
 var _tool_seconds := 0.0
 var known_recipes: Dictionary = {}
+## Practice in each craft, by skill id.
+var skill_xp: Dictionary = {}
 var quests := QuestLog.new()
 ## What pressing the use button would act on right now, if anything.
 var interact_target: Interactable
 var torch_lit := false
 var torch_given := false
+## Whether the starting bow, arrows, and flasks have been given.
+var ranged_given := false
 ## How long the current torch has burned, when torches burn out.
 var torch_burned_seconds := 0.0
 
@@ -94,6 +100,7 @@ var _busy := false
 var _look_before_conversation: Variant = null
 var _attack_cooldown := 0.0
 var _attack_windup := 0.0
+var _ranged_cooldown := 0.0
 var _dodge_time := 0.0
 var _dodge_cooldown := 0.0
 var _dodge_direction := Vector3.ZERO
@@ -107,6 +114,18 @@ var _torch := Torch.new()
 @onready var _spring_arm: SpringArm3D = $CameraPivot/SpringArm
 @onready var _body_mesh: Humanoid = $Body
 @onready var _weapon: Node3D = $CameraPivot/Weapon
+
+
+## Adds practice to a skill, and returns the new level if this raised it, or 0.
+func practice(skill_id: String, xp: int) -> int:
+	var before := CraftingData.skill_level(skill_id, skill_xp.get(skill_id, 0))
+	skill_xp[skill_id] = int(skill_xp.get(skill_id, 0)) + xp
+	var after := CraftingData.skill_level(skill_id, skill_xp[skill_id])
+	return after if after > before else 0
+
+
+func skill_level(skill_id: String) -> int:
+	return CraftingData.skill_level(skill_id, skill_xp.get(skill_id, 0))
 
 
 func _enter_tree() -> void:
@@ -209,6 +228,39 @@ func give_starting_items() -> void:
 		inventory.add(TORCH_ITEM)
 
 
+## Gives the placeholder bow, arrows, and flasks once per game. Crafting them comes later (#29).
+func give_ranged_items() -> void:
+	if not ranged_given and FeatureFlags.enabled("ranged_starting_items"):
+		ranged_given = true
+		inventory.add("short_bow")
+		inventory.add("arrow", int(FeatureFlags.value("ranged_starting_arrows", 10)))
+		inventory.add("fire_flask", int(FeatureFlags.value("ranged_starting_flasks", 3)))
+
+
+## Fires the projectile type that belongs to this action ("shoot" or "throw"), if the player has what it needs.
+## Reports whether something was fired.
+func fire_ranged(action: String) -> bool:
+	if not FeatureFlags.enabled("ranged_weapons") or _ranged_cooldown > 0.0 or is_blocking() or is_dodging():
+		return false
+	for projectile_id: String in Projectile.type_ids():
+		var type := Projectile.stats(projectile_id)
+		if type["action"] != action:
+			continue
+		if type["requires_item"] != "" and inventory.count(type["requires_item"]) == 0:
+			notice.emit("UI_NEED_" + String(type["requires_item"]).to_upper())
+			return false
+		if not inventory.remove(type["ammo_item"]):
+			notice.emit("UI_NO_" + String(type["ammo_item"]).to_upper())
+			return false
+		_ranged_cooldown = type["cooldown"]
+		var aim := -_pivot.global_basis.z
+		var origin := global_position + Vector3.UP * RANGED_ORIGIN_HEIGHT + _forward() * 0.5
+		get_parent().add_child(Projectile.launch(projectile_id, origin, aim, self))
+		_body_mesh.rotation.y = _pivot.rotation.y
+		return true
+	return false
+
+
 func toggle_torch() -> void:
 	if not FeatureFlags.enabled("torches"):
 		return
@@ -298,6 +350,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		_look(event.screen_relative * MOUSE_SENSITIVITY * Settings.look_speed)
 	elif event.is_action_pressed("attack"):
 		attack()
+	elif event.is_action_pressed("shoot"):
+		fire_ranged("shoot")
+	elif event.is_action_pressed("throw"):
+		fire_ranged("throw")
 	elif event.is_action_pressed("dodge"):
 		dodge()
 	elif event.is_action_pressed("interact"):
@@ -361,6 +417,7 @@ func _physics_process(delta: float) -> void:
 
 func _update_combat(delta: float) -> void:
 	_attack_cooldown = maxf(_attack_cooldown - delta, 0.0)
+	_ranged_cooldown = maxf(_ranged_cooldown - delta, 0.0)
 	_dodge_time = maxf(_dodge_time - delta, 0.0)
 	_dodge_cooldown = maxf(_dodge_cooldown - delta, 0.0)
 	if _tool_seconds > 0.0:

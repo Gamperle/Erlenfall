@@ -100,7 +100,7 @@ The picture matters more than anything else, because the model sees only that on
 - **Check it's the right object.** SDXL has drawn an axe when asked for a hammer, and it doesn't reliably know bellows.
 - **Describe the shape, not only the name.** "Pointed horn" and "square steel head" helped the anvil and hammer.
 - **Prefer solid shapes.** Glass and hidden sides are the weakest.
-- **Walls are unreliable.** A stone wall works when the picture shows a clear outline. Every timber wall picture ran off the frame or showed a room. See [#61](https://github.com/Gamperle/Erlenfall/issues/61).
+- **Walls are unreliable.** A stone wall works when the picture shows a clear outline. Every timber wall picture ran off the frame or showed a room. Walls are code-built instead, see [WALLS_AND_BUILDINGS.md](WALLS_AND_BUILDINGS.md) and [#61](https://github.com/Gamperle/Erlenfall/issues/61).
 
 ## Known problems
 
@@ -119,8 +119,30 @@ The picture matters more than anything else, because the model sees only that on
 
 - **FLUX.2 klein 4B:** Apache 2.0.
 - **TRELLIS.2:** code and weights are MIT. ComfyUI (GPL-3.0) reimplements its rendering parts without NVIDIA's non-commercial `nvdiffrast`. The repackaged files on Comfy-Org's Hugging Face pages are marked MIT.
-- **BiRefNet:** MIT.
+- **BiRefNet:** the code ([ZhengPeng7/BiRefNet](https://github.com/ZhengPeng7/BiRefNet)) is MIT, and the Hugging Face model card for the weights also declares MIT. See "Background removal licenses" below for what that does and doesn't cover.
 - **DINOv3**, which TRELLIS.2 uses to read the picture, is under Meta's DINOv3 License. It allows commercial use but asks for "Built with DINOv3" attribution. [ASSETS.md](../ASSETS.md) carries it, and whether the game needs it too belongs with [#73](https://github.com/Gamperle/Erlenfall/issues/73).
+- **Blender and the scripts that import `bpy`:** Blender is GPL (version 2 or later for its source), and its license page says published scripts using the Python API must be shared under a GPL-compliant license. The six `bpy` scripts in `tools/` were written for this project (the history shows no copied third-party code) and are under the repository's MIT license, which is generally regarded as GPL-compatible. Nobody has confirmed this with legal advice, so the maintainer still has to decide ([#67](https://github.com/Gamperle/Erlenfall/issues/67)). `build_character.py` also drives the MPFB add-on, whose own license wasn't checked here. The rule for new scripts is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - **TripoSR:** MIT. **SDXL:** CreativeML Open RAIL++-M, still being checked ([#60](https://github.com/Gamperle/Erlenfall/issues/60)).
 
 Every generated file added to the repository must go through Git LFS if it's a large binary, and be listed in [ASSETS.md](../ASSETS.md) with the tools and versions, the full prompt, the seed, and any manual edits. To reproduce a picture, use the same prompt, seed, and package versions.
+
+### Background removal licenses
+
+Checked on 2026-11-09 from the upstream pages. This is a reading of what those pages say, not legal advice, and the pages could change.
+
+| Piece | What the upstream page says | Source |
+| --- | --- | --- |
+| `rembg` (the tool) | MIT License, copyright Daniel Gatis. Its README says model weights have their own licenses, independent of rembg's, and to check each model's source before commercial use | [danielgatis/rembg](https://github.com/danielgatis/rembg) |
+| u2net (the weights rembg downloads by default) | rembg's README gives no license for the weights and points to the U-2-Net repository. That repository's code is under Apache License 2.0 (the LICENSE file is the unmodified template with no named copyright holder). Its README gives no separate license for the pretrained weights, which are on Google Drive and Baidu Pan, and none for the training datasets it names (DUTS-TR, and the Supervisely Person Dataset for the human-segmentation variant) | [xuebinqin/U-2-Net](https://github.com/xuebinqin/U-2-Net) |
+| BiRefNet code | MIT | [ZhengPeng7/BiRefNet](https://github.com/ZhengPeng7/BiRefNet) |
+| BiRefNet weights | The Hugging Face model card declares MIT. The card says the standard model was trained on DIS-TR (and validated on DIS-TE and DIS-VD) and gives no license for that data | [ZhengPeng7/BiRefNet](https://huggingface.co/ZhengPeng7/BiRefNet) |
+| RMBG-2.0 (BRIA), trained with BiRefNet | BiRefNet's README says its weights are non-commercial only. Do not use it, nor RMBG-1.4 | BiRefNet README |
+
+What this means for the game:
+
+- **u2net:** the tool is MIT and the code is Apache 2.0, both permissive. The remaining gap is that no upstream page states a license for the weight files themselves or the datasets they were trained on. The game ships only the generated meshes and textures, never the weights, and the background mask is an intermediate step, so the practical exposure looks small. It is not settled, though, and the maintainer decides whether it is acceptable. The simplest way to remove the question is to stop using u2net for new props.
+- **BiRefNet:** the same dataset caveat applies (training data licenses are not stated), but code and weights are both labeled MIT, which is the clearest labeling of the options. TRELLIS.2 already uses it internally, so the props made with it already depend on it.
+- **Apache 2.0 and MIT** ask that the license text and copyright notice go with a redistributed copy of the code or weights. They place no condition on images or meshes made with the tool. Nothing here is redistributed in the game.
+- **Which props are affected:** the TripoSR props in [ASSETS.md](../ASSETS.md) list "rembg u2net" in their tools column. The TRELLIS.2 props use BiRefNet.
+
+Still to do: compare BiRefNet (and BEN2 Base, MIT) with u2net on thin parts such as tongs, chains, and handles. That needs the asset PC, so it is tracked in [#218](https://github.com/Gamperle/Erlenfall/issues/218).

@@ -79,7 +79,7 @@ Combat is about 15% of play time and is simple, real-time, and often avoidable.
 | --- | --- |
 | Engine | Godot 4.7.2 stable, upgraded on purpose |
 | Language | GDScript; C++ (GDExtension) only where profiling shows a need |
-| Renderer | Forward+ on desktop, with quality settings for integrated graphics |
+| Renderer | Forward+ on desktop, with quality settings for integrated graphics; Compatibility on Web |
 | Platforms | Linux and Windows; a reduced Web build later |
 | Input | Keyboard and mouse, and controller |
 | Saving | Autosave, plus manual save at a bed |

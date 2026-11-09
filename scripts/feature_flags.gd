@@ -10,6 +10,7 @@ static var _loaded := false
 
 
 ## Reloads the base file, then applies each mod's file in load order. Later files win.
+## Without a call, the first use loads the mods listed in user://mods (see ModLoader).
 static func load_layers(mod_paths: Array[String] = []) -> void:
 	_flags = {}
 	_values = {}
@@ -32,7 +33,7 @@ static func value(key: String, fallback: Variant = null) -> Variant:
 
 static func _ensure_loaded() -> void:
 	if not _loaded:
-		load_layers()
+		load_layers(ModLoader.flag_files())
 
 
 static func _apply_layer(path: String) -> void:

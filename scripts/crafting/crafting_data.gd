@@ -146,6 +146,34 @@ static func quality_for_score(score: float) -> String:
 	return best
 
 
+## The skill levels start at 1. Each entry of the skill's "level_xp" is the practice needed for the next level.
+static func skill_level(skill_id: String, xp: int) -> int:
+	var level := 0
+	for needed: int in _get_data()["skills"][skill_id]["level_xp"]:
+		if xp >= needed:
+			level += 1
+	return maxi(level, 1)
+
+
+static func skill_max_level(skill_id: String) -> int:
+	return _get_data()["skills"][skill_id]["level_xp"].size()
+
+
+## Returns the practice needed for the next level, or 0 at the highest level.
+static func skill_next_xp(skill_id: String, xp: int) -> int:
+	var level := skill_level(skill_id, xp)
+	var thresholds: Array = _get_data()["skills"][skill_id]["level_xp"]
+	return 0 if level >= thresholds.size() else int(thresholds[level])
+
+
+static func skill_name(skill_id: String) -> String:
+	return TranslationServer.translate(_get_data()["skills"][skill_id]["name"])
+
+
+static func skill_ids() -> Array:
+	return _get_data()["skills"].keys()
+
+
 static func recipes_for(station: String) -> Array[Dictionary]:
 	var recipes: Array[Dictionary] = []
 	for recipe: Dictionary in _get_data()["recipes"]:

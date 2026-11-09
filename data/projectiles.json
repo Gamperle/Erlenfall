@@ -1,0 +1,30 @@
+{
+	"arrow": {
+		"action": "shoot",
+		"requires_item": "short_bow",
+		"ammo_item": "arrow",
+		"damage": 14,
+		"speed": 38.0,
+		"gravity": 9.8,
+		"lifetime": 4.0,
+		"radius": 0.12,
+		"splash_radius": 0.0,
+		"cooldown": 0.9,
+		"size": [0.025, 0.025, 0.6],
+		"color": "#c9b38a"
+	},
+	"fire_flask": {
+		"action": "throw",
+		"requires_item": "",
+		"ammo_item": "fire_flask",
+		"damage": 25,
+		"speed": 14.0,
+		"gravity": 9.8,
+		"lifetime": 5.0,
+		"radius": 0.15,
+		"splash_radius": 3.0,
+		"cooldown": 1.2,
+		"size": [0.14, 0.2, 0.14],
+		"color": "#d9622b"
+	}
+}

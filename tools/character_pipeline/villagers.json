@@ -117,6 +117,245 @@
 		"eyes": "low-poly"
 	},
 	{
+		"id": "konrad",
+		"shape": {
+			"gender": 1,
+			"age": 0.63,
+			"muscle": 0.7,
+			"weight": 0.65
+		},
+		"skin": "middleage_caucasian_male",
+		"clothes": ["toigo_wool_pants", "toigo_fisherman_sweater", "shoes03"],
+		"footwear": ["shoes03"],
+		"colors": {
+			"toigo_wool_pants": [0.33, 0.27, 0.2],
+			"toigo_fisherman_sweater": [0.45, 0.32, 0.2],
+			"grinsegold_beard_sigmund_wip": [0.35, 0.25, 0.17]
+		},
+		"hair": "short04",
+		"brows": "eyebrow009",
+		"eyes": "low-poly",
+		"hair_color": [0.35, 0.25, 0.17],
+		"beard": "grinsegold_beard_sigmund_wip",
+		"under_hem": {
+			"toigo_wool_pants": "toigo_fisherman_sweater"
+		},
+		"trim_above": {
+			"shoes03": 0.11
+		}
+	},
+	{
+		"id": "agnes",
+		"shape": {
+			"gender": 0,
+			"age": 0.82,
+			"muscle": 0.45,
+			"weight": 0.4,
+			"cupsize": 0.5,
+			"firmness": 0.5
+		},
+		"skin": "old_caucasian_female",
+		"clothes": ["toigo_long_full_skirt", "toigo_fisherman_sweater", "shoes03"],
+		"footwear": ["shoes03"],
+		"colors": {
+			"toigo_long_full_skirt": [0.36, 0.42, 0.5],
+			"toigo_fisherman_sweater": [0.6, 0.55, 0.45]
+		},
+		"hair": "braid01",
+		"brows": "eyebrow009",
+		"eyes": "low-poly",
+		"hair_color": [0.85, 0.84, 0.82],
+		"smooth_chest": ["toigo_fisherman_sweater"],
+		"tucked": {
+			"toigo_fisherman_sweater": "toigo_long_full_skirt"
+		}
+	},
+	{
+		"id": "wendel",
+		"shape": {
+			"gender": 1,
+			"age": 0.73,
+			"muscle": 0.65,
+			"weight": 0.45
+		},
+		"skin": "old_caucasian_male",
+		"clothes": ["toigo_wool_pants", "toigo_fisherman_sweater", "shoes03"],
+		"footwear": ["shoes03"],
+		"colors": {
+			"toigo_wool_pants": [0.3, 0.27, 0.2],
+			"toigo_fisherman_sweater": [0.3, 0.38, 0.25],
+			"grinsegold_beard_sigmund_wip": [0.3, 0.28, 0.26]
+		},
+		"hair": "short02",
+		"brows": "eyebrow009",
+		"eyes": "low-poly",
+		"hair_color": [0.3, 0.28, 0.26],
+		"beard": "grinsegold_beard_sigmund_wip",
+		"under_hem": {
+			"toigo_wool_pants": "toigo_fisherman_sweater"
+		},
+		"trim_above": {
+			"shoes03": 0.11
+		}
+	},
+	{
+		"id": "oswin",
+		"shape": {
+			"gender": 1,
+			"age": 0.79,
+			"muscle": 0.5,
+			"weight": 0.4
+		},
+		"skin": "old_caucasian_male",
+		"clothes": ["toigo_wool_pants", "toigo_fisherman_sweater", "shoes03"],
+		"footwear": ["shoes03"],
+		"colors": {
+			"toigo_wool_pants": [0.3, 0.26, 0.2],
+			"toigo_fisherman_sweater": [0.5, 0.42, 0.32],
+			"grinsegold_beard_sigmund_wip": [0.65, 0.63, 0.6]
+		},
+		"hair": "short01",
+		"brows": "eyebrow009",
+		"eyes": "low-poly",
+		"hair_color": [0.8, 0.78, 0.75],
+		"beard": "grinsegold_beard_sigmund_wip",
+		"under_hem": {
+			"toigo_wool_pants": "toigo_fisherman_sweater"
+		},
+		"trim_above": {
+			"shoes03": 0.11
+		}
+	},
+	{
+		"id": "albrecht",
+		"shape": {
+			"gender": 1,
+			"age": 0.92,
+			"muscle": 0.25,
+			"weight": 0.35
+		},
+		"skin": "old_caucasian_male",
+		"clothes": ["donitz_monk_robe", "shoes03"],
+		"footwear": ["shoes03"],
+		"colors": {
+			"donitz_monk_robe": [0.38, 0.27, 0.18],
+			"grinsegold_beard_sigmund_wip": [0.88, 0.87, 0.85]
+		},
+		"hair": "short01",
+		"brows": "eyebrow009",
+		"eyes": "low-poly",
+		"hair_color": [0.88, 0.87, 0.85],
+		"beard": "grinsegold_beard_sigmund_wip"
+	},
+	{
+		"id": "jakob",
+		"shape": {
+			"gender": 1,
+			"age": 0.41,
+			"muscle": 0.55,
+			"weight": 0.4
+		},
+		"skin": "young_caucasian_male",
+		"clothes": ["toigo_wool_pants", "toigo_fisherman_sweater", "shoes03"],
+		"footwear": ["shoes03"],
+		"colors": {
+			"toigo_wool_pants": [0.35, 0.28, 0.2],
+			"toigo_fisherman_sweater": [0.8, 0.76, 0.66]
+		},
+		"hair": "short04",
+		"brows": "eyebrow009",
+		"eyes": "low-poly",
+		"hair_color": [0.55, 0.42, 0.22],
+		"under_hem": {
+			"toigo_wool_pants": "toigo_fisherman_sweater"
+		},
+		"trim_above": {
+			"shoes03": 0.11
+		}
+	},
+	{
+		"id": "falk",
+		"shape": {
+			"gender": 1,
+			"age": 0.62,
+			"muscle": 0.65,
+			"weight": 0.4
+		},
+		"skin": "middleage_caucasian_male",
+		"clothes": ["toigo_wool_pants", "toigo_fisherman_sweater", "shoes03"],
+		"footwear": ["shoes03"],
+		"colors": {
+			"toigo_wool_pants": [0.22, 0.18, 0.14],
+			"toigo_fisherman_sweater": [0.25, 0.2, 0.15],
+			"grinsegold_beard_sigmund_wip": [0.1, 0.09, 0.08]
+		},
+		"hair": "short02",
+		"brows": "eyebrow009",
+		"eyes": "low-poly",
+		"hair_color": [0.1, 0.09, 0.08],
+		"beard": "grinsegold_beard_sigmund_wip",
+		"under_hem": {
+			"toigo_wool_pants": "toigo_fisherman_sweater"
+		},
+		"trim_above": {
+			"shoes03": 0.11
+		}
+	},
+	{
+		"id": "marek",
+		"shape": {
+			"gender": 1,
+			"age": 0.66,
+			"muscle": 0.5,
+			"weight": 0.45
+		},
+		"skin": "middleage_caucasian_male",
+		"clothes": ["toigo_wool_pants", "toigo_fisherman_sweater", "shoes03"],
+		"footwear": ["shoes03"],
+		"colors": {
+			"toigo_wool_pants": [0.3, 0.25, 0.4],
+			"toigo_fisherman_sweater": [0.6, 0.3, 0.2],
+			"grinsegold_beard_sigmund_wip": [0.25, 0.2, 0.18]
+		},
+		"hair": "short04",
+		"brows": "eyebrow009",
+		"eyes": "low-poly",
+		"hair_color": [0.25, 0.2, 0.18],
+		"beard": "grinsegold_beard_sigmund_wip",
+		"under_hem": {
+			"toigo_wool_pants": "toigo_fisherman_sweater"
+		},
+		"trim_above": {
+			"shoes03": 0.11
+		}
+	},
+	{
+		"id": "lene",
+		"shape": {
+			"gender": 0,
+			"age": 0.55,
+			"muscle": 0.35,
+			"weight": 0.45,
+			"cupsize": 0.5,
+			"firmness": 0.5
+		},
+		"skin": "young_caucasian_female",
+		"clothes": ["toigo_long_full_skirt", "toigo_fisherman_sweater", "shoes03"],
+		"footwear": ["shoes03"],
+		"colors": {
+			"toigo_long_full_skirt": [0.4, 0.12, 0.15],
+			"toigo_fisherman_sweater": [0.45, 0.15, 0.18]
+		},
+		"hair": "ponytail01",
+		"brows": "eyebrow009",
+		"eyes": "low-poly",
+		"hair_color": [0.5, 0.38, 0.27],
+		"smooth_chest": ["toigo_fisherman_sweater"],
+		"tucked": {
+			"toigo_fisherman_sweater": "toigo_long_full_skirt"
+		}
+	},
+	{
 		"id": "player",
 		"shape": {
 			"gender": 1.0,

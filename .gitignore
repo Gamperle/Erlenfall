@@ -6,5 +6,9 @@
 /build/
 tools/asset_test/work/
 
+# Textures Godot extracts from the generated props when it imports them
+/assets/props/*.png
+/assets/props/*.png.import
+
 # Texture pipeline downloads
 tools/texture_pipeline/downloads/

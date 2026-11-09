@@ -29,6 +29,7 @@ uniform float relief_strength = 1.6;
 
 varying vec3 world_position;
 varying vec3 world_normal;
+varying float edge_fade;
 
 // Dividing by the photo's average keeps base_color as the overall color. Gradients are passed
 // because these reads sit in branches, where a GPU can't work them out itself.
@@ -47,6 +48,7 @@ vec3 bent_normal(vec3 normal, vec2 tilt, vec3 along_u, vec3 along_v) {
 void vertex() {
 	world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	edge_fade = COLOR.a;
 }
 
 // One projection's photo detail and relief, with the areas of other photos that keep large
@@ -121,4 +123,11 @@ void fragment() {
 		AO_LIGHT_AFFECT = relief_light_affect;
 	}
 	SPECULAR = 0.2;
+
+	// Roads fade out towards their edges (by vertex alpha). Noise breaks that fade into ragged
+	// patches of dirt, so the edge is never a straight line.
+	if (edge_fade < 0.999) {
+		ALPHA = edge_fade + (fine * 0.6 + noise * 0.4 - 0.5) * 1.5;
+		ALPHA_SCISSOR_THRESHOLD = 0.5;
+	}
 }

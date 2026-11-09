@@ -596,6 +596,34 @@ func _test_feature_flags() -> void:
 	_check(CraftingData.find_recipe("furnace", { "wood": 1, "coal": 1 }).is_empty(), "a disabled flag removes a recipe")
 	FeatureFlags.load_layers()
 	_check(not CraftingData.find_recipe("furnace", { "wood": 1, "coal": 1 }).is_empty(), "the torch recipe is on by default")
+	_test_mod_loader()
+
+
+func _test_mod_loader() -> void:
+	var dir := "user://smoke_test_mods"
+	DirAccess.make_dir_recursive_absolute(dir.path_join("first"))
+	DirAccess.make_dir_recursive_absolute(dir.path_join("second"))
+	DirAccess.make_dir_recursive_absolute(dir.path_join("empty"))
+	_check(ModLoader.flag_files(dir).is_empty(), "no load order means no mods")
+	_write_flags(dir.path_join("first/feature_flags.json"), { "values": { "torch_burn_seconds": 5 } })
+	_write_flags(dir.path_join("second/feature_flags.json"), { "values": { "torch_burn_seconds": 9 } })
+	_write_flags(dir.path_join(ModLoader.LOAD_ORDER_FILE), { "mods": ["first", "second"] })
+	var files := ModLoader.flag_files(dir)
+	_check(files.size() == 2 and files[0].contains("first") and files[1].contains("second"), "mods come back in load order")
+	FeatureFlags.load_layers(files)
+	_check(FeatureFlags.value("torch_burn_seconds") == 9, "the last listed mod wins")
+	_write_flags(dir.path_join(ModLoader.LOAD_ORDER_FILE), { "mods": ["second", "first"] })
+	FeatureFlags.load_layers(ModLoader.flag_files(dir))
+	_check(FeatureFlags.value("torch_burn_seconds") == 5, "reordering the list reorders the mods")
+	_write_flags(dir.path_join(ModLoader.LOAD_ORDER_FILE), { "mods": ["../escape", "/abs", ".hidden", "a\\b", "empty", "missing", "first", "first"] })
+	_check(ModLoader.flag_files(dir).size() == 1, "unsafe, missing, empty, and repeated mods are skipped")
+	_check(ModLoader.is_safe_name("my_mod") and not ModLoader.is_safe_name("") and not ModLoader.is_safe_name(3), "mod names must be plain folder names")
+	FeatureFlags.load_layers()
+	for sub in ["first", "second", "empty"]:
+		DirAccess.remove_absolute(dir.path_join(sub).path_join("feature_flags.json"))
+		DirAccess.remove_absolute(dir.path_join(sub))
+	DirAccess.remove_absolute(dir.path_join(ModLoader.LOAD_ORDER_FILE))
+	DirAccess.remove_absolute(dir)
 
 
 func _test_torch(player: Player) -> void:

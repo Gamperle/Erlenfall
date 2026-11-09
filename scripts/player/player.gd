@@ -190,6 +190,13 @@ func is_dodging() -> bool:
 	return _dodge_time > 0.0
 
 
+## Whether the player moves quietly, which makes enemies notice them from less far away.
+## Held, and not while busy, rolling, or blocking. Off when the `sneaking` flag is off.
+func is_sneaking() -> bool:
+	return FeatureFlags.enabled("sneaking") and not _busy and not is_dodging() and not is_blocking() \
+			and Input.is_action_pressed("sneak")
+
+
 func is_blocking() -> bool:
 	return not _busy and Input.is_action_pressed("block")
 
@@ -387,6 +394,8 @@ func _physics_process(delta: float) -> void:
 		move = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var direction := Vector3(move.x, 0.0, move.y).rotated(Vector3.UP, _pivot.rotation.y)
 	var speed := SPRINT_SPEED if Input.is_action_pressed("sprint") else WALK_SPEED
+	if is_sneaking():
+		speed = WALK_SPEED * float(FeatureFlags.value("sneak_speed_factor", 0.5))
 	if is_blocking():
 		speed = WALK_SPEED * BLOCK_SPEED_FACTOR
 	var terrain := get_tree().get_first_node_in_group(Terrain.GROUP) as Terrain

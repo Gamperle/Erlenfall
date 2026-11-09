@@ -15,6 +15,7 @@
 		"surface_relief": true,
 		"screen_ambient_occlusion": true,
 		"sneaking": true,
+		"crafting_parts": true,
 		"crafting_skill": true,
 		"ranged_weapons": true,
 		"ranged_starting_items": true,

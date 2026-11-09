@@ -23,12 +23,12 @@ func interact(player: Player) -> void:
 
 
 ## Lays the newest thing made here on the station, in place of the last one.
-func show_made(at_station: String, item_id: String) -> void:
+func show_made(at_station: String, item_id: String, variant: String = "") -> void:
 	if at_station != station_id or work_spot == null:
 		return
 	if _made_model != null:
 		_made_model.queue_free()
-	_made_model = CraftingData.item_model(item_id)
+	_made_model = CraftingData.item_model(item_id, variant)
 	if _made_model != null:
 		_made_model.position = work_spot
 		# Weapons are modeled upright, so they lie down. Other items are modeled lying flat.

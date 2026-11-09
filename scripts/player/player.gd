@@ -78,6 +78,7 @@ const BURIED_RAY_ATTEMPTS := 8
 var first_person := false
 var inventory := Inventory.new()
 var _shown_weapon := "-"
+var _shown_variant := ""
 var _tool_in_hand := ""
 var _tool_seconds := 0.0
 var known_recipes: Dictionary = {}
@@ -214,13 +215,15 @@ func item_in_hand() -> String:
 
 ## The weapon in hand is the one that attacks use, unless a tool is out. Empty hands show nothing.
 func _update_weapon_model() -> void:
-	var weapon_id := _tool_in_hand if _tool_seconds > 0.0 else inventory.best_weapon_id()
-	if weapon_id == _shown_weapon:
+	var weapon := { "id": _tool_in_hand, "variant": "" } if _tool_seconds > 0.0 else inventory.best_weapon()
+	var weapon_id: String = weapon["id"]
+	if weapon_id == _shown_weapon and weapon["variant"] == _shown_variant:
 		return
 	_shown_weapon = weapon_id
+	_shown_variant = weapon["variant"]
 	for child in _weapon.get_children():
 		child.queue_free()
-	var model := CraftingData.item_model(weapon_id)
+	var model := CraftingData.item_model(weapon_id, _shown_variant)
 	if model != null:
 		_weapon.add_child(model)
 

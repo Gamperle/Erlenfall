@@ -2,6 +2,7 @@ class_name PostureModifier
 extends SkeletonModifier3D
 ## Straightens the back and neck over the animations, which lean these bodies forward by a different amount for each body.
 ## Measures the first pose once, then turns each bone back by the same amount in every pose after.
+## Also brings hanging arms forward, since the animations pull the shoulders back and the arms hang behind the body.
 ## Leans are in degrees forward, in the skeleton's axes, where +Z is ahead.
 
 ## Each bone, the two joints whose line it sets, and how far that line should lean, as in the bodies' own rest pose.
@@ -10,6 +11,12 @@ const SEGMENTS := [
 	[&"UpperChest", &"UpperChest", &"Neck", 6.0],
 	[&"Neck", &"Neck", &"Head", 19.0],
 ]
+## How far each shoulder turns forward around the upright axis, and each upper arm swings forward, when the arm hangs down.
+const SHOULDER_TURN_DEGREES := 18.0
+const ARM_SWING_DEGREES := 6.0
+## How far down the upper arm points, from 0 for level to 1 for straight down, where the turns start and reach full strength.
+const HANGING_FROM := 0.5
+const HANGING_TO := 0.85
 
 var _turns: Array[float] = []
 
@@ -21,10 +28,24 @@ func _process_modification() -> void:
 		var segment: Array = SEGMENTS[index]
 		if measuring:
 			_turns.append(deg_to_rad(segment[3]) - _lean(skeleton, segment[1], segment[2]))
-		var bone := skeleton.find_bone(segment[0])
-		var wanted := Quaternion(Vector3.RIGHT, _turns[index]) * skeleton.get_bone_global_pose(bone).basis.get_rotation_quaternion()
-		var parent := skeleton.get_bone_global_pose(skeleton.get_bone_parent(bone)).basis.get_rotation_quaternion()
-		skeleton.set_bone_pose_rotation(bone, (parent.inverse() * wanted).normalized())
+		_turn(skeleton, segment[0], Quaternion(Vector3.RIGHT, _turns[index]))
+	for side in [[&"LeftShoulder", &"LeftUpperArm", &"LeftLowerArm", -1.0], [&"RightShoulder", &"RightUpperArm", &"RightLowerArm", 1.0]]:
+		# Only hanging arms move, so a raised torch or sword stays where the animation holds it.
+		var hanging := smoothstep(HANGING_FROM, HANGING_TO, -_direction(skeleton, side[1], side[2]).y)
+		_turn(skeleton, side[0], Quaternion(Vector3.UP, side[3] * hanging * deg_to_rad(SHOULDER_TURN_DEGREES)))
+		_turn(skeleton, side[1], Quaternion(Vector3.RIGHT, -hanging * deg_to_rad(ARM_SWING_DEGREES)))
+
+
+## Turns a bone by a rotation in the skeleton's axes, keeping its parent where it is.
+func _turn(skeleton: Skeleton3D, bone_name: StringName, turn: Quaternion) -> void:
+	var bone := skeleton.find_bone(bone_name)
+	var wanted := turn * skeleton.get_bone_global_pose(bone).basis.get_rotation_quaternion()
+	var parent := skeleton.get_bone_global_pose(skeleton.get_bone_parent(bone)).basis.get_rotation_quaternion()
+	skeleton.set_bone_pose_rotation(bone, (parent.inverse() * wanted).normalized())
+
+
+func _direction(skeleton: Skeleton3D, from: StringName, to: StringName) -> Vector3:
+	return (skeleton.get_bone_global_pose(skeleton.find_bone(to)).origin - skeleton.get_bone_global_pose(skeleton.find_bone(from)).origin).normalized()
 
 
 func _lean(skeleton: Skeleton3D, from: StringName, to: StringName) -> float:

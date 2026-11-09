@@ -59,7 +59,7 @@ Set these on the model's `Skeleton3D` in the import settings, for both the chara
 - **Bone map:** use `SkeletonProfileHumanoid`. On characters, leave the finger bones out, because the animations' finger poses turn the hands into claws. They then keep their relaxed rest pose.
 - **Silhouette fix:** turn it on, with a threshold of 3 degrees, since the bodies rest in an A-pose.
 
-- **Posture:** the animations lean these bodies forward, and by a different amount for each body. `scripts/world/posture_modifier.gd` measures the first pose of each character and turns the back and neck back to the bodies' own rest posture, in every animation. `CharacterModel` and `turntable.gd` add it.
+- **Posture:** the animations lean these bodies forward, and by a different amount for each body. `scripts/world/posture_modifier.gd` measures the first pose of each character and turns the back and neck back to the bodies' own rest posture, in every animation. The animations also pull the shoulders back, so while an arm hangs down, it turns that shoulder 18 degrees forward and swings the upper arm 6 degrees forward. Raised arms, such as with a torch or a sword, keep their animated pose. `CharacterModel` and `turntable.gd` add it.
 
 ## Goblin
 

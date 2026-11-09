@@ -30,6 +30,9 @@ var arm_twist_degrees := 0.0
 ## How far down the upper arm points, from 0 for level to 1 for straight down, where the turns start and reach full strength.
 var hanging_from := 0.5
 var hanging_to := 0.85
+## How much of the arms' sideways swing, in and out of the body, is removed: 0 keeps it, and 1 holds each upper arm at the angle it has had on average over the last moments.
+## Arms raised above the shoulder are left alone.
+var arm_sideways_damping := 0.0
 ## 1 changes only hanging arms, so a raised torch or sword stays where the animation holds it, and 0 changes the arms in every pose.
 var arm_hanging_only := 1.0
 ## How far each thigh is brought toward the middle, each thigh is twisted around its length so the knee turns in,
@@ -39,8 +42,15 @@ var thigh_twist_degrees := 0.0
 var shin_in_degrees := 0.0
 var foot_in_degrees := 0.0
 
+## How long, in seconds, the average angle of an arm takes to follow it, which should be longer than a stride.
+const AVERAGE_SECONDS := 0.5
+
 ## How far each line leans in the first pose, before any turn.
 var _measured: Array[float] = []
+## How far out each upper arm has pointed on average, by side, in radians, and when that was last updated.
+var _average_out := {}
+var _average_time := 0.0
+var _average_blend := 0.0
 
 static var _tuning: Dictionary
 static var _tuning_loaded := false
@@ -73,6 +83,9 @@ func _process_modification() -> void:
 		if measuring:
 			_measured.append(_lean(skeleton, segment[1], segment[2]))
 		_turn(skeleton, segment[0], Quaternion(Vector3.RIGHT, deg_to_rad(get(segment[3])) - _measured[index]))
+	var now := Time.get_ticks_usec() / 1000000.0
+	_average_blend = 1.0 - exp(-clampf(now - _average_time, 0.0, 0.1) / AVERAGE_SECONDS)
+	_average_time = now
 	# Each side's turns are mirrored, with +1 for the left side and -1 for the right.
 	for side in [["Left", 1.0], ["Right", -1.0]]:
 		_process_arm(skeleton, side[0], side[1])
@@ -88,6 +101,13 @@ func _process_arm(skeleton: Skeleton3D, side: String, mirror: float) -> void:
 		* Quaternion(Vector3.BACK, mirror * strength * deg_to_rad(shoulder_raise_degrees)))
 	_turn(skeleton, upper, Quaternion(Vector3.RIGHT, -strength * deg_to_rad(arm_swing_degrees)) \
 		* Quaternion(Vector3.BACK, mirror * strength * deg_to_rad(arm_out_degrees)))
+	axis = _direction(skeleton, upper, StringName(side + "LowerArm"))
+	# Holds the arm nearer its average angle out of the body, where the animation swings it in and out.
+	var out := atan2(mirror * axis.x, -axis.y)
+	var average: float = _average_out.get(side, out)
+	_average_out[side] = lerp_angle(average, out, _average_blend)
+	var held := lerp_angle(out, average, arm_sideways_damping * smoothstep(0.2, -0.2, axis.y))
+	_turn(skeleton, upper, Quaternion(Vector3.BACK, mirror * (held - out)))
 	# The twist is around the arm as it is now, after the turns above.
 	axis = _direction(skeleton, upper, StringName(side + "LowerArm"))
 	_turn(skeleton, upper, Quaternion(axis, mirror * strength * deg_to_rad(arm_twist_degrees)))

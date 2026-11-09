@@ -719,6 +719,15 @@ func _test_story(scene: Node, player: Player) -> void:
 	var hedda_player: AnimationPlayer = hedda_model.get_node("Animations")
 	_check(hedda_player.is_playing() and hedda_player.current_animation == "Idle", "a villager with a model plays its idle animation")
 	_check(hedda_model.find_child("GeneralSkeleton", true, false) != null, "the model's skeleton is set up for shared animations")
+	var casters := 0
+	var shadows_only := 0
+	for part: MeshInstance3D in hedda_model.find_children("*", "MeshInstance3D", true, false):
+		if part.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON:
+			casters += part.mesh.get_surface_count()
+		elif part.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY:
+			shadows_only += part.mesh.get_surface_count()
+	_check(casters + shadows_only <= 6, "a villager casts its shadow with few draw calls (%d)" % (casters + shadows_only))
+	_check(shadows_only == 1, "a villager's body casts its shadow from one surface")
 	for villager: String in ["bertram", "mira", "greta", "brandt"]:
 		_check(village.get_node(villager).find_child("Model", true, false) != null, "%s has a model" % villager)
 	var pivot: Node3D = player.get_node("CameraPivot")

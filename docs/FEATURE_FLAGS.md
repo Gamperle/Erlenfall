@@ -87,6 +87,17 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `buried_player_ray_height` | `6.0` | How many meters above the land, or the feet if they are higher, the ray starts. It has to start above the collision, which can lie a little higher than the land's exact height |
 | `axe_in_hand_seconds` | `1.5` | How long the axe stays in hand after a chop, before the strongest weapon comes back |
 
+## Ranged flags and values
+
+Bows and thrown flasks are the first slice of [#29](https://github.com/Gamperle/Erlenfall/issues/29). Projectile types are in [`data/projectiles.json`](../data/projectiles.json): damage, speed, gravity, lifetime, hit radius, splash radius, cooldown, the item the player must carry (`requires_item`), the item that is used up (`ammo_item`), and which button fires it (`shoot` is R, `throw` is G). The damage, speed, and cooldown numbers are placeholders until the maintainer balances them. The bow, arrows, and flasks have no crafting recipes yet, so the player starts with some.
+
+| Name | Default | Effect |
+|---|---|---|
+| `ranged_weapons` | `true` | Allows firing and throwing projectiles |
+| `ranged_starting_items` | `true` | Gives the player a short bow, arrows, and fire flasks once per game, because they can't be crafted yet |
+| `ranged_starting_arrows` | `10` | How many arrows the player starts with |
+| `ranged_starting_flasks` | `3` | How many fire flasks the player starts with |
+
 ## Torch flags
 
 | Name | Default | Effect |

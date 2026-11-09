@@ -153,6 +153,14 @@ func take_hit(amount: float, from_position := Vector3.INF) -> void:
 	health.damage(amount)
 
 
+func body_height() -> float:
+	return _stats["height"]
+
+
+func body_radius() -> float:
+	return _stats["radius"]
+
+
 ## Brings the enemy back at its home, at full health.
 func revive() -> void:
 	health.restore()

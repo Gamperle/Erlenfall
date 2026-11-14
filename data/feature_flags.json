@@ -6,6 +6,7 @@
 		"world_map": true,
 		"minimap": true,
 		"journal": true,
+		"readables": true,
 		"compass_objectives": true,
 		"compass_landmarks": true,
 		"device_prompts": true,

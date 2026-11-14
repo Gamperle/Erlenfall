@@ -367,6 +367,50 @@ static func _ladder(size: Vector3) -> Node3D:
 	return ladder
 
 
+const PAPER_COLOR := Color(0.82, 0.76, 0.6)
+const READABLE_MODELS: Array[String] = ["signpost", "board", "note", "book"]
+
+
+## A readable thing built from boxes, facing +z: a "signpost" (a post with a plank and a pointing arm),
+## a "board" (a notice board on two posts with pinned papers), a "note" (a paper on a small stand), or
+## a "book" (an open book on a lectern). The size is the box it fills.
+static func readable(model: String, size: Vector3) -> Node3D:
+	var root := Node3D.new()
+	match model:
+		"board":
+			for side: float in [-1.0, 1.0]:
+				root.add_child(box(Vector3(0.14, size.y, 0.14), Surfaces.Pattern.WOOD, TIMBER_COLOR, Vector3(side * (size.x / 2.0 - 0.07), size.y / 2.0, 0.0)))
+			root.add_child(box(Vector3(size.x, size.y * 0.5, 0.08), Surfaces.Pattern.WOOD, WOOD_COLOR, Vector3(0.0, size.y * 0.68, 0.0)))
+			root.add_child(box(Vector3(size.x, 0.12, 0.2), Surfaces.Pattern.WOOD, TIMBER_COLOR, Vector3(0.0, size.y * 0.95, 0.0)))
+			for paper: Array in [[-0.3, 0.72, 0.3, 0.4], [0.15, 0.66, 0.28, 0.34], [0.45, 0.76, 0.2, 0.26]]:
+				root.add_child(box(Vector3(size.x * paper[2], size.y * paper[3] * 0.6, 0.02), Surfaces.Pattern.PLASTER, PAPER_COLOR, Vector3(size.x * paper[0], size.y * paper[1], 0.05)))
+		"note":
+			root.add_child(box(Vector3(0.1, size.y * 0.75, 0.1), Surfaces.Pattern.WOOD, TIMBER_COLOR, Vector3(0.0, size.y * 0.375, 0.0)))
+			var top := box(Vector3(size.x, 0.06, size.z), Surfaces.Pattern.WOOD, WOOD_COLOR, Vector3(0.0, size.y * 0.78, 0.0))
+			top.rotation.x = -0.35
+			root.add_child(top)
+			var paper := box(Vector3(size.x * 0.7, 0.02, size.z * 0.7), Surfaces.Pattern.PLASTER, PAPER_COLOR, Vector3(0.0, size.y * 0.78 + 0.05, 0.0))
+			paper.rotation.x = -0.35
+			root.add_child(paper)
+		"book":
+			root.add_child(box(Vector3(0.12, size.y * 0.75, 0.12), Surfaces.Pattern.WOOD, TIMBER_COLOR, Vector3(0.0, size.y * 0.375, 0.0)))
+			var slope := box(Vector3(size.x, 0.07, size.z), Surfaces.Pattern.WOOD, WOOD_COLOR, Vector3(0.0, size.y * 0.8, 0.0))
+			slope.rotation.x = -0.5
+			root.add_child(slope)
+			for side: float in [-1.0, 1.0]:
+				var page := box(Vector3(size.x * 0.4, 0.04, size.z * 0.8), Surfaces.Pattern.PLASTER, PAPER_COLOR, Vector3(side * size.x * 0.21, size.y * 0.8 + 0.06, 0.0))
+				page.rotation.x = -0.5
+				root.add_child(page)
+			var spine := box(Vector3(size.x * 0.06, 0.06, size.z * 0.85), Surfaces.Pattern.WOOD, CLOTH_COLOR, Vector3(0.0, size.y * 0.8 + 0.05, 0.0))
+			spine.rotation.x = -0.5
+			root.add_child(spine)
+		_:
+			root.add_child(box(Vector3(0.16, size.y, 0.16), Surfaces.Pattern.WOOD, TIMBER_COLOR, Vector3(0.0, size.y / 2.0, 0.0)))
+			root.add_child(box(Vector3(size.x, size.y * 0.28, 0.07), Surfaces.Pattern.WOOD, WOOD_COLOR, Vector3(0.0, size.y * 0.8, 0.11)))
+			root.add_child(box(Vector3(size.x * 0.7, size.y * 0.2, 0.07), Surfaces.Pattern.WOOD, WOOD_COLOR, Vector3(size.x * 0.12, size.y * 0.5, 0.11)))
+	return merged(root)
+
+
 static func _bed(size: Vector3) -> Node3D:
 	var bed := Node3D.new()
 	bed.add_child(box(size, Surfaces.Pattern.WOOD, WOOD_COLOR, Vector3.UP * size.y / 2.0))

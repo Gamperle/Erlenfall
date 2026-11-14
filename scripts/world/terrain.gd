@@ -224,8 +224,8 @@ func _add_flat_areas(layout: Dictionary) -> void:
 		_add_flat_area(field["x"], field["z"], Vector2(field["width"], field["depth"]).length() / 2.0 + BUILDING_FLAT_MARGIN, FIELD_FLAT_BLEND)
 	for building: Dictionary in layout["buildings"]:
 		_add_flat_area(building["x"], building["z"], Vector2(building["width"], building["depth"]).length() / 2.0 + BUILDING_FLAT_MARGIN, BUILDING_FLAT_BLEND)
-	for list in ["npcs", "enemies", "repair_sites", "beds", "stations", "resources"]:
-		for spot: Dictionary in layout[list]:
+	for list in ["npcs", "enemies", "repair_sites", "beds", "stations", "resources", "readables"]:
+		for spot: Dictionary in layout.get(list, []):
 			_add_flat_area(spot["x"], spot["z"], SPOT_FLAT_RADIUS, SPOT_FLAT_BLEND)
 
 

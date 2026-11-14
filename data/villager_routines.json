@@ -11,5 +11,71 @@
 	"hedda": [
 		{ "from": 6.0, "activity": "sit" },
 		{ "from": 20.5, "x": -20.06, "z": -5.3, "indoors": true }
+	],
+	"mira": [
+		{ "from": 6.5, "x": 24.0, "z": 22.0, "facing": 90.0, "via": [[-12, -9], [0, -9], [0, -6], [0, 13], [3, 21]], "activity": "tend" },
+		{ "from": 12.0, "via": [[3, 21]], "activity": "sit" },
+		{ "from": 14.5, "x": -26.0, "z": 32.0, "facing": 270.0, "activity": "tend" },
+		{ "from": 18.5, "x": 16.0, "z": -10.8, "facing": 90.0, "via": [[-5, 30], [0, 13], [0, -6], [13, -7]], "activity": "sit" },
+		{ "from": 22.0, "x": -20.06, "z": -5.3, "via": [[0, -9], [-12, -9]], "indoors": true }
+	],
+	"brandt": [
+		{ "from": 6.0, "activity": "sit" },
+		{ "from": 18.5, "x": 17.8, "z": -12.4, "facing": 90.0, "activity": "sit" },
+		{ "from": 20.5, "x": 0.0, "z": -22.5, "via": [[-1, -17]], "indoors": true }
+	],
+	"lene": [
+		{ "from": 6.0, "activity": "sit" },
+		{ "from": 12.5, "x": 3.0, "z": -9.0, "facing": 180.0, "activity": "sit" },
+		{ "from": 18.5, "x": 13.8, "z": -9.6, "facing": 90.0, "activity": "sit" },
+		{ "from": 20.5, "x": 0.0, "z": -22.5, "indoors": true }
+	],
+	"albrecht": [
+		{ "from": 7.0, "activity": "sit" },
+		{ "from": 14.0, "x": -11.5, "z": -20.5, "facing": 0.0, "activity": "sit" },
+		{ "from": 18.5, "x": 19.0, "z": -5.8, "facing": 90.0, "activity": "sit" },
+		{ "from": 21.0, "indoors": true }
+	],
+	"oswin": [
+		{ "from": 6.5, "activity": "sit" },
+		{ "from": 19.0, "x": 15.8, "z": -5.8, "facing": 90.0, "activity": "sit" },
+		{ "from": 21.0, "indoors": true }
+	],
+	"jakob": [
+		{ "from": 6.5, "via": [[16, -13], [16, -22.5]], "activity": "sit" },
+		{ "from": 12.5, "x": 17.5, "z": -14.5, "facing": 90.0, "via": [[16, -22.5]], "activity": "sit" },
+		{ "from": 18.5, "x": 19.6, "z": -10.4, "facing": 90.0, "activity": "sit" },
+		{ "from": 21.0, "x": 20.07, "z": -13.13, "indoors": true }
+	],
+	"marek": [
+		{ "from": 6.5, "via": [[14, -6], [0, -6], [0, 13]], "activity": "sit" },
+		{ "from": 10.0, "x": 4.0, "z": -9.0, "facing": 180.0, "via": [[0, 13], [0, -6]], "activity": "sit" },
+		{ "from": 17.5, "x": 15.2, "z": -7.6, "facing": 90.0, "activity": "sit" },
+		{ "from": 21.0, "x": 20.07, "z": -13.13, "indoors": true }
+	],
+	"falk": [
+		{ "from": 5.5, "activity": "tend" },
+		{ "from": 9.0, "x": 68.0, "z": -72.0, "facing": 45.0, "activity": "tend" },
+		{ "from": 14.0, "activity": "sit" },
+		{ "from": 20.5, "activity": "sleep" }
+	],
+	"wendel": [
+		{ "from": 6.0, "activity": "tend" },
+		{ "from": 12.5, "activity": "sit" },
+		{ "from": 14.5, "x": -2.0, "z": -145.0, "facing": 90.0, "activity": "tend" },
+		{ "from": 18.5, "activity": "sit" },
+		{ "from": 21.0, "activity": "sleep" }
+	],
+	"konrad": [
+		{ "from": 6.0, "activity": "tend" },
+		{ "from": 11.5, "x": 150.0, "z": -72.0, "facing": 35.0, "activity": "tend" },
+		{ "from": 17.0, "activity": "sit" },
+		{ "from": 20.5, "x": 132.58, "z": -76.31, "indoors": true }
+	],
+	"agnes": [
+		{ "from": 6.0, "activity": "tend" },
+		{ "from": 12.0, "x": 108.0, "z": 166.0, "facing": 160.0, "via": [[100, 146]], "activity": "tend" },
+		{ "from": 16.5, "via": [[100, 146]], "activity": "sit" },
+		{ "from": 19.5, "indoors": true }
 	]
 }

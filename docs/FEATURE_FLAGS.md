@@ -65,6 +65,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `world_map` | `true` | Lets the player open a full-screen map with the map key (M, or the right stick button). It shows the terrain, river, roads, fields, buildings, the player, the current objectives, and the places the player has visited. The picture is drawn once in the background after loading |
 | `minimap` | `true` | Shows a small map of the surroundings below the health bar. It uses the same picture as the full map |
 | `journal` | `true` | Lets the player open a journal with the journal key (J, or the d-pad's right button). It has a Quests tab with active and finished quests, their objectives, and a way to pin one quest so the tracker and compass show only it; a Map tab with the world map; and a Notes tab for notes the player has found. It pauses the game. The Map tab needs `world_map` |
+| `readables` | `true` | Places readable signs, notes, and books in the world, from [`data/notes.json`](../data/notes.json) (the texts) and the `readables` list in [`data/village_layout.json`](../data/village_layout.json) (where they stand). Using one opens a reading panel that pauses the game, shows the text in the language chosen, follows the text size and high contrast settings, and works with the keyboard, mouse and controller. The first time a text is read it is added to the journal's Notes tab (which needs `journal` to be seen) and it may set a story flag with `sets_flag`. Off removes them from the world |
 | `device_prompts` | `true` | Prompts and the controls line show only the inputs of the device the player used last (keyboard and mouse, or gamepad). Off shows both, such as "E / X" |
 | `input_glyphs` | `true` | Draws the inputs in prompts as small shapes made in code instead of plain text: a rounded rectangle for each key, a circle with the letter for gamepad face buttons, and simple shapes for the d-pad, bumpers, triggers and sticks. They follow the text size, high contrast and colour vision settings. Off shows plain text such as "E" or "X" |
 | `compass_landmarks` | `true` | Shows a ring on the compass for landmarks such as the buried mine |
@@ -147,6 +148,11 @@ Holding the attack button charges a heavier hit, released on letting go ([#295](
 | `heavy_swing_charge_seconds` | `0.6` | How long the button must be held for a heavy swing |
 | `heavy_swing_damage_factor` | `2.0` | How many times the normal damage a heavy swing does |
 | `heavy_swing_stamina_cost` | `30.0` | The stamina a heavy swing costs |
+| `heavy_swing_pose_delay_seconds` | `0.15` | How long the button is held before the sword rises and the charge bar shows, so a tap shows neither |
+| `heavy_swing_windup_seconds` | `0.3` | How long a heavy swing takes to land after release. A tap takes 0.15, so heavy hits come slower ([#332](https://github.com/Gamperle/Erlenfall/issues/332)) |
+| `heavy_swing_recovery_factor` | `1.4` | How many times the normal recovery after a swing a heavy swing takes |
+
+While the button is held, the sword arm rises (or the first-person weapon lifts) and a small bar below the screen centre fills. It has tick marks, and a diamond at each end when the charge is full, so it reads without colour. A full charge also flashes the character, and the heavy swing glows as it lands. There is no sound yet, because the game has no audio.
 
 ## Talking to enemies
 
@@ -179,6 +185,7 @@ Bows and thrown flasks are the first slice of [#29](https://github.com/Gamperle/
 | `health_regen_delay_seconds` | `8.0` | Seconds without a hit before regeneration starts |
 | `health_regen_per_second` | `2.0` | Health regained per second while regenerating |
 | `healing_items` | `true` | Items with a `use` action in `crafting.json` (berries, healing potion) can be used from the inventory, and the potion can be brewed |
+| `cooking` | `true` | Places a campfire cooking station in the village and enables its recipes (cooked meat, berry compote, hearty stew) and the cooking skill. Off removes the campfire; food already made stays and can still be eaten. Cooking is an instant craft with no timing check yet |
 
 ## Torch flags
 

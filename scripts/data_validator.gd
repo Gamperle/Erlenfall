@@ -13,7 +13,7 @@ extends RefCounted
 const DATA_DIR := "res://data"
 const FILES: Array[String] = [
 	"crafting.json", "dialogue.json", "enemies.json", "feature_flags.json", "projectiles.json",
-	"prop_tuning.json", "quests.json", "village_layout.json", "villager_routines.json",
+	"notes.json", "prop_tuning.json", "quests.json", "village_layout.json", "villager_routines.json",
 ]
 const EFFECT_TYPES: Array[String] = ["start_quest", "advance_quest", "set_flag", "take_item", "give_item", "calm_enemy", "provoke_enemy"]
 const CONDITIONS: Array[String] = ["objective", "quest_done", "flag", "not_flag", "has_item"]
@@ -461,6 +461,39 @@ func _check_villager_routines(data: Dictionary) -> void:
 				previous = stop["from"]
 
 
+func _check_notes(data: Dictionary) -> void:
+	var file := "notes.json"
+	for id: String in data:
+		var path := "[%s]" % id
+		if not _fields(file, path, data[id], { "type": ["string", true], "title": ["text", true], "text": ["text", true], "sets_flag": ["string", false] }):
+			continue
+		if data[id].get("type") is String and not Readables.TYPES.has(data[id]["type"]):
+			_add(file, path + ".type", "must be one of %s" % [Readables.TYPES])
+
+
+## The readable signs, notes, and books in the layout. The list is optional, so older layouts and mods still pass.
+func _check_readables(data: Dictionary) -> void:
+	var file := "village_layout.json"
+	if not data.has("readables"):
+		return
+	if not data["readables"] is Array:
+		_add(file, "readables", "must be a list")
+		return
+	var seen := {}
+	for i in data["readables"].size():
+		var entry: Variant = data["readables"][i]
+		var path := "readables[%s]" % str(_dict(entry).get("note", i))
+		if not _fields(file, path, entry, { "note": ["string", true], "x": ["number", true], "z": ["number", true], "rotation": ["number", false], "model": ["string", false] }):
+			continue
+		if _files.has("notes.json"):
+			_known(file, path + ".note", entry.get("note"), _dict(_files["notes.json"]), "text")
+		if seen.has(entry.get("note")):
+			_add(file, path, "this text is placed twice")
+		seen[entry.get("note")] = true
+		if entry.get("model") is String and not ModelBuilder.READABLE_MODELS.has(entry["model"]):
+			_add(file, path + ".model", "must be one of %s" % [ModelBuilder.READABLE_MODELS])
+
+
 func _check_village_layout(data: Dictionary) -> void:
 	var file := "village_layout.json"
 	var placed := { "x": ["number", true], "z": ["number", true] }
@@ -471,7 +504,7 @@ func _check_village_layout(data: Dictionary) -> void:
 		"enemies": { "type": ["string", true] },
 		"repair_sites": { "quest": ["string", true], "objective": ["string", true], "flag": ["string", true], "model": ["string", true], "rotation": ["number", true], "prompt": ["text", true], "width": ["number", true], "depth": ["number", true], "height": ["number", true], "color": ["color", true] },
 		"beds": { "model": ["string", true], "asset": ["string", false], "prompt": ["text", true], "width": ["number", true], "depth": ["number", true], "height": ["number", true], "color": ["color", true] },
-		"stations": { "id": ["string", true], "model": ["string", true], "asset": ["string", false], "prompt": ["text", true], "width": ["number", true], "depth": ["number", true], "height": ["number", true], "work_spot": ["vec3", false], "color": ["color", true] },
+		"stations": { "id": ["string", true], "model": ["string", true], "asset": ["string", false], "prompt": ["text", true], "width": ["number", true], "depth": ["number", true], "height": ["number", true], "work_spot": ["vec3", false], "requires_flag": ["string", false], "color": ["color", true] },
 		"resources": { "item": ["string", true], "prompt": ["text", true], "size": ["number", true], "uses": ["int", true], "respawn_seconds": ["number", true], "color": ["color", true] },
 		"building_sites": { "id": ["string", true], "radius": ["number", true], "blend": ["number", true], "rise": ["number", true] },
 		"hills": { "radius": ["number", true], "height": ["number", true] },
@@ -499,6 +532,7 @@ func _check_village_layout(data: Dictionary) -> void:
 				if entry.get(key) is String and entry[key].begins_with("res://") and not ResourceLoader.exists(entry[key]):
 					_add(file, "%s.%s" % [path, key], "file not found: %s" % entry[key])
 			_check_layout_references(file, path, list, entry)
+	_check_readables(data)
 	_fields(file, "mine", data.get("mine"), { "id": ["string", true], "x": ["number", true], "z": ["number", true], "rotation": ["number", true], "width": ["number", true], "height": ["number", true], "opening_width": ["number", true], "opening_height": ["number", true], "seed": ["int", true], "plaza_radius": ["number", true], "plaza_blend": ["number", true], "compass": ["bool", false] })
 	for i in _array(data.get("roads")).size():
 		var road: Variant = data["roads"][i]

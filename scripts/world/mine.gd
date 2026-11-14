@@ -65,6 +65,21 @@ func front_point() -> Vector3:
 	return global_transform * Vector3(0.0, 0.0, FRONT_DISTANCE)
 
 
+## Where the collapsed frame and the cliff's brow keep the rain off the mouth, for the rain map (see
+## RoofMap). It is flat at the lintel and reaches out as far as the broken beams do. Call it once the
+## mine has its place in the world.
+func roof_cover() -> Dictionary:
+	var opening: float = _data["opening_width"]
+	var reach := 3.0
+	var middle := Basis(Vector3.UP, rotation.y) * Vector3(0.0, 0.0, FACE_FRONT + reach / 2.0)
+	return {
+		"center": Vector2(position.x + middle.x, position.z + middle.z),
+		"half": Vector2(opening / 2.0 + 0.8, reach / 2.0),
+		"yaw": rotation.y, "base": position.y + float(_data["opening_height"]), "rise": 0.0,
+		"shape": "ridge", "active": true,
+	}
+
+
 ## The ground around the entrance that the layout asks Terrain to level.
 static func plaza_of(data: Dictionary) -> Dictionary:
 	return { "x": data["x"], "z": data["z"], "radius": data["plaza_radius"], "blend": data["plaza_blend"] }

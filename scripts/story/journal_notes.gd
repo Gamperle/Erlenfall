@@ -1,7 +1,7 @@
 class_name JournalNotes
 extends RefCounted
-## The notes the player has found, shown on the journal's Notes tab. Readable notes in the world
-## (not built yet, see issue #268) call `add` when the player reads one.
+## The notes the player has found, shown on the journal's Notes tab. The signs, notes, and books in the
+## world (see Readable and ReadingUI) call `add` when the player reads one for the first time.
 
 signal changed
 

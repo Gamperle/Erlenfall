@@ -160,7 +160,7 @@ func _check_crafting(data: Dictionary) -> void:
 	var skills := _dict(data.get("skills"))
 	for id: String in _items:
 		var path := "items[%s]" % id
-		if not _fields(file, path, _items[id], { "name": ["text", true], "material": ["bool", false], "damage": ["number", false], "model": ["array", false], "parts": ["object", false], "use": ["object", false] }):
+		if not _fields(file, path, _items[id], { "name": ["text", true], "material": ["bool", false], "damage": ["number", false], "ranged_damage_multiplier": ["number", false], "fires": ["string", false], "model": ["array", false], "parts": ["object", false], "use": ["object", false] }):
 			continue
 		var item: Dictionary = _items[id]
 		if item.has("use") and _fields(file, path + ".use", item["use"], { "heal": ["number", true] }) and item["use"]["heal"] <= 0:

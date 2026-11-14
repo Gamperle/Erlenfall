@@ -29,11 +29,11 @@ static func stats(projectile_id: String) -> Dictionary:
 	return _get_data()[projectile_id]
 
 
-## Creates a projectile of this type at `origin` flying along `direction`. The shooter's own body is ignored.
-static func launch(projectile_id: String, origin: Vector3, direction: Vector3, shooter: CollisionObject3D = null) -> Projectile:
+## Creates a projectile of this type at `origin` flying along `direction`. The shooter's own body is ignored. The damage is scaled by `damage_multiplier`, which comes from the bow and ammunition used.
+static func launch(projectile_id: String, origin: Vector3, direction: Vector3, shooter: CollisionObject3D = null, damage_multiplier: float = 1.0) -> Projectile:
 	var type: Dictionary = _get_data()[projectile_id]
 	var projectile := Projectile.new()
-	projectile.damage = type["damage"]
+	projectile.damage = float(type["damage"]) * damage_multiplier
 	projectile.radius = type["radius"]
 	projectile.splash_radius = type["splash_radius"]
 	projectile.gravity = type["gravity"]

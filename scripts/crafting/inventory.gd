@@ -73,6 +73,45 @@ func best_weapon() -> Dictionary:
 	return best
 
 
+## The ranged multiplier of the best carried copy of this item, or 1.0 if none is carried.
+func best_ranged_multiplier(item_id: String) -> float:
+	var best := 0.0
+	for entry in entries():
+		if entry["id"] == item_id:
+			best = maxf(best, CraftingData.ranged_multiplier(item_id, entry["quality"], entry["variant"]))
+	return best if best > 0.0 else 1.0
+
+
+## The best ranged multiplier among the carried items of these kinds, or 0.0 if none is carried.
+func best_launcher_multiplier(item_ids: Array[String]) -> float:
+	var best := 0.0
+	for item_id in item_ids:
+		if count(item_id) > 0:
+			best = maxf(best, best_ranged_multiplier(item_id))
+	return best
+
+
+## Removes one of this item, taking the best quality first, and returns the multiplier it gave. Returns 0.0 if none is carried.
+func take_best_ranged(item_id: String) -> float:
+	var best := {}
+	var best_value := 0.0
+	for entry in entries():
+		if entry["id"] != item_id:
+			continue
+		var value := CraftingData.ranged_multiplier(item_id, entry["quality"], entry["variant"])
+		if best.is_empty() or value > best_value:
+			best = entry
+			best_value = value
+	if best.is_empty():
+		return 0.0
+	var stack_key := _key(item_id, best["quality"], best["variant"])
+	_stacks[stack_key] -= 1
+	if _stacks[stack_key] <= 0:
+		_stacks.erase(stack_key)
+	changed.emit()
+	return best_value
+
+
 ## Loses this share of each stack of materials, rounded up.
 func lose_materials(share: float) -> void:
 	for entry in entries():

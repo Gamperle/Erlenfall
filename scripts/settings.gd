@@ -24,15 +24,18 @@ static func load_saved() -> void:
 	language = ""
 	look_speed = 1.0
 	graphics = "high"
+	var bindings: Variant = null
 	if FileAccess.file_exists(path):
 		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 		if data is Dictionary:
-			if data.get("language") in LANGUAGES:
+			if data.get("language") is String and data["language"] in LANGUAGES:
 				language = data["language"]
 			if data.get("look_speed") is float:
 				look_speed = clampf(data["look_speed"], MIN_LOOK_SPEED, MAX_LOOK_SPEED)
 			if GRAPHICS_LEVELS.has(data.get("graphics")):
 				graphics = data["graphics"]
+			bindings = data.get("bindings")
+	KeyBindings.load_data(bindings)
 	apply_language()
 
 
@@ -41,7 +44,7 @@ static func save() -> void:
 	if file == null:
 		push_error("Could not save the settings: %s" % error_string(FileAccess.get_open_error()))
 		return
-	file.store_string(JSON.stringify({ "language": language, "look_speed": look_speed, "graphics": graphics }, "\t"))
+	file.store_string(JSON.stringify({ "language": language, "look_speed": look_speed, "graphics": graphics, "bindings": KeyBindings.to_data() }, "\t"))
 
 
 static func apply_language() -> void:

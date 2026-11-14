@@ -328,7 +328,7 @@ func _start_forging(recipe: Dictionary) -> void:
 		levels_gained * float(FeatureFlags.value("skill_speed_reduction_per_level", 0.0)),
 	)
 	_bar.visible = true
-	_message.text = tr("UI_FORGE_HINT")
+	_message.text = tr("UI_FORGE_HINT") % KeyBindings.label_for("interact")
 	_update_strike_text()
 	_refresh()
 

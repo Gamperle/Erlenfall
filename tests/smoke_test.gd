@@ -162,6 +162,7 @@ func _run() -> void:
 	_test_grass_cell_edge(scene)
 	await _test_settings(scene, player)
 	_test_translations()
+	await _test_key_bindings(scene)
 	_test_dialogue_data()
 	_test_dialogue_conditions()
 	_test_data_validation()
@@ -1996,13 +1997,13 @@ func _test_settings(scene: Node, player: Player) -> void:
 	TranslationServer.set_locale("en")
 	menu.open_pause()
 	menu._buttons.get_child(1).pressed.emit()
-	_check(menu._settings_open and menu._buttons.get_child_count() == 4, "the pause menu opens the settings")
+	_check(menu._settings_open and menu._buttons.get_child_count() == 5, "the pause menu opens the settings")
 
 	menu._choose_language(2)
 	await process_frame
 	await process_frame
 	_check(TranslationServer.get_locale() == "de" and menu._title.text == "Einstellungen", "choosing a language changes the menu")
-	_check(scene.get_node("UI/ControlsLabel").text == tr("UI_CONTROLS") and hedda._label.text == tr(hedda.prompt_key), "choosing a language changes text already on screen")
+	_check(scene.get_node("UI/ControlsLabel").text == KeyBindings.controls_hint() and hedda._label.text == tr(hedda.prompt_key), "choosing a language changes text already on screen")
 
 	menu._choose_graphics(0)
 	var sun: DirectionalLight3D = scene.get_node("Sun")
@@ -2031,6 +2032,119 @@ func _test_settings(scene: Node, player: Player) -> void:
 	Settings.path = Settings.DEFAULT_PATH
 	DirAccess.remove_absolute(TEST_SETTINGS)
 	TranslationServer.set_locale("en")
+
+
+## Remapped controls take effect, ask before taking an input that is in use, are saved, and fall back when damaged.
+func _test_key_bindings(scene: Node) -> void:
+	Settings.path = TEST_SETTINGS
+	TranslationServer.set_locale("en")
+	KeyBindings.reset()
+	var default_hint := KeyBindings.controls_hint()
+	_check(default_hint.begins_with("WASD / Left stick: walk") and default_hint.contains("E / X: use") and default_hint.contains("Left click / RT: attack"), "the controls hint shows the default bindings (%s)" % default_hint)
+	var missing := PackedStringArray()
+	for action in KeyBindings.ACTIONS:
+		if not InputMap.has_action(action):
+			missing.append(action)
+		for key in ["ACTION_" + action.to_upper()]:
+			if tr(key) == key:
+				missing.append(key)
+	_check(missing.is_empty(), "every remappable action exists and has a name (%s)" % ", ".join(missing))
+
+	var menu: GameMenu = scene.get_node("GameMenu")
+	menu.open_pause()
+	menu._buttons.get_child(1).pressed.emit()
+	menu._buttons.get_child(3).pressed.emit()
+	await process_frame
+	var page: ControlsMenu = menu._controls
+	_check(menu._title.text == tr("UI_CONTROLS_TITLE") and page != null, "the settings open the Controls page")
+	_check(page.get_child_count() == KeyBindings.ACTIONS.size() + 3, "the Controls page lists every action, reset, and back")
+
+	var key_u := InputEventKey.new()
+	key_u.physical_keycode = KEY_U
+	key_u.pressed = true
+	page.listen("interact", KeyBindings.KEYBOARD)
+	_check(page.offer(key_u) and KeyBindings.event_for("interact", KeyBindings.KEYBOARD).physical_keycode == KEY_U, "an input pressed while listening is bound")
+	var press := InputEventKey.new()
+	press.physical_keycode = KEY_U
+	press.pressed = true
+	_check(InputMap.action_get_events("interact").size() == 2, "the Input Map holds the new binding")
+	_check(InputMap.event_is_action(press, "interact") and not InputMap.event_is_action(press, "inventory"), "the new key triggers its action")
+	var old_key := InputEventKey.new()
+	old_key.physical_keycode = KEY_E
+	_check(not InputMap.event_is_action(old_key, "interact"), "the old key no longer triggers it")
+	_check(KeyBindings.label_for("interact") == "U / X" and KeyBindings.controls_hint().contains("U / X: use"), "the controls hint shows the new binding")
+
+	# Binding an input that another action uses asks first.
+	var key_i := InputEventKey.new()
+	key_i.physical_keycode = KEY_I
+	key_i.pressed = true
+	page.listen("jump", KeyBindings.KEYBOARD)
+	page.offer(key_i)
+	_check(page.is_asking() and KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_SPACE, "an input in use asks before changing anything")
+	page.answer_conflict(false)
+	_check(not page.is_asking() and KeyBindings.event_for("inventory", KeyBindings.KEYBOARD).physical_keycode == KEY_I, "cancelling keeps both bindings")
+	page.listen("jump", KeyBindings.KEYBOARD)
+	page.offer(key_i)
+	page.answer_conflict(true)
+	_check(KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_I and KeyBindings.event_for("inventory", KeyBindings.KEYBOARD).physical_keycode == KEY_SPACE, "swapping gives each action the other's input")
+
+	# Gamepad inputs go in the gamepad slot.
+	var pad_button := InputEventJoypadButton.new()
+	pad_button.button_index = JOY_BUTTON_Y
+	pad_button.pressed = true
+	page.listen("attack", KeyBindings.GAMEPAD)
+	page.offer(key_u)
+	_check(KeyBindings.event_for("attack", KeyBindings.GAMEPAD) is InputEventJoypadMotion, "a key does not replace a gamepad input")
+	page.offer(pad_button)
+	_check(page.is_asking(), "a gamepad input in use asks too")
+	page.answer_conflict(true)
+	_check(KeyBindings.event_for("attack", KeyBindings.GAMEPAD) is InputEventJoypadButton and KeyBindings.event_for("toggle_camera", KeyBindings.GAMEPAD) is InputEventJoypadMotion, "gamepad inputs swap")
+	var escape := InputEventKey.new()
+	escape.physical_keycode = KEY_ESCAPE
+	escape.pressed = true
+	page.listen("block", KeyBindings.KEYBOARD)
+	page.offer(escape)
+	_check(not page.is_listening(), "Esc stops listening")
+
+	# Saved, loaded, and reset.
+	Settings.save()
+	KeyBindings.reset()
+	_check(KeyBindings.label_for("interact") == "E / X", "reset restores the default bindings")
+	Settings.load_saved()
+	_check(KeyBindings.label_for("interact") == "U / X" and KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_I and KeyBindings.event_for("attack", KeyBindings.GAMEPAD) is InputEventJoypadButton, "bindings are remembered")
+	page.reset_to_defaults()
+	_check(KeyBindings.controls_hint() == default_hint and KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_SPACE, "the reset button restores the defaults")
+
+	# Damaged bindings fall back to the defaults, one input at a time where possible.
+	var saved: Dictionary = KeyBindings.to_data()
+	saved["interact"][KeyBindings.KEYBOARD] = { "type": "key", "code": "nonsense" }
+	saved["jump"][KeyBindings.GAMEPAD] = { "type": "pad_button", "button": 999 }
+	saved["sprint"] = "broken"
+	saved["dodge"][KeyBindings.KEYBOARD] = { "type": "key", "code": KEY_N }
+	saved["unknown_action"] = { "keyboard": { "type": "key", "code": KEY_N } }
+	var damaged := FileAccess.open(TEST_SETTINGS, FileAccess.WRITE)
+	damaged.store_string(JSON.stringify({ "graphics": "high", "bindings": saved }))
+	damaged.close()
+	Settings.load_saved()
+	_check(KeyBindings.event_for("interact", KeyBindings.KEYBOARD).physical_keycode == KEY_E and KeyBindings.event_for("jump", KeyBindings.GAMEPAD) is InputEventJoypadButton and KeyBindings.event_for("sprint", KeyBindings.KEYBOARD).physical_keycode == KEY_SHIFT, "damaged bindings fall back to their defaults")
+	_check(KeyBindings.event_for("dodge", KeyBindings.KEYBOARD).physical_keycode == KEY_N, "valid bindings next to damaged ones are kept")
+	saved = KeyBindings.to_data()
+	saved["jump"][KeyBindings.KEYBOARD] = saved["interact"][KeyBindings.KEYBOARD]
+	damaged = FileAccess.open(TEST_SETTINGS, FileAccess.WRITE)
+	damaged.store_string(JSON.stringify({ "bindings": saved }))
+	damaged.close()
+	Settings.load_saved()
+	_check(KeyBindings.event_for("dodge", KeyBindings.KEYBOARD).physical_keycode == KEY_C, "bindings that share an input fall back to the defaults")
+	damaged = FileAccess.open(TEST_SETTINGS, FileAccess.WRITE)
+	damaged.store_string(JSON.stringify({ "bindings": [1, 2] }))
+	damaged.close()
+	Settings.load_saved()
+	_check(KeyBindings.controls_hint() == default_hint, "bindings that aren't a dictionary fall back to the defaults")
+
+	menu.close()
+	Settings.path = Settings.DEFAULT_PATH
+	DirAccess.remove_absolute(TEST_SETTINGS)
+	KeyBindings.reset()
 
 
 ## Every story, item, and villager name key must exist in both languages.

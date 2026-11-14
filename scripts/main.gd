@@ -59,6 +59,7 @@ func _ready() -> void:
 	_fit_interface()
 	_apply_graphics()
 	_menu.graphics_changed.connect(_apply_graphics)
+	_menu.bindings_changed.connect(_set_translated_text)
 	_welcome_label.modulate.a = 0.0
 	_set_translated_text()
 	_compass.visible = FeatureFlags.enabled("compass")
@@ -114,7 +115,7 @@ func _update_prompt() -> void:
 	var target := _player.interact_target
 	_prompt_label.visible = target != null and not _player.is_busy()
 	if _prompt_label.visible:
-		_prompt_label.text = tr("UI_INTERACT_PROMPT") % target.prompt()
+		_prompt_label.text = tr("UI_INTERACT_PROMPT") % [KeyBindings.label_for("interact"), target.prompt()]
 
 
 func _notification(what: int) -> void:
@@ -127,7 +128,7 @@ func _notification(what: int) -> void:
 
 func _set_translated_text() -> void:
 	_welcome_label.text = tr("UI_WELCOME")
-	_controls_label.text = tr("UI_CONTROLS")
+	_controls_label.text = KeyBindings.controls_hint()
 
 
 func _fit_interface() -> void:

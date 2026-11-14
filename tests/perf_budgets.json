@@ -1,0 +1,98 @@
+{
+	"headless": {
+		"road_entrance": {
+			"grass_tufts": 155771.0,
+			"mesh_instances": 399.0,
+			"mesh_surfaces": 766.0,
+			"multimesh_instances": 5115.0,
+			"multimesh_nodes": 286.0,
+			"nodes": 3301.0,
+			"triangles": 1311017.0
+		},
+		"village_across_river": {
+			"grass_tufts": 149835.0,
+			"mesh_instances": 399.0,
+			"mesh_surfaces": 766.0,
+			"multimesh_instances": 5115.0,
+			"multimesh_nodes": 286.0,
+			"nodes": 3301.0,
+			"triangles": 1311017.0
+		},
+		"village_center": {
+			"grass_tufts": 144396.0,
+			"mesh_instances": 399.0,
+			"mesh_surfaces": 766.0,
+			"multimesh_instances": 5115.0,
+			"multimesh_nodes": 286.0,
+			"nodes": 3301.0,
+			"triangles": 1311017.0
+		},
+		"village_edge_forest": {
+			"grass_tufts": 143851.0,
+			"mesh_instances": 399.0,
+			"mesh_surfaces": 766.0,
+			"multimesh_instances": 5115.0,
+			"multimesh_nodes": 286.0,
+			"nodes": 3301.0,
+			"triangles": 1311017.0
+		}
+	},
+	"headroom": {
+		"headless": 0.1,
+		"rendered": 0.25
+	},
+	"rendered": {
+		"road_entrance": {
+			"draw_calls": 1124,
+			"frame_ms_avg": 13,
+			"frame_ms_p99": 49,
+			"grass_tufts": 177013,
+			"mesh_instances": 453,
+			"mesh_surfaces": 870,
+			"multimesh_instances": 5813,
+			"multimesh_nodes": 325,
+			"nodes": 3750,
+			"primitives": 1509488,
+			"triangles": 1489792
+		},
+		"village_across_river": {
+			"draw_calls": 1228,
+			"frame_ms_avg": 13,
+			"frame_ms_p99": 51,
+			"grass_tufts": 170267,
+			"mesh_instances": 453,
+			"mesh_surfaces": 870,
+			"multimesh_instances": 5813,
+			"multimesh_nodes": 325,
+			"nodes": 3750,
+			"primitives": 1594494,
+			"triangles": 1489792
+		},
+		"village_center": {
+			"draw_calls": 955,
+			"frame_ms_avg": 12,
+			"frame_ms_p99": 46,
+			"grass_tufts": 164087,
+			"mesh_instances": 453,
+			"mesh_surfaces": 870,
+			"multimesh_instances": 5813,
+			"multimesh_nodes": 325,
+			"nodes": 3750,
+			"primitives": 1281918,
+			"triangles": 1489792
+		},
+		"village_edge_forest": {
+			"draw_calls": 1094,
+			"frame_ms_avg": 14,
+			"frame_ms_p99": 41,
+			"grass_tufts": 163467,
+			"mesh_instances": 453,
+			"mesh_surfaces": 870,
+			"multimesh_instances": 5813,
+			"multimesh_nodes": 325,
+			"nodes": 3750,
+			"primitives": 1327303,
+			"triangles": 1489792
+		}
+	}
+}

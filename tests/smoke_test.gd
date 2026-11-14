@@ -171,6 +171,7 @@ func _run() -> void:
 	await _test_story(scene, player)
 	await _test_villager_routines(scene)
 	await _test_combat(scene, player)
+	await _test_enemy_types(scene, player)
 	await _test_enemy_navigation(scene, player)
 	await _test_enemy_crowds_and_bridges(scene, player)
 	await _test_enemies_make_way(player)
@@ -1247,6 +1248,51 @@ func _test_sneaking(player: Player, enemy: Enemy) -> void:
 	await _physics_frames(5)
 
 
+func _test_enemy_types(scene: Node, player: Player) -> void:
+	var terrain := root.get_tree().get_first_node_in_group(Terrain.GROUP) as Terrain
+	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Enemy.DATA_PATH))
+	_check(data.has("wolf") and data.has("goblin_brute"), "a wolf and a goblin brute exist")
+	_check(float(data["wolf"]["speed"]) > float(data["goblin"]["speed"]) and float(data["wolf"]["health"]) < float(data["goblin"]["health"]), "wolves are fast and fragile")
+	_check(float(data["goblin_brute"]["health"]) > float(data["goblin"]["health"]) and float(data["goblin_brute"]["damage"]) > float(data["goblin"]["damage"]), "goblin brutes are tougher than goblins")
+	for type: String in data:
+		var enemy: Enemy = null
+		for node: Enemy in root.get_tree().get_nodes_in_group(Enemy.GROUP):
+			if node.enemy_type == type:
+				enemy = node
+				break
+		_check(enemy != null, "%s spawns in the world" % type)
+		if enemy == null:
+			continue
+		_check(enemy.state == Enemy.State.IDLE and terrain.wading_factor(enemy.position) == 1.0, "%s waits on dry land" % type)
+		enemy.take_hit(100000.0)
+		_check(enemy.state == Enemy.State.DEAD and not enemy.visible, "%s can be defeated" % type)
+		var saved := enemy.to_data()
+		enemy.revive()
+		enemy.load_data(saved)
+		_check(enemy.state == Enemy.State.DEAD, "a defeated %s stays defeated after loading" % type)
+		enemy.revive()
+		var real_drops: Array = enemy._stats["drops"]
+		var forced: Array = []
+		for drop: Dictionary in real_drops:
+			var always: Dictionary = drop.duplicate()
+			always["chance"] = 1.0
+			forced.append(always)
+		enemy._stats["drops"] = forced
+		var before := {}
+		for drop: Dictionary in forced:
+			before[drop["item"]] = player.inventory.count(drop["item"])
+		enemy._give_drops()
+		enemy._stats["drops"] = real_drops
+		for drop: Dictionary in forced:
+			_check(player.inventory.count(drop["item"]) > before[drop["item"]], "%s drops %s" % [type, drop["item"]])
+	var wolf: Enemy = null
+	for node: Enemy in root.get_tree().get_nodes_in_group(Enemy.GROUP):
+		if node.enemy_type == "wolf":
+			wolf = node
+	_check(wolf._body is BeastModel, "wolves use a built animal model")
+	_check(wolf.global_position.distance_to(player.global_position) > float(data["wolf"]["aggro_range"]), "wolves don't start next to the player")
+
+
 func _test_enemy_navigation(scene: Node, player: Player) -> void:
 	var enemy: Enemy = root.get_tree().get_first_node_in_group(Enemy.GROUP)
 	var home := enemy._home
@@ -1332,7 +1378,7 @@ func _test_enemy_navigation(scene: Node, player: Player) -> void:
 
 ## Uses the camp's goblins away from their camp: one chases, and another stands still in a gap.
 func _test_enemy_crowds_and_bridges(scene: Node, player: Player) -> void:
-	var enemies := root.get_tree().get_nodes_in_group(Enemy.GROUP)
+	var enemies := _goblins()
 	var enemy: Enemy = enemies[0]
 	var blocker: Enemy = enemies[1]
 	var home := enemy._home
@@ -1477,7 +1523,7 @@ func _test_enemy_crowds_and_bridges(scene: Node, player: Player) -> void:
 ## The camp's three goblins walk side by side at a wall with one 1.2 m gap, and let each other through
 ## rather than push (#140).
 func _test_enemies_make_way(player: Player) -> void:
-	var enemies := root.get_tree().get_nodes_in_group(Enemy.GROUP)
+	var enemies := _goblins()
 	var home: Vector3 = enemies[0]._home
 	var homes: Array[Vector3] = []
 	var site := Vector3(home.x + 12.0, home.y, home.z + 12.0)
@@ -1525,7 +1571,7 @@ func _test_enemies_make_way(player: Player) -> void:
 ## a player 2 m past its far end. The first attacks from the end, and the others take the way around
 ## the outside of the walls, about 20 m longer (#149).
 func _test_enemies_go_around_a_corridor(player: Player) -> void:
-	var enemies := root.get_tree().get_nodes_in_group(Enemy.GROUP)
+	var enemies := _goblins()
 	var home: Vector3 = enemies[0]._home
 	var homes: Array[Vector3] = []
 	var site := Vector3(home.x + 12.0, home.y, home.z + 12.0)
@@ -2699,3 +2745,12 @@ func _test_data_validation() -> void:
 		_check(found.any(func(line: String) -> bool: return line.begins_with(expected) or line.contains(expected)), "the validator reports: %s" % expected + ("" if found.any(func(line: String) -> bool: return line.contains(expected)) else " (got %s)" % [found]))
 	var empty := DataValidator.new().validate_files({ "quests.json": [] })
 	_check(not empty.is_empty(), "a data file of the wrong kind is reported")
+
+
+## The camp's goblins, which the movement tests use. Other enemy types live elsewhere.
+func _goblins() -> Array[Node]:
+	var result: Array[Node] = []
+	for node in root.get_tree().get_nodes_in_group(Enemy.GROUP):
+		if node.enemy_type == "goblin":
+			result.append(node)
+	return result

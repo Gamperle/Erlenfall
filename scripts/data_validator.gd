@@ -356,7 +356,7 @@ func _check_enemies(data: Dictionary) -> void:
 	for id: String in data:
 		var path := "[%s]" % id
 		_fields(file, path, data[id], {
-			"name": ["text", true], "model": ["string", false], "model_height": ["number", false], "color": ["color", true], "skin": ["color", false],
+			"name": ["text", true], "model": ["string", false], "model_height": ["number", false], "shape": ["string", false], "color": ["color", true], "skin": ["color", false],
 			"height": ["number", true], "radius": ["number", true], "health": ["number", true], "damage": ["number", true], "speed": ["number", true],
 			"aggro_range": ["number", true], "leash_range": ["number", true], "attack_range": ["number", true], "windup_seconds": ["number", true],
 			"recover_seconds": ["number", true], "respawn_seconds": ["number", true], "drops": ["array", false],

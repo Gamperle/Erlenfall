@@ -9,6 +9,11 @@ const GRAPHICS_LEVELS: Dictionary = {
 	"medium": { "name": "UI_GRAPHICS_MEDIUM", "render_scale": 0.85, "shadows": true, "water_ripples": 4, "shadow_splits": DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS, "ambient_occlusion": false },
 	"high": { "name": "UI_GRAPHICS_HIGH", "render_scale": 1.0, "shadows": true, "water_ripples": 8, "shadow_splits": DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS, "ambient_occlusion": true },
 }
+## Text size choices, as a share of the normal size.
+const TEXT_SIZES: Array[float] = [1.0, 1.25, 1.5, 2.0]
+const BASE_FONT_SIZE := 17
+const BASE_TITLE_FONT_SIZE := 32
+const MIN_DIALOGUE_OPACITY := 0.3
 const MIN_LOOK_SPEED := 0.25
 const MAX_LOOK_SPEED := 2.5
 
@@ -17,6 +22,9 @@ static var path := DEFAULT_PATH
 static var language := ""
 static var look_speed := 1.0
 static var graphics := "high"
+static var text_size := 1.0
+## How solid the dialogue panel's frame is, from MIN_DIALOGUE_OPACITY to 1.
+static var dialogue_opacity := 1.0
 
 
 ## Reads the saved options. Anything missing or invalid keeps its default.
@@ -24,6 +32,8 @@ static func load_saved() -> void:
 	language = ""
 	look_speed = 1.0
 	graphics = "high"
+	text_size = 1.0
+	dialogue_opacity = 1.0
 	if FileAccess.file_exists(path):
 		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 		if data is Dictionary:
@@ -33,7 +43,12 @@ static func load_saved() -> void:
 				look_speed = clampf(data["look_speed"], MIN_LOOK_SPEED, MAX_LOOK_SPEED)
 			if GRAPHICS_LEVELS.has(data.get("graphics")):
 				graphics = data["graphics"]
+			if data.get("text_size") is float and TEXT_SIZES.has(data["text_size"]):
+				text_size = data["text_size"]
+			if data.get("dialogue_opacity") is float:
+				dialogue_opacity = clampf(data["dialogue_opacity"], MIN_DIALOGUE_OPACITY, 1.0)
 	apply_language()
+	apply_text_size()
 
 
 static func save() -> void:
@@ -41,11 +56,28 @@ static func save() -> void:
 	if file == null:
 		push_error("Could not save the settings: %s" % error_string(FileAccess.get_open_error()))
 		return
-	file.store_string(JSON.stringify({ "language": language, "look_speed": look_speed, "graphics": graphics }, "\t"))
+	file.store_string(JSON.stringify({
+		"language": language, "look_speed": look_speed, "graphics": graphics,
+		"text_size": text_size, "dialogue_opacity": dialogue_opacity,
+	}, "\t"))
 
 
 static func apply_language() -> void:
 	TranslationServer.set_locale(language if language != "" else OS.get_locale_language())
+
+
+## A font size made bigger or smaller by the text size setting.
+static func scaled_font_size(base: int) -> int:
+	return roundi(base * text_size)
+
+
+## Makes the menus, dialogue, crafting, and other themed text follow the text size setting.
+static func apply_text_size() -> void:
+	var theme := ThemeDB.get_project_theme()
+	if theme == null:
+		return
+	theme.default_font_size = scaled_font_size(BASE_FONT_SIZE)
+	theme.set_font_size("font_size", "TitleLabel", scaled_font_size(BASE_TITLE_FONT_SIZE))
 
 
 static func render_scale() -> float:

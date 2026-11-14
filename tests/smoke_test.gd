@@ -1997,7 +1997,7 @@ func _test_settings(scene: Node, player: Player) -> void:
 	TranslationServer.set_locale("en")
 	menu.open_pause()
 	menu._buttons.get_child(1).pressed.emit()
-	_check(menu._settings_open and menu._buttons.get_child_count() == 4, "the pause menu opens the settings")
+	_check(menu._settings_open and menu._buttons.get_child_count() == 6, "the pause menu opens the settings")
 
 	menu._choose_language(2)
 	await process_frame
@@ -2014,13 +2014,24 @@ func _test_settings(scene: Node, player: Player) -> void:
 	_check(sun.shadow_enabled and sun.directional_shadow_mode == DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS and root.scaling_3d_scale == 1.0, "high graphics take effect at once")
 
 	menu._choose_look_speed(2.0)
+	menu._choose_text_size(2)
+	menu._choose_dialogue_opacity(0.5)
+	var dialogue_ui: DialogueUI = scene.get_node("DialogueUI")
+	dialogue_ui.refresh_style()
+	_check(ThemeDB.get_project_theme().default_font_size == roundi(Settings.BASE_FONT_SIZE * 1.5), "a larger text size scales the interface text")
+	_check(dialogue_ui._speaker.get_theme_font_size("font_size") == roundi(DialogueUI.SPEAKER_FONT_SIZE * 1.5), "a larger text size scales the speaker's name")
+	_check(scene.get_node("UI/QuestLabel").label_settings.font_size == 24, "a larger text size scales the quest text")
+	_check(is_equal_approx(dialogue_ui._panel.self_modulate.a, 0.5), "the dialogue panel's opacity follows the setting")
 	menu._close_settings()
 	_check(menu.is_open() and menu._title.text == tr("UI_PAUSED"), "leaving the settings returns to the pause menu")
 	Settings.look_speed = 1.0
 	Settings.language = ""
 	Settings.graphics = "low"
+	Settings.text_size = 1.0
+	Settings.dialogue_opacity = 1.0
 	Settings.load_saved()
 	_check(Settings.language == "de" and Settings.look_speed == 2.0 and Settings.graphics == "high", "settings are remembered")
+	_check(Settings.text_size == 1.5 and is_equal_approx(Settings.dialogue_opacity, 0.5), "the text size and dialogue opacity are remembered")
 	menu.close()
 	player.set_busy(false)
 
@@ -2028,7 +2039,8 @@ func _test_settings(scene: Node, player: Player) -> void:
 	damaged.store_string("not json")
 	damaged.close()
 	Settings.load_saved()
-	_check(Settings.language == "" and Settings.look_speed == 1.0 and Settings.graphics == "high", "damaged settings fall back to defaults")
+	_check(Settings.language == "" and Settings.look_speed == 1.0 and Settings.graphics == "high" and Settings.text_size == 1.0 and Settings.dialogue_opacity == 1.0, "damaged settings fall back to defaults")
+	_check(ThemeDB.get_project_theme().default_font_size == Settings.BASE_FONT_SIZE, "default settings use the normal text size")
 	Settings.path = Settings.DEFAULT_PATH
 	DirAccess.remove_absolute(TEST_SETTINGS)
 	TranslationServer.set_locale("en")

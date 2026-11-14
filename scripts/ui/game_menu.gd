@@ -7,6 +7,7 @@ signal new_game_chosen(path: String)
 signal resume_chosen
 signal quit_chosen
 signal graphics_changed
+signal text_size_changed
 
 const PANEL_WIDTH := 420.0
 const ASSET_LIST_URL := "https://github.com/Gamperle/Erlenfall/blob/main/ASSETS.md"
@@ -103,6 +104,22 @@ func open_settings(leave: Callable) -> void:
 	graphics.selected = Settings.GRAPHICS_LEVELS.keys().find(Settings.graphics)
 	graphics.item_selected.connect(_choose_graphics)
 	_add_setting("UI_GRAPHICS", graphics)
+
+	var text_sizes := OptionButton.new()
+	for size: float in Settings.TEXT_SIZES:
+		text_sizes.add_item("%d%%" % roundi(size * 100.0))
+	text_sizes.selected = Settings.TEXT_SIZES.find(Settings.text_size)
+	text_sizes.item_selected.connect(_choose_text_size)
+	_add_setting("UI_TEXT_SIZE", text_sizes)
+
+	var opacity := HSlider.new()
+	opacity.min_value = Settings.MIN_DIALOGUE_OPACITY
+	opacity.max_value = 1.0
+	opacity.step = 0.05
+	opacity.value = Settings.dialogue_opacity
+	opacity.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	opacity.value_changed.connect(_choose_dialogue_opacity)
+	_add_setting("UI_DIALOGUE_OPACITY", opacity)
 
 	_add_action("UI_BACK", _close_settings)
 	_show()
@@ -212,6 +229,17 @@ func _choose_graphics(index: int) -> void:
 	Settings.graphics = Settings.GRAPHICS_LEVELS.keys()[index]
 	Settings.save()
 	graphics_changed.emit()
+
+
+func _choose_text_size(index: int) -> void:
+	Settings.text_size = Settings.TEXT_SIZES[index]
+	Settings.apply_text_size()
+	Settings.save()
+	text_size_changed.emit()
+
+
+func _choose_dialogue_opacity(value: float) -> void:
+	Settings.dialogue_opacity = value
 
 
 func _add_setting(text_key: String, control: Control) -> void:

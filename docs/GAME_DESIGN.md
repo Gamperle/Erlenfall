@@ -24,6 +24,8 @@ You walk into a small village with a few outlying farms, surrounded by high, mis
 
 **Tone.** Hopeful, with some darker moments. The world is high fantasy, but magic is limited and solves no problem by itself.
 
+**Lore.** The history, places, the mine, the landslide, and the rules of magic are in [the lore bible](LORE.md), a draft for your review.
+
 **Structure.** A main story of 5-10 hours with player choices that change how the town develops, followed by an endless sandbox.
 
 ## World

@@ -17,6 +17,9 @@ const QUEST_GAP := 8.0
 const PROMPT_BOTTOM := 90.0
 const PROMPT_GAP := 12.0
 
+## The corner map, when there is one. The map controller sets it.
+var minimap: Minimap
+
 @onready var _compass: Control = $Compass
 @onready var _health_bar: Control = $HealthBar
 @onready var _stamina_bar: Control = $StaminaBar
@@ -54,13 +57,17 @@ func arrange_for(width: float) -> void:
 	_overlay.offset_bottom = row + OVERLAY_HEIGHT
 	_overlay.offset_left = -EDGE - minf(OVERLAY_WIDTH, width - _health_bar.offset_right - EDGE * 2.0)
 
-	_quest.offset_left = -EDGE - minf(minf(QUEST_WIDTH, width - EDGE * 2.0), _quest_text_width())
+	# The quest plate leaves the minimap's corner free.
+	var reserved := Minimap.side_for_text_size() + EDGE if minimap != null else 0.0
+	_quest.offset_left = -EDGE - minf(minf(QUEST_WIDTH, width - EDGE * 2.0 - reserved), _quest_text_width())
 	var quest_top := _overlay.offset_bottom + QUEST_GAP if _overlay.visible else row
 	if not _overlay.visible and narrow:
 		quest_top = (_stamina_bar if _stamina_bar.visible else _health_bar).offset_bottom + QUEST_GAP
 	_quest.offset_top = quest_top
 	_quest.offset_bottom = quest_top
 	_place_prompt()
+	if minimap != null:
+		minimap.place(Vector2(EDGE, _health_bar.offset_bottom + QUEST_GAP))
 
 
 ## The quest's plate is only as wide as its text.

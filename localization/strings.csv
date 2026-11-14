@@ -261,6 +261,24 @@ ITEM_FIRE_FLASK,Fire flask,Feuerflasche
 UI_NEED_SHORT_BOW,You have no bow.,Du hast keinen Bogen.
 UI_NO_ARROW,You have no arrows.,Du hast keine Pfeile.
 UI_NO_FIRE_FLASK,You have no fire flasks.,Du hast keine Feuerflaschen.
+UI_MAP,Map,Karte
+UI_MAP_LOADING,Drawing the map...,Die Karte wird gezeichnet ...
+UI_MAP_YOU,You,Du
+UI_MAP_OBJECTIVE,Objective,Ziel
+UI_MAP_PLACE,Place you have visited,Besuchter Ort
+UI_MAP_HINT,WASD / left stick: move the map   Mouse wheel / + and - / LB and RB: zoom   M / R3 / Esc: close,WASD / linker Stick: Karte verschieben   Mausrad / + und - / LB und RB: zoomen   M / R3 / Esc: schließen
+MAP_GRANDFATHER_HOUSE,Grandfather's house,Opas Haus
+MAP_FORGE,Forge,Schmiede
+MAP_TOWN_HALL,Town hall,Rathaus
+MAP_GRANDMOTHER_HOUSE,Grandmother's house,Omas Haus
+MAP_INN,Inn,Gasthaus
+MAP_ABANDONED_HOUSE_1,Abandoned house,Verlassenes Haus
+MAP_ABANDONED_HOUSE_2,Abandoned house,Verlassenes Haus
+MAP_ABANDONED_HOUSE_3,Abandoned house,Verlassenes Haus
+MAP_NORTH_FARM,North farm,Nordhof
+MAP_WEST_FARM,West farm,Westhof
+MAP_SOUTH_FARM,South farm,Südhof
+MAP_IRON_ORE,Iron ore,Eisenerz
 UI_CONTROLS_TITLE,Controls,Steuerung
 UI_CONTROLS_KEYBOARD,Keyboard and mouse,Tastatur und Maus
 UI_CONTROLS_GAMEPAD,Gamepad,Gamepad
@@ -301,6 +319,7 @@ UI_HINT_TORCH,torch,Fackel
 UI_HINT_TIME,speed up time,Zeit vorspulen
 UI_HINT_SHOOT,shoot bow,Bogen schießen
 UI_HINT_THROW,throw flask,Flasche werfen
+UI_HINT_MAP,map,Karte
 UI_HINT_MENU,menu,Menü
 ACTION_MOVE_FORWARD,Move forward,Vorwärts gehen
 ACTION_MOVE_BACK,Move back,Rückwärts gehen
@@ -323,6 +342,7 @@ ACTION_INVENTORY,Inventory,Inventar
 ACTION_TOGGLE_TORCH,Torch,Fackel
 ACTION_TOGGLE_CAMERA,Switch camera,Kamera wechseln
 ACTION_FAST_FORWARD_TIME,Speed up time,Zeit vorspulen
+ACTION_MAP,Map,Karte
 ACTION_PAUSE,Menu,Menü
 ITEM_HEALING_HERB,Healing herb,Heilkraut
 ITEM_BERRIES,Berries,Beeren

@@ -32,6 +32,7 @@ var _fade_overlay: ColorRect
 @onready var _village: Village = $Village
 @onready var _day_night: DayNight = $DayNight
 @onready var _player: Player = $Player
+var _map: MapController
 var _controls_tween: Tween
 var _hurt_tween: Tween
 
@@ -70,6 +71,9 @@ func _ready() -> void:
 	_performance_overlay.visible = FeatureFlags.enabled("performance_overlay")
 	_performance_overlay.set_process(_performance_overlay.visible)
 	_ui.arrange()
+	_map = MapController.new()
+	add_child(_map)
+	_map.setup(_terrain, _village, _player, _ui)
 
 	_player.quests.changed.connect(_on_quests_changed)
 	_player.inventory.changed.connect(_update_quest_label)

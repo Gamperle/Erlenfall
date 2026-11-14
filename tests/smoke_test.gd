@@ -143,6 +143,7 @@ func _run() -> void:
 	_test_terrain_seams(terrain)
 	_test_rubble_ground(terrain)
 	await _test_hud(scene, player)
+	await _test_map(scene, player)
 	_test_character_models(player)
 	_test_generated_props()
 	_test_feature_flags()
@@ -565,6 +566,101 @@ func _slope_degrees(terrain: Terrain, x: float, z: float) -> float:
 	var across := terrain.height_at(x + 1.0, z) - terrain.height_at(x - 1.0, z)
 	var along := terrain.height_at(x, z + 1.0) - terrain.height_at(x, z - 1.0)
 	return rad_to_deg(atan(Vector2(across, along).length() / 2.0))
+
+
+func _test_map(scene: Node, player: Player) -> void:
+	var controller: MapController = scene.get_node("MapController")
+	var terrain: Terrain = scene.get_node("Terrain")
+	var hud: HudLayout = scene.get_node("UI")
+	var started := Time.get_ticks_msec()
+	controller.finish_now()
+	print("map picture waited %d ms" % (Time.get_ticks_msec() - started))
+	var data := controller.data
+	_check(controller.is_picture_ready() and data.texture != null and data.texture.get_width() == MapData.IMAGE_SIZE, "the map picture is drawn once at load")
+	var image := data.image()
+	var river_at := terrain.river.positions[terrain.river.positions.size() / 2]
+	var river_pixel := (MapData.world_to_uv(river_at) * MapData.IMAGE_SIZE).floor()
+	_check(_close_color(image.get_pixel(int(river_pixel.x), int(river_pixel.y)), MapData.WATER_COLOR), "the river is blue on the map")
+	var road_at := terrain.roads[0].positions[terrain.roads[0].positions.size() / 2]
+	var road_pixel := (MapData.world_to_uv(road_at) * MapData.IMAGE_SIZE).floor()
+	_check(_close_color(image.get_pixel(int(road_pixel.x), int(road_pixel.y)), MapData.ROAD_COLOR), "a road is drawn on the map")
+	var uv := MapData.world_to_uv(Vector2(-800.0, 800.0))
+	_check(uv.is_equal_approx(Vector2(0.0, 1.0)) and MapData.uv_to_world(Vector2(0.5, 0.5)).is_equal_approx(Vector2.ZERO), "the map has north at the top and the world's middle at its center")
+	_check(data.places.size() >= 11 and data.places.all(func(place: Dictionary) -> bool: return tr(place["name"]) != place["name"]), "every place on the map has a translated name")
+	var forge: Dictionary = data.places.filter(func(place: Dictionary) -> bool: return place["id"] == "forge")[0]
+	for place in data.places:
+		place["discovered"] = false
+	var far := Vector2(forge["position"]) + Vector2(500.0, 0.0)
+	_check(not data.discover_near(far, 60.0) and not forge["discovered"], "faraway places stay undiscovered")
+	_check(data.discover_near(forge["position"] + Vector2(10.0, 0.0), 60.0) and forge["discovered"], "walking near a place discovers it")
+	await process_frame
+
+	var minimap: Minimap = controller.minimap
+	_check(minimap != null and minimap.get_parent() == hud, "the minimap is on the HUD")
+	var region := minimap.visible_region()
+	_check(region.size.x < MapData.IMAGE_SIZE and Rect2(Vector2.ZERO, Vector2.ONE * MapData.IMAGE_SIZE).encloses(region), "the minimap shows a part of the picture, inside it")
+	minimap.player_position = Vector2(-790.0, 790.0)
+	_check(Rect2(Vector2.ZERO, Vector2.ONE * MapData.IMAGE_SIZE).encloses(minimap.visible_region()), "the minimap stays inside the picture at the world's corner")
+	minimap.player_position = Vector2.ZERO
+	var health_bar: Control = scene.get_node("UI/HealthBar")
+	var overlay: Control = scene.get_node("UI/PerformanceOverlay")
+	var quest: Control = scene.get_node("UI/QuestLabel")
+	var compass: Control = scene.get_node("UI/Compass")
+	for width: float in [640.0, 889.0, 1152.0, 1600.0]:
+		for text_size: float in [1.0, 1.5]:
+			Settings.text_size = text_size
+			hud.arrange_for(width)
+			var width_label := "at width %d and text size %.1f" % [width, text_size]
+			var minimap_rect := Rect2(minimap.offset_left, minimap.offset_top, minimap.offset_right - minimap.offset_left, minimap.offset_bottom - minimap.offset_top)
+			var overlay_rect := Rect2(width + overlay.offset_left, overlay.offset_top, -overlay.offset_left + overlay.offset_right, overlay.offset_bottom - overlay.offset_top)
+			var quest_rect := Rect2(width + quest.offset_left, quest.offset_top, quest.offset_right - quest.offset_left, 400.0)
+			_check(minimap_rect.size.x == Minimap.side_for_text_size() and minimap_rect.position.y >= health_bar.offset_bottom, "the minimap sits below the health bar %s" % width_label)
+			_check(not minimap_rect.intersects(overlay_rect) and not minimap_rect.intersects(compass.get_rect()), "the minimap clears the overlay and compass %s" % width_label)
+			_check(not minimap_rect.intersects(quest_rect) and minimap_rect.end.x <= width, "the minimap clears the quest text %s" % width_label)
+	Settings.text_size = 1.0
+	hud.arrange()
+
+	var world_map: WorldMap = controller.world_map
+	_check(InputMap.has_action("map") and _has_key("map", KEY_M) and _has_joypad_button("map"), "the map opens with M or a controller button")
+	_check(not world_map.is_open(), "the map starts closed")
+	var press := InputEventAction.new()
+	press.action = "map"
+	press.pressed = true
+	world_map._input(press)
+	_check(world_map.is_open() and player.is_busy() and scene.get_tree().paused, "the map key opens the map and pauses the game")
+	_check(is_equal_approx(world_map.view_center().distance_to(world_map.player_position), 0.0), "the map opens on the player")
+	var zoom_before := world_map.zoom_level()
+	world_map.zoom_by(2.0)
+	_check(world_map.zoom_level() > zoom_before and world_map.span() < Terrain.SIZE / zoom_before, "zooming shows a smaller area")
+	world_map.zoom_by(1000.0)
+	world_map.pan(Vector2(5000.0, 5000.0))
+	_check(world_map.zoom_level() == WorldMap.MAX_ZOOM and world_map.view_center().x <= MapData.half_extent() - world_map.span() / 2.0 + 0.01, "the map can't zoom or pan past its limits")
+	await process_frame
+	world_map._input(press)
+	_check(not world_map.is_open() and not player.is_busy(), "the map key closes the map again")
+	player.set_busy(true)
+	_check(not world_map.can_open.call(), "the map doesn't open over a menu")
+	player.set_busy(false)
+	_check(tr("UI_MAP") == "Map", "the map is titled in English")
+	TranslationServer.set_locale("de")
+	_check(tr("UI_MAP") == "Karte" and tr("MAP_FORGE") == "Schmiede", "the map is translated to German")
+	TranslationServer.set_locale("en")
+	_check(MapMarkers.clamp_to_rect(Vector2(1000.0, 50.0), Rect2(0.0, 0.0, 100.0, 100.0), 5.0).x <= 95.0, "a faraway objective stays at the map's edge")
+
+
+func _close_color(a: Color, b: Color) -> bool:
+	return absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b) < 0.03
+
+
+func _has_key(action: String, keycode: Key) -> bool:
+	for input in InputMap.action_get_events(action):
+		if input is InputEventKey and input.physical_keycode == keycode:
+			return true
+	return false
+
+
+func _has_joypad_button(action: String) -> bool:
+	return InputMap.action_get_events(action).any(func(input: InputEvent) -> bool: return input is InputEventJoypadButton)
 
 
 func _test_hud(scene: Node, player: Player) -> void:

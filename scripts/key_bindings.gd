@@ -11,7 +11,7 @@ const KINDS: Array[String] = [KEYBOARD, GAMEPAD]
 const ACTIONS: Array[String] = [
 	"move_forward", "move_back", "move_left", "move_right", "look_up", "look_down", "look_left", "look_right",
 	"jump", "sprint", "sneak", "dodge", "attack", "block", "shoot", "throw",
-	"interact", "inventory", "toggle_torch", "toggle_camera", "fast_forward_time", "pause",
+	"interact", "inventory", "toggle_torch", "toggle_camera", "fast_forward_time", "map", "pause",
 ]
 const MAX_KEY := 0x7FFFFFFF
 const MAX_MOUSE_BUTTON := 9
@@ -25,7 +25,7 @@ const HINTS: Array = [
 	["block", "UI_HINT_BLOCK"], ["dodge", "UI_HINT_DODGE"], ["interact", "UI_HINT_USE"],
 	["inventory", "UI_HINT_INVENTORY"], ["toggle_camera", "UI_HINT_CAMERA"], ["toggle_torch", "UI_HINT_TORCH"],
 	["fast_forward_time", "UI_HINT_TIME"], ["shoot", "UI_HINT_SHOOT"], ["throw", "UI_HINT_THROW"],
-	["pause", "UI_HINT_MENU"],
+	["map", "UI_HINT_MAP"], ["pause", "UI_HINT_MENU"],
 ]
 const JOY_BUTTON_NAMES: Array[String] = ["A", "B", "X", "Y", "Back", "Guide", "Start", "L3", "R3", "LB", "RB"]
 const JOY_DPAD_KEYS: Array[String] = ["UI_PAD_UP", "UI_PAD_DOWN", "UI_PAD_LEFT", "UI_PAD_RIGHT"]

@@ -55,7 +55,9 @@
 		{ "item": "coal", "prompt": "PROMPT_MINE_COAL", "x": 16, "z": -180, "size": 1.1, "uses": 3, "respawn_seconds": 120, "color": "#17171a" },
 		{ "item": "coal", "prompt": "PROMPT_MINE_COAL", "x": 64, "z": -172, "size": 1.1, "uses": 3, "respawn_seconds": 120, "color": "#17171a" },
 		{ "item": "wood", "prompt": "PROMPT_TAKE_WOOD", "x": 22, "z": 28, "size": 0.9, "uses": 5, "respawn_seconds": 90, "color": "#7a5a35" },
-		{ "item": "wood", "prompt": "PROMPT_TAKE_WOOD", "x": -8, "z": -150, "size": 0.9, "uses": 5, "respawn_seconds": 90, "color": "#7a5a35" }
+		{ "item": "wood", "prompt": "PROMPT_TAKE_WOOD", "x": -8, "z": -150, "size": 0.9, "uses": 5, "respawn_seconds": 90, "color": "#7a5a35" },
+		{ "item": "berries", "prompt": "PROMPT_PICK_BERRIES", "x": 26, "z": 31, "size": 0.7, "uses": 4, "respawn_seconds": 90, "color": "#7a2f4a" },
+		{ "item": "healing_herb", "prompt": "PROMPT_PICK_HERBS", "x": 18, "z": 31, "size": 0.6, "uses": 4, "respawn_seconds": 120, "color": "#4f8a3f" }
 	],
 	"roads": [
 		{ "width": 3, "points": [[0, 220], [-3, 165], [0, 110], [3, 60], [0, 20], [0, -12]] },

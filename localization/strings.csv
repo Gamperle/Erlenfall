@@ -250,3 +250,11 @@ ITEM_FIRE_FLASK,Fire flask,Feuerflasche
 UI_NEED_SHORT_BOW,You have no bow.,Du hast keinen Bogen.
 UI_NO_ARROW,You have no arrows.,Du hast keine Pfeile.
 UI_NO_FIRE_FLASK,You have no fire flasks.,Du hast keine Feuerflaschen.
+ITEM_HEALING_HERB,Healing herb,Heilkraut
+ITEM_BERRIES,Berries,Beeren
+ITEM_HEALING_POTION,Healing potion,Heiltrank
+PROMPT_PICK_BERRIES,Pick berries,Beeren pflücken
+PROMPT_PICK_HERBS,Pick healing herbs,Heilkraut pflücken
+UI_USE_ITEM,Use %s (%d),%s benutzen (%d)
+UI_USED_ITEM,You used %s.,Du hast %s benutzt.
+UI_HEALTH_FULL,Your health is already full.,Deine Gesundheit ist bereits voll.

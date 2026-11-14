@@ -698,6 +698,58 @@ func _test_torch(player: Player) -> void:
 	DirAccess.remove_absolute(TEST_FLAGS_B)
 
 
+func _test_healing(player: Player, ui: CraftingUI) -> void:
+	player.inventory.add("healing_herb", 2)
+	ui.open_station("furnace", "Furnace", player)
+	ui.add_material("healing_herb")
+	ui.add_material("healing_herb")
+	ui.craft()
+	_check(player.inventory.count("healing_potion") == 1 and player.inventory.count("healing_herb") == 0, "two herbs brew a healing potion")
+	ui.close()
+
+	player.inventory.add("berries")
+	ui.open_inventory(player)
+	_check(ui._use_row.get_child_count() == 2, "the inventory offers a button for each usable item")
+	ui.use_item("healing_potion")
+	_check(player.inventory.count("healing_potion") == 1, "a healing item isn't used up at full health")
+	player.health.damage(80.0)
+	ui.use_item("healing_potion")
+	_check(is_equal_approx(player.health.current, 70.0) and player.inventory.count("healing_potion") == 0, "a healing potion heals and is used up")
+	ui.use_item("berries")
+	_check(is_equal_approx(player.health.current, 85.0) and player.inventory.count("berries") == 0, "berries heal when eaten")
+	ui.use_item("berries")
+	_check(is_equal_approx(player.health.current, 85.0), "an item that isn't carried does nothing")
+	_check(ui._use_row.get_child_count() == 0, "used-up items lose their button")
+	player.inventory.add("iron_ore")
+	_check(not Healing.use_item(player, "iron_ore"), "an item without a use action can't be used")
+	ui.close()
+
+	FeatureFlags.load_layers()
+	player.health.restore()
+	player.health.damage(50.0)
+	var before := player.health.current
+	player._since_hit = 1000.0
+	player._update_combat(1.0)
+	_check(player.health.current > before, "health regenerates out of combat")
+	player.health.damage(1.0)
+	player._since_hit = 0.0
+	before = player.health.current
+	player._update_combat(1.0)
+	_check(is_equal_approx(player.health.current, before), "health doesn't regenerate right after a hit")
+	_write_flags(TEST_FLAGS_A, { "flags": { "health_regen": false, "healing_items": false } })
+	FeatureFlags.load_layers([TEST_FLAGS_A])
+	player._since_hit = 1000.0
+	player._update_combat(1.0)
+	_check(is_equal_approx(player.health.current, before), "regeneration can be switched off")
+	player.inventory.add("berries")
+	_check(not Healing.use_item(player, "berries"), "healing items can be switched off")
+	FeatureFlags.load_layers()
+	DirAccess.remove_absolute(TEST_FLAGS_A)
+	player.inventory.remove("berries")
+	player.inventory.remove("iron_ore")
+	player.health.restore()
+
+
 func _write_flags(path: String, data: Dictionary) -> void:
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	file.store_string(JSON.stringify(data))
@@ -748,6 +800,7 @@ func _test_crafting(scene: Node, player: Player) -> void:
 	_check(player.known_recipes.has("smelt_iron"), "smelting is discovered")
 	ui.close()
 	_check(not ui.is_open(), "crafting screen closes")
+	_test_healing(player, ui)
 
 	ui.open_station("anvil", "Anvil", player)
 	ui.add_material("iron_ingot")
@@ -2381,7 +2434,7 @@ func _test_data_validation() -> void:
 	for file in DataValidator.FILES:
 		files[file] = JSON.parse_string(FileAccess.get_file_as_string("res://data/" + file))
 	var broken := files.duplicate(true)
-	broken["crafting.json"]["recipes"][5]["inputs"]["iron_ingott"] = 1
+	broken["crafting.json"]["recipes"][6]["inputs"]["iron_ingott"] = 1
 	broken["crafting.json"]["items"]["torch"].erase("name")
 	broken["quests.json"]["arrival"]["objectives"][0]["marker"] = "nobody"
 	broken["dialogue.json"]["hedda"][0]["when"]["objective"] = ["arrival", "see_nobody"]
@@ -2393,12 +2446,14 @@ func _test_data_validation() -> void:
 	broken["village_layout.json"]["enemies"][0]["type"] = "dragon"
 	broken["villager_routines.json"]["bertram"][1].erase("z")
 	broken["projectiles.json"]["arrow"]["ammo_item"] = "arrows"
+	broken["crafting.json"]["items"]["berries"]["use"]["heal"] = 0
 	var found := DataValidator.new().validate_files(broken)
 	for expected in [
 		"crafting.json: recipes[forge_axe]", "crafting.json: items[torch]: missing \"name\"", "quests.json: [arrival].objectives[see_grandmother].marker: unknown marker place \"nobody\"",
 		"dialogue.json: hedda[0].when.objective", "dialogue.json: hedda[0].nodes[send].effects[0].quest: unknown quest \"no_quest\"",
 		"dialogue.json: hedda[0].nodes[how_bad].next", "dialogue.json: [stranger]: unknown villager", "enemies.json: [goblin].drops[0].item: unknown item \"gold\"",
 		"enemies.json: [goblin].health", "village_layout.json: enemies[0].type", "villager_routines.json: [bertram][1]: a stop needs both", "projectiles.json: [arrow].ammo_item",
+		"crafting.json: items[berries].use.heal",
 	]:
 		_check(found.any(func(line: String) -> bool: return line.begins_with(expected) or line.contains(expected)), "the validator reports: %s" % expected + ("" if found.any(func(line: String) -> bool: return line.contains(expected)) else " (got %s)" % [found]))
 	var empty := DataValidator.new().validate_files({ "quests.json": [] })

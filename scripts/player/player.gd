@@ -27,7 +27,6 @@ const GROUP := "player"
 const PLAYER_CLOTH_COLOR := Color(0.45, 0.3, 0.2)
 const MAX_HEALTH := 100.0
 const REGEN_DELAY := 8.0
-const REGEN_PER_SECOND := 2.0
 const UNARMED_DAMAGE := 5.0
 const ATTACK_WINDUP := 0.15
 const ATTACK_COOLDOWN := 0.55
@@ -439,8 +438,8 @@ func _update_combat(delta: float) -> void:
 			_land_attack()
 
 	_since_hit += delta
-	if _since_hit >= REGEN_DELAY and health.is_alive() and health.current < health.maximum:
-		health.heal(REGEN_PER_SECOND * delta)
+	if _since_hit >= Healing.regen_delay() and health.is_alive() and health.current < health.maximum:
+		health.heal(Healing.regen_per_second() * delta)
 
 	if _body_mesh is CharacterModel:
 		var idle: StringName = &""

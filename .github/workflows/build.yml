@@ -42,6 +42,9 @@ jobs:
       - name: Run smoke test
         run: godot --headless --path . --script res://tests/smoke_test.gd
 
+      - name: Run performance check
+        run: godot --headless --path . --script res://tests/perf_check.gd
+
       - name: Export builds
         run: |
           mkdir -p build/linux build/windows build/web

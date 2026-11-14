@@ -268,7 +268,8 @@ ITEM_SHORT_BOW,Short bow,Kurzbogen
 ITEM_ARROW,Arrow,Pfeil
 ITEM_LONG_BOW,Long bow,Langbogen
 ITEM_FIRE_FLASK,Fire flask,Feuerflasche
-UI_NEED_SHORT_BOW,You have no bow.,Du hast keinen Bogen.
+UI_NEED_BOW,You have no bow.,Du hast keinen Bogen.
+UI_TOO_TIRED_HEAVY,You are too tired for a heavy swing.,Du bist zu erschöpft für einen schweren Schlag.
 UI_NO_ARROW,You have no arrows.,Du hast keine Pfeile.
 UI_NO_FIRE_FLASK,You have no fire flasks.,Du hast keine Feuerflaschen.
 UI_MAP,Map,Karte

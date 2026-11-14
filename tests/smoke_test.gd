@@ -1392,6 +1392,7 @@ func _test_combat(scene: Node, player: Player) -> void:
 	await _test_enemy_talk(scene, player)
 	FeatureFlags._flags["enemy_talk"] = false
 	await _test_stamina_costs(scene, player)
+	await _test_heavy_swing(player)
 
 	# Hold block through the goblin's attack.
 	Input.action_press("block")
@@ -1554,6 +1555,47 @@ func _test_stamina_costs(scene: Node, player: Player) -> void:
 	FeatureFlags._flags["stamina"] = true
 	player.stamina = Player.MAX_STAMINA
 	player.health.restore()
+
+
+func _test_heavy_swing(player: Player) -> void:
+	var notices: Array[String] = []
+	var listen := func(key: String): notices.append(key)
+	player.notice.connect(listen)
+	player._attack_cooldown = 0.0
+	player.stamina = Player.MAX_STAMINA
+	_check(not HeavySwing.is_charged(HeavySwing.charge_seconds() - 0.1) and HeavySwing.is_charged(HeavySwing.charge_seconds()), "a swing is heavy once the button was held long enough")
+	_check(player.attack(true) and player._swing_heavy and player.stamina == Player.MAX_STAMINA - HeavySwing.stamina_cost(), "a heavy swing costs stamina")
+	player._attack_cooldown = 0.0
+	player._attack_windup = 0.0
+	player.stamina = HeavySwing.stamina_cost() - 1.0
+	_check(player.attack(true) and not player._swing_heavy and player.stamina == HeavySwing.stamina_cost() - 1.0 and notices == ["UI_TOO_TIRED_HEAVY"], "with too little stamina a heavy swing becomes a normal one")
+	player._attack_cooldown = 0.0
+	player._attack_windup = 0.0
+	player.stamina = Player.MAX_STAMINA
+	_check(player.attack() and not player._swing_heavy and player.stamina == Player.MAX_STAMINA, "a normal swing costs no stamina")
+	player._attack_cooldown = 0.0
+	player._attack_windup = 0.0
+	FeatureFlags._flags["stamina"] = false
+	player.stamina = 0.0
+	_check(player.attack(true) and player._swing_heavy, "a heavy swing is free when the flag for stamina is off")
+	FeatureFlags._flags["stamina"] = true
+	player._attack_cooldown = 0.0
+	player._attack_windup = 0.0
+	FeatureFlags._flags["heavy_swing"] = false
+	player.stamina = Player.MAX_STAMINA
+	_check(player.attack(true) and not player._swing_heavy and player.stamina == Player.MAX_STAMINA, "nothing is heavy when the flag is off")
+	FeatureFlags._flags["heavy_swing"] = true
+	player._charge = -1.0
+	player.notice.disconnect(listen)
+	for key in ["UI_TOO_TIRED_HEAVY"]:
+		TranslationServer.set_locale("de")
+		var german := tr(key)
+		TranslationServer.set_locale("en")
+		_check(tr(key) != key and german != key and german != tr(key), "%s has English and German text" % key)
+	player._attack_cooldown = 0.0
+	player._attack_windup = 0.0
+	player._swing_heavy = false
+	player.stamina = Player.MAX_STAMINA
 
 
 func _test_sneaking(player: Player, enemy: Enemy) -> void:
@@ -3351,12 +3393,12 @@ func _test_ranged(scene: Node, player: Player) -> void:
 	var notices: Array[String] = []
 	player.notice.connect(func(key: String): notices.append(key))
 	player.inventory.remove("short_bow")
-	_check(not player.fire_ranged("shoot") and notices == ["UI_NEED_SHORT_BOW"], "an arrow can't be shot without a bow")
+	_check(not player.fire_ranged("shoot") and notices == ["UI_NEED_BOW"], "an arrow can't be shot without a bow")
 	player.inventory.add("short_bow")
 	var quiver := player.inventory.count("arrow")
 	player.inventory.remove("arrow", quiver)
 	_check(not player.fire_ranged("shoot") and notices.back() == "UI_NO_ARROW", "an empty quiver can't shoot")
-	for key in ["UI_NEED_SHORT_BOW", "UI_NO_ARROW", "UI_NO_FIRE_FLASK", "ITEM_SHORT_BOW", "ITEM_ARROW", "ITEM_FIRE_FLASK"]:
+	for key in ["UI_NEED_BOW", "UI_NO_ARROW", "UI_NO_FIRE_FLASK", "ITEM_SHORT_BOW", "ITEM_ARROW", "ITEM_FIRE_FLASK"]:
 		TranslationServer.set_locale("de")
 		var german := tr(key)
 		TranslationServer.set_locale("en")

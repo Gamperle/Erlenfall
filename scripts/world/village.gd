@@ -40,6 +40,12 @@ const BRIDGE_RISE := 0.9
 const BRIDGE_LIFT := 0.06
 const BOULDER_COLOR := Color(0.36, 0.33, 0.3)
 const BOULDER_LUMPINESS := 0.35
+## The longest piece of wall or palisade. Each piece is straight and level, so shorter ones follow the land.
+const WALL_PIECE_LENGTH := 3.0
+## How far a piece sinks below the lowest ground under it, so no gap shows on a slope.
+const WALL_SINK := 0.35
+## Pieces of a line are lengthened by this at each joint, so a bend leaves no gap.
+const WALL_JOINT_OVERLAP := 0.12
 const PROP_FOLDER := "res://assets/props/"
 ## Smaller props have no collision, so they never block the player.
 const PROP_SOLID_SIZE := 0.6
@@ -82,6 +88,7 @@ func _ready() -> void:
 	for field: Dictionary in layout["fields"]:
 		_add_field(field)
 	_add_props(layout["props"], layout["buildings"])
+	_add_walls(layout["walls"])
 	_add_roads(layout["roads"])
 	_add_trees(layout["trees"], layout["fields"])
 	if FeatureFlags.enabled("forest"):
@@ -510,6 +517,56 @@ func _add_props(props: Array, buildings: Array) -> void:
 			collision.shape = shape
 			collision.position = bounds.get_center()
 			body.add_child(collision)
+
+
+## Builds the walls and palisades. Each entry is a line of "points" ([x, z] pairs, open at the ends
+## for gates) that gets cut into short straight pieces with a collider each. The pieces of one entry
+## join into a single mesh, so a whole palisade costs a few draw calls.
+func _add_walls(walls: Array) -> void:
+	var root := Node3D.new()
+	root.name = "Walls"
+	add_child(root)
+	for i in walls.size():
+		var data: Dictionary = walls[i]
+		var line := Node3D.new()
+		line.name = "%s_%d" % [data["kind"], i]
+		root.add_child(line)
+		var points: Array = data["points"]
+		var piece_index := 0
+		for j in points.size() - 1:
+			var from := Vector2(points[j][0], points[j][1])
+			var to := Vector2(points[j + 1][0], points[j + 1][1])
+			var count := maxi(1, ceili(from.distance_to(to) / WALL_PIECE_LENGTH))
+			for k in count:
+				var start := from.lerp(to, float(k) / count)
+				var end := from.lerp(to, float(k + 1) / count)
+				var joined_start := k > 0 or j > 0
+				var joined_end := k < count - 1 or j < points.size() - 2
+				line.add_child(_wall_piece(data, start, end, joined_start, joined_end, int(data["seed"]) + piece_index))
+				piece_index += 1
+				_busy_spots.append((start + end) / 2.0)
+		ModelBuilder.merged(line)
+
+
+func _wall_piece(data: Dictionary, start: Vector2, end: Vector2, joined_start: bool, joined_end: bool, seed_value: int) -> StaticBody3D:
+	var along := end - start
+	var middle := (start + end) / 2.0
+	var low := minf(terrain.height_at(start.x, start.y), minf(terrain.height_at(end.x, end.y), terrain.height_at(middle.x, middle.y)))
+	var high := maxf(terrain.height_at(start.x, start.y), maxf(terrain.height_at(end.x, end.y), terrain.height_at(middle.x, middle.y)))
+	var height: float = data["height"] + (high - low) + WALL_SINK
+	var length := along.length() + (WALL_JOINT_OVERLAP if joined_start else 0.0) + (WALL_JOINT_OVERLAP if joined_end else 0.0)
+	var piece: StaticBody3D
+	if data["kind"] == "palisade":
+		piece = ModelBuilder.palisade(length, height, seed_value)
+	else:
+		piece = ModelBuilder.stone_wall(length, height, data.get("thickness", 0.6), seed_value)
+	var direction := along.normalized()
+	# The piece grows evenly from its middle, so shift it when only one end is lengthened.
+	var shift := ((WALL_JOINT_OVERLAP if joined_end else 0.0) - (WALL_JOINT_OVERLAP if joined_start else 0.0)) / 2.0
+	var center := middle + direction * shift
+	piece.position = Vector3(center.x, low - WALL_SINK, center.y)
+	piece.rotation.y = atan2(-direction.y, direction.x)
+	return piece
 
 
 func _building_heading(buildings: Array, id: String) -> float:

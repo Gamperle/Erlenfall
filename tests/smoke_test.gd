@@ -182,6 +182,7 @@ func _run() -> void:
 	await _test_enemies_go_around_a_corridor(player)
 	await _test_gathering_collision(scene, player)
 	await _test_buried_mine(scene, player)
+	await _test_walls(scene, player)
 	await _test_forest(scene, player)
 	await _test_player_fixes(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
@@ -2285,6 +2286,107 @@ func _test_buried_mine(scene: Node, player: Player) -> void:
 	await _physics_frames(10)
 
 
+## The stone walls and the fort's palisade (#209): placed on gentle ground clear of roads and everything
+## people use, solid, open at their gates, and cheap to draw.
+func _test_walls(scene: Node, player: Player) -> void:
+	var terrain: Terrain = scene.get_node("Terrain")
+	var village: Village = scene.get_node("Village")
+	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Village.LAYOUT_PATH))
+	var walls: Array = layout["walls"]
+	var holder: Node = village.get_node("Walls")
+	_check(walls.size() >= 5 and holder.get_child_count() == walls.size(), "every wall in the layout is built (%d)" % holder.get_child_count())
+	var kinds := {}
+	var surfaces := 0
+	var bodies := 0
+	for line in holder.get_children():
+		var meshes := line.find_children("*", "MeshInstance3D", true, false)
+		_check(meshes.size() == 1, "%s joins into one mesh" % line.name)
+		surfaces += (meshes[0] as MeshInstance3D).mesh.get_surface_count()
+		bodies += line.find_children("*", "CollisionShape3D", true, false).size()
+	for wall: Dictionary in walls:
+		kinds[wall["kind"]] = true
+	_check(kinds.has("palisade") and kinds.has("stone_wall"), "both a palisade and stone walls are placed")
+	_check(surfaces <= walls.size() * 8 and bodies > 20, "walls cost few draw calls (%d surfaces) and each piece is solid (%d)" % [surfaces, bodies])
+
+	# Every sample along a wall stands on gentle ground, clear of roads, the river, buildings, and places people go.
+	var places: Array[Vector2] = []
+	for list in ["buildings", "npcs", "enemies", "repair_sites", "beds", "stations", "resources"]:
+		for spot: Dictionary in layout[list]:
+			places.append(Vector2(spot["x"], spot["z"]))
+	var mine := Vector2(layout["mine"]["x"], layout["mine"]["z"])
+	var problems := PackedStringArray()
+	var steepest := 0.0
+	for index in walls.size():
+		var points: Array = walls[index]["points"]
+		for j in points.size() - 1:
+			var from := Vector2(points[j][0], points[j][1])
+			var to := Vector2(points[j + 1][0], points[j + 1][1])
+			for step in ceili(from.distance_to(to) / 0.5) + 1:
+				var at := from.lerp(to, minf(1.0, step * 0.5 / from.distance_to(to)))
+				steepest = maxf(steepest, _slope_degrees(terrain, at.x, at.y))
+				if terrain.river_clearance(at.x, at.y) < 3.0 or at.distance_to(mine) < 20.0:
+					problems.append("walls[%d] near the river or the mine at %s" % [index, at])
+				for road in terrain.roads:
+					var found: Vector3 = road.nearest(at.x, at.y)
+					if found.x < found.z + 2.0:
+						problems.append("walls[%d] on a road at %s" % [index, at])
+				for place in places:
+					if at.distance_to(place) < 6.0:
+						problems.append("walls[%d] too close to %s" % [index, place])
+	_check(steepest < 15.0, "walls stand on gentle ground (steepest %.1f degrees)" % steepest)
+	_check(problems.is_empty(), "walls keep clear of roads, the river, and places: %s" % [problems.slice(0, 4)])
+
+	# The palisade rings the wooden fort's flat top and leaves a gate wide enough for a cart on the village side.
+	var fort: Dictionary
+	for site: Dictionary in terrain.building_sites:
+		if site["id"] == "wooden_fort":
+			fort = site
+	var center := Vector2(fort["x"], fort["z"])
+	var ring: Array = walls.filter(func(wall: Dictionary) -> bool: return wall["kind"] == "palisade")[0]["points"]
+	var ring_inside := true
+	for point: Array in ring:
+		ring_inside = ring_inside and Vector2(point[0], point[1]).distance_to(center) < float(fort["radius"])
+	_check(ring_inside, "the palisade stands on the fort's flat top")
+	var first := Vector2(ring[0][0], ring[0][1])
+	var last := Vector2(ring[ring.size() - 1][0], ring[ring.size() - 1][1])
+	var gate_dir := ((first + last) / 2.0 - center).normalized()
+	_check(first.distance_to(last) >= 2.5 and gate_dir.dot((Vector2.ZERO - center).normalized()) > 0.9, "the palisade's gate is at least 2.5 m wide and faces the village (%.1f m)" % first.distance_to(last))
+	# The gaps between stone walls of one field are gates too.
+	var stone: Array = walls.filter(func(wall: Dictionary) -> bool: return wall["kind"] == "stone_wall")
+	var gates := 0
+	for a: Dictionary in stone:
+		for b: Dictionary in stone:
+			var end := Vector2(a["points"][a["points"].size() - 1][0], a["points"][a["points"].size() - 1][1])
+			var begin := Vector2(b["points"][0][0], b["points"][0][1])
+			if a != b and end.distance_to(begin) < 6.0:
+				gates += 1
+				_check(end.distance_to(begin) >= 2.2, "a stone wall's gate is wide enough to walk through (%.1f m)" % end.distance_to(begin))
+	_check(gates >= 2, "field walls leave gates (%d)" % gates)
+
+	# Solid in play: walking at the palisade stops short, walking through the gate does not.
+	var saved_position := player.position
+	var gate := (first + last) / 2.0
+	var out_dir := gate_dir
+	var wall_mid := Vector2(ring[4][0], ring[4][1]).lerp(Vector2(ring[5][0], ring[5][1]), 0.5)
+	var wall_out := (wall_mid - center).normalized()
+	var stops := [0, 0]
+	var trials := [[wall_mid, wall_out], [gate, out_dir]]
+	for i in 2:
+		var edge: Vector2 = trials[i][0]
+		var outward: Vector2 = trials[i][1]
+		# From inside the fort outward, so the climb up the mound's slope can't be what stops the walk.
+		var from := edge - outward * 3.0
+		var from3 := Vector3(from.x, terrain.height_at(from.x, from.y) + 0.1, from.y)
+		var motion := Vector3(outward.x, 0.0, outward.y) * 6.0
+		var result := PhysicsTestMotionResult3D.new()
+		var hit := PhysicsServer3D.body_test_motion(player.get_rid(), _motion_params(Transform3D(player.global_basis, from3), motion), result)
+		stops[i] = 1 if hit and result.get_travel().length() < 5.0 else 0
+	_check(stops[0] == 1, "the palisade stops a player walking at it")
+	_check(stops[1] == 0, "a player walks through the palisade's gate")
+	player.position = saved_position
+	await _physics_frames(5)
+
+
 func _motion_params(from: Transform3D, motion: Vector3) -> PhysicsTestMotionParameters3D:
 	var params := PhysicsTestMotionParameters3D.new()
 	params.from = from
@@ -3714,13 +3816,14 @@ func _test_data_validation() -> void:
 	broken["village_layout.json"]["mine"].erase("opening_width")
 	broken["projectiles.json"]["arrow"]["ammo_item"] = "arrows"
 	broken["crafting.json"]["items"]["berries"]["use"]["heal"] = 0
+	broken["village_layout.json"]["walls"][0]["kind"] = "hedge"
 	var found := DataValidator.new().validate_files(broken)
 	for expected in [
 		"crafting.json: recipes[forge_axe]", "crafting.json: items[torch]: missing \"name\"", "quests.json: [arrival].objectives[see_grandmother].marker: unknown marker place \"nobody\"",
 		"dialogue.json: hedda[0].when.objective", "dialogue.json: hedda[0].nodes[send].effects[0].quest: unknown quest \"no_quest\"",
 		"dialogue.json: hedda[0].nodes[how_bad].next", "dialogue.json: [stranger]: unknown villager", "enemies.json: [goblin].drops[0].item: unknown item \"gold\"",
 		"enemies.json: [goblin].health", "village_layout.json: enemies[0].type", "village_layout.json: mine: missing \"opening_width\"", "villager_routines.json: [bertram][1]: a stop needs both", "projectiles.json: [arrow].ammo_item",
-		"crafting.json: items[berries].use.heal",
+		"crafting.json: items[berries].use.heal", "village_layout.json: walls[0].kind",
 	]:
 		_check(found.any(func(line: String) -> bool: return line.begins_with(expected) or line.contains(expected)), "the validator reports: %s" % expected + ("" if found.any(func(line: String) -> bool: return line.contains(expected)) else " (got %s)" % [found]))
 	var empty := DataValidator.new().validate_files({ "quests.json": [] })

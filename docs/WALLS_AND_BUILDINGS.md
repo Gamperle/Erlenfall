@@ -20,7 +20,7 @@ Houses are already built in code, in `scripts/world/model_builder.gd`: plastered
 ## Recommendation
 
 1. **Buildings stay code-built.** Extend `ModelBuilder` instead of generating models. The issue's own second batch of results agrees.
-2. **Use the new small-piece builders for free-standing walls** (`ModelBuilder.stone_wall` and `ModelBuilder.palisade`). Both take a length, a height, and a seed, return a `StaticBody3D` with a box collider, and are deterministic, so they can be placed from `data/village_layout.json` like the other things there. They are a prototype and are not placed in the village yet.
+2. **Use the new small-piece builders for free-standing walls** (`ModelBuilder.stone_wall` and `ModelBuilder.palisade`). Both take a length, a height, and a seed, return a `StaticBody3D` with a box collider, and are deterministic, so they can be placed from `data/village_layout.json` like the other things there. They are placed in the village as `walls` in the layout file (see below).
 3. **Do not download a kit yet. The MegaKit is not in the repository.** Whether the MegaKit's style and license fit is a decision for the maintainer.
 4. **Skip Blender scripts for now.** They need a tool this environment doesn't have, and the code builders need no new tooling. Revisit after looking at the walls in the running game.
 
@@ -30,7 +30,13 @@ Houses are already built in code, in `scripts/world/model_builder.gd`: plastered
 
 Both are verified in the smoke test: the result is one mesh with at most 3 surfaces, its size matches the request, and the same seed gives the same faces. An 8 m by 2.4 m wall is 864 faces. The tints are limited to three because every color is a material of its own, and the first try with a free color per block gave 51 surfaces.
 
-Not checked, because this environment has no screen: how the walls look in the running game, lighting on the tilted blocks, and the cost of long walls such as a whole town circuit. A long wall should be built in sections of 8 to 10 m so the far ones can be culled.
+## In the village (#209)
+
+Looked at in light, shadow, and fog on a test ground. The stone wall reads well as laid stone. The palisade was too dark (the dark timber tint went nearly black) and its logs ended flat, so it now uses a lighter weathered color and each log is sharpened to a four-sided point (6 more triangles per log).
+
+`walls` in `data/village_layout.json` holds lines of `[x, z]` points, a `kind` (`stone_wall` or `palisade`), a `height`, a `seed`, and for stone a `thickness`. `Village._add_walls` cuts each line into straight pieces of at most 3 m, so the wall follows the land: each piece sinks 0.35 m below its lowest ground and is lengthened to cover the ground's rise, and pieces overlap 12 cm at bends. A gap in a line is a gate: end the line and start another. The pieces of one line join into one mesh with a collider per piece, so a line is a handful of draw calls.
+
+Placed: a ring of palisade on the wooden fort's flat top with a 2.9 m gate toward the village, and short stone walls along one side of two outlying fields, each with a 2.5 m gate. The smoke test checks that walls stand on gentle ground clear of roads, the river, the mine, and places people go, that gates are wide enough, that the palisade stops a player and the gate does not, and that the walls stay few draw calls.
 
 ## Open decisions
 

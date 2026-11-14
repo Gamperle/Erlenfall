@@ -500,10 +500,33 @@ func _check_village_layout(data: Dictionary) -> void:
 					_add(file, "%s.%s" % [path, key], "file not found: %s" % entry[key])
 			_check_layout_references(file, path, list, entry)
 	_fields(file, "mine", data.get("mine"), { "id": ["string", true], "x": ["number", true], "z": ["number", true], "rotation": ["number", true], "width": ["number", true], "height": ["number", true], "opening_width": ["number", true], "opening_height": ["number", true], "seed": ["int", true], "plaza_radius": ["number", true], "plaza_blend": ["number", true], "compass": ["bool", false] })
+	_check_walls(file, data.get("walls"))
 	for i in _array(data.get("roads")).size():
 		var road: Variant = data["roads"][i]
 		if _fields(file, "roads[%d]" % i, road, { "width": ["number", true], "points": ["array", true] }) and road.has("points") and road["points"].size() < 2:
 			_add(file, "roads[%d].points" % i, "a road needs at least two points")
+
+
+## Walls and palisades are lines of [x, z] points built into short pieces (see Village._add_walls).
+func _check_walls(file: String, walls: Variant) -> void:
+	if not walls is Array:
+		_add(file, "", "missing list \"walls\"")
+		return
+	for i in walls.size():
+		var path := "walls[%d]" % i
+		if not _fields(file, path, walls[i], { "kind": ["string", true], "height": ["number", true], "seed": ["int", true], "thickness": ["number", false], "points": ["array", true] }):
+			continue
+		var wall: Dictionary = walls[i]
+		if not ["stone_wall", "palisade"].has(wall["kind"]):
+			_add(file, path + ".kind", "must be \"stone_wall\" or \"palisade\"")
+		if wall["height"] <= 0.0:
+			_add(file, path + ".height", "must be above zero")
+		var points: Array = wall["points"]
+		if points.size() < 2:
+			_add(file, path + ".points", "a wall needs at least two points")
+		for j in points.size():
+			if not (points[j] is Array and points[j].size() == 2 and _is_type(points[j][0], "number") and _is_type(points[j][1], "number")):
+				_add(file, "%s.points[%d]" % [path, j], "must be an [x, z] pair of numbers")
 
 
 func _check_layout_references(file: String, path: String, list: String, entry: Dictionary) -> void:

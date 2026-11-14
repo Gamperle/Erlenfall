@@ -194,11 +194,15 @@ func is_holding_ground() -> bool:
 
 
 func to_data() -> Dictionary:
-	return {
+	var data := {
 		"position": [position.x, position.y, position.z],
 		"health": health.current,
 		"respawn_left": _timer if state == State.DEAD else 0.0,
 	}
+	# Optional, so saves from before it existed still load (#329).
+	if talk != null and talk.calm_left() > 0.0:
+		data["calm_left"] = talk.calm_left()
+	return data
 
 
 ## Restores a saved enemy. A living one has forgotten any fight and walks back if it was chasing.
@@ -212,6 +216,8 @@ func load_data(data: Dictionary) -> void:
 		_timer = data["respawn_left"]
 	else:
 		health.current = data["health"]
+		if talk != null and data.get("calm_left") is float:
+			talk.restore_calm(data["calm_left"])
 	health.changed.emit()
 
 

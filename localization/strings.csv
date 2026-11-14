@@ -73,6 +73,8 @@ QUALITY_FINE,Fine,Fein
 QUALITY_MASTERWORK,Masterwork,Meisterwerk
 UI_CONTINUE,Continue,Weiter
 PROMPT_TALK,Talk to %s,Mit %s sprechen
+TALK_CUE_WAIT,Talk to it,Sprich mit ihm
+TALK_CUE_CALM,Calm,Ruhig
 NPC_HEDDA,Grandma Hedda,Oma Hedda
 NPC_BERTRAM,Bertram the smith,Schmied Bertram
 NPC_MIRA,Mira,Mira

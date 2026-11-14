@@ -3281,6 +3281,8 @@ func _test_input_glyphs(scene: Node) -> void:
 	var wasd := InputGlyph.new({ "shape": "key", "text": "Space" }, 16)
 	var short := InputGlyph.new({ "shape": "key", "text": "E" }, 16)
 	_check(wasd.get_combined_minimum_size().x > short.get_combined_minimum_size().x and short.get_combined_minimum_size().x >= short.get_combined_minimum_size().y, "a long key name makes a wider key")
+	wasd.free()
+	short.free()
 
 	var normal_a := Accessibility.glyph_look("A")
 	var high_before := Settings.high_contrast

@@ -2196,6 +2196,26 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	FileAccess.open(TEST_SAVE, FileAccess.WRITE).store_string(JSON.stringify(old_save))
 	_check(SaveGame.apply(TEST_SAVE, player, day_night, village), "saves without world data still load")
 	_check(enemy.state != Enemy.State.DEAD, "older saves leave enemies alone")
+
+	# Discovered map places are saved, and saves without them load with nothing discovered.
+	var map_controller: MapController = scene.get_node("MapController")
+	var map_data := map_controller.data
+	map_controller.finish_now()
+	map_data.load_discovered(["forge"])
+	SaveGame.write(TEST_SAVE, player, day_night, village, map_data)
+	map_data.load_discovered([])
+	_check(SaveGame.apply(TEST_SAVE, player, day_night, village, map_data), "a save with discovered places loads")
+	_check(map_data.discovered_ids() == ["forge"], "discovered places are restored")
+	_check(map_data.places.any(func(place: Dictionary) -> bool: return place["id"] == "forge" and place["discovered"]), "a restored place shows as discovered")
+	_check(map_data.discovered_count() == 1, "places not in the save stay undiscovered")
+	var fresh_map := MapData.new()
+	fresh_map.load_discovered(["forge", 5, "gone"])
+	_check(fresh_map.discovered_ids() == ["forge", "gone"], "discovered places load before the map is drawn, ignoring bad entries")
+	var no_places: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(TEST_SAVE))
+	no_places.erase("discovered_places")
+	FileAccess.open(TEST_SAVE, FileAccess.WRITE).store_string(JSON.stringify(no_places))
+	_check(SaveGame.apply(TEST_SAVE, player, day_night, village, map_data), "saves without discovered places still load")
+	_check(map_data.discovered_count() == 0, "older saves start with nothing discovered")
 	scene._playing = true
 
 	DirAccess.remove_absolute(TEST_SAVE + SaveGame.BACKUP_SUFFIX)

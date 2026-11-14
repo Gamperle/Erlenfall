@@ -178,7 +178,7 @@ func _apply_graphics() -> void:
 
 func save_game() -> void:
 	_since_save = 0.0
-	SaveGame.write(save_path, _player, _day_night, _village)
+	SaveGame.write(save_path, _player, _day_night, _village, _map.data)
 
 
 func open_pause_menu() -> void:
@@ -226,7 +226,7 @@ func _start_new_game() -> void:
 func _continue_game() -> void:
 	# A finished story was already announced when it was first completed.
 	_ending_shown = true
-	if SaveGame.apply(save_path, _player, _day_night, _village):
+	if SaveGame.apply(save_path, _player, _day_night, _village, _map.data):
 		_begin_playing()
 	else:
 		_ending_shown = false

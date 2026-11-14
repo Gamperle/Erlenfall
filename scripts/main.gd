@@ -51,6 +51,8 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
+	for problem in DataValidator.validate_directory():
+		push_error("Data problem: %s" % problem)
 	Settings.load_saved()
 	get_window().min_size = MIN_WINDOW_SIZE
 	get_window().size_changed.connect(_fit_interface)

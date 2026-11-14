@@ -164,6 +164,7 @@ func _run() -> void:
 	_test_translations()
 	_test_dialogue_data()
 	_test_dialogue_conditions()
+	_test_data_validation()
 
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")
 	quit(1 if _failures > 0 else 0)
@@ -2371,3 +2372,34 @@ func _test_grass_cell_edge(scene: Node) -> void:
 		grass._finish_batch()
 	_check(grass._planted.has(cell), "a cell whose near edge is inside the draw distance is planted")
 	_check(not grass._planted.has(cell + Vector2i(1, 0)), "a cell whose near edge is outside the draw distance is left out")
+
+
+func _test_data_validation() -> void:
+	var problems := DataValidator.validate_directory()
+	_check(problems.is_empty(), "all data files are valid: %s" % [problems])
+	var files := {}
+	for file in DataValidator.FILES:
+		files[file] = JSON.parse_string(FileAccess.get_file_as_string("res://data/" + file))
+	var broken := files.duplicate(true)
+	broken["crafting.json"]["recipes"][5]["inputs"]["iron_ingott"] = 1
+	broken["crafting.json"]["items"]["torch"].erase("name")
+	broken["quests.json"]["arrival"]["objectives"][0]["marker"] = "nobody"
+	broken["dialogue.json"]["hedda"][0]["when"]["objective"] = ["arrival", "see_nobody"]
+	broken["dialogue.json"]["hedda"][0]["nodes"]["send"]["effects"][0]["quest"] = "no_quest"
+	broken["dialogue.json"]["hedda"][0]["nodes"]["how_bad"]["next"] = "nowhere"
+	broken["dialogue.json"]["stranger"] = []
+	broken["enemies.json"]["goblin"]["drops"][0]["item"] = "gold"
+	broken["enemies.json"]["goblin"]["health"] = "lots"
+	broken["village_layout.json"]["enemies"][0]["type"] = "dragon"
+	broken["villager_routines.json"]["bertram"][1].erase("z")
+	broken["projectiles.json"]["arrow"]["ammo_item"] = "arrows"
+	var found := DataValidator.new().validate_files(broken)
+	for expected in [
+		"crafting.json: recipes[forge_axe]", "crafting.json: items[torch]: missing \"name\"", "quests.json: [arrival].objectives[see_grandmother].marker: unknown marker place \"nobody\"",
+		"dialogue.json: hedda[0].when.objective", "dialogue.json: hedda[0].nodes[send].effects[0].quest: unknown quest \"no_quest\"",
+		"dialogue.json: hedda[0].nodes[how_bad].next", "dialogue.json: [stranger]: unknown villager", "enemies.json: [goblin].drops[0].item: unknown item \"gold\"",
+		"enemies.json: [goblin].health", "village_layout.json: enemies[0].type", "villager_routines.json: [bertram][1]: a stop needs both", "projectiles.json: [arrow].ammo_item",
+	]:
+		_check(found.any(func(line: String) -> bool: return line.begins_with(expected) or line.contains(expected)), "the validator reports: %s" % expected + ("" if found.any(func(line: String) -> bool: return line.contains(expected)) else " (got %s)" % [found]))
+	var empty := DataValidator.new().validate_files({ "quests.json": [] })
+	_check(not empty.is_empty(), "a data file of the wrong kind is reported")

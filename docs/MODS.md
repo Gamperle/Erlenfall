@@ -30,3 +30,11 @@ Each mod's `feature_flags.json` uses the [flag file format](FEATURE_FLAGS.md#fil
 - Mods load once, when the game first reads a flag.
 
 The code is in `scripts/mod_loader.gd`.
+
+## Checking data
+
+`DataValidator` (`scripts/data_validator.gd`) checks the JSON files in `data/` for missing fields, wrong types, and unknown item, quest, objective, villager, station, or dialogue node ids. Every problem is one line naming the file and the exact entry. The game logs them at startup, and the smoke test (so CI) fails on them. To check a mod's data folder against the game's:
+
+```
+godot --headless --path . --script res://tools/validate_data.gd -- /path/to/mod res://data
+```

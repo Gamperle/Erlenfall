@@ -32,7 +32,29 @@ var minimap: Minimap
 func _ready() -> void:
 	get_viewport().size_changed.connect(arrange)
 	_controls.minimum_size_changed.connect(_place_prompt)
+	_add_bar_pattern(_health_bar, BarPattern.Kind.STRIPES)
+	_add_bar_pattern(_stamina_bar, BarPattern.Kind.DOTS)
 	arrange()
+	refresh_accessibility()
+
+
+## Makes the HUD follow the colour vision and high-contrast settings.
+func refresh_accessibility() -> void:
+	for label: Control in [_quest, _prompt, _controls, _overlay, get_node_or_null("MessageLabel")]:
+		if label is Label:
+			Accessibility.apply_label_settings(label.label_settings)
+	for bar: Control in [_health_bar, _stamina_bar]:
+		var pattern := bar.get_node("Frame/Pattern") as BarPattern
+		pattern.refresh()
+	_compass.queue_redraw()
+	if minimap != null:
+		minimap.queue_redraw()
+
+
+func _add_bar_pattern(bar: Control, kind: BarPattern.Kind) -> void:
+	var pattern := BarPattern.new(kind)
+	pattern.name = "Pattern"
+	bar.get_node("Frame").add_child(pattern)
 
 
 func arrange() -> void:
@@ -67,7 +89,7 @@ func arrange_for(width: float) -> void:
 	_quest.offset_bottom = quest_top
 	_place_prompt()
 	if minimap != null:
-		minimap.place(Vector2(EDGE, _health_bar.offset_bottom + QUEST_GAP))
+		minimap.place(Vector2(EDGE, (_stamina_bar if _stamina_bar.visible else _health_bar).offset_bottom + QUEST_GAP))
 
 
 ## The quest's plate is only as wide as its text.

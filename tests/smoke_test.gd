@@ -146,6 +146,7 @@ func _run() -> void:
 	_test_rubble_ground(terrain)
 	await _test_hud(scene, player)
 	await _test_map(scene, player)
+	await _test_journal(scene, player)
 	_test_character_models(player)
 	_test_generated_props()
 	_test_feature_flags()
@@ -184,6 +185,7 @@ func _run() -> void:
 	await _test_forest(scene, player)
 	await _test_player_fixes(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
+	await _test_controller_navigation(scene, player)
 	await _test_ambient_life(scene, day_night)
 	await _test_weather(scene, day_night)
 	await _test_grass_cost(scene)
@@ -650,6 +652,100 @@ func _test_map(scene: Node, player: Player) -> void:
 	_check(MapMarkers.clamp_to_rect(Vector2(1000.0, 50.0), Rect2(0.0, 0.0, 100.0, 100.0), 5.0).x <= 95.0, "a faraway objective stays at the map's edge")
 
 
+func _test_journal(scene: Node, player: Player) -> void:
+	var journal: Journal = scene.get_node("Journal")
+	var controller: MapController = scene.get_node("MapController")
+	_check(FeatureFlags.enabled("journal") and journal != null and not journal.is_open(), "the journal starts closed")
+	_check(InputMap.has_action("journal") and _has_key("journal", KEY_J) and _has_joypad_button("journal") and _has_key("map", KEY_M), "the journal opens with J or a controller button, and M still opens the map")
+	_check(KeyBindings.ACTIONS.has("journal") and KeyBindings.HINTS.any(func(hint: Array) -> bool: return hint[0] == "journal"), "the journal key can be remapped and is on the controls line")
+
+	# Tracking and the compass.
+	var quests := QuestLog.new()
+	var carried := Inventory.new()
+	quests.start("arrival")
+	quests.start("first_nails")
+	_check(quests.objective_markers(carried).size() == 2 and quests.tracker_lines(carried).size() == 2, "without a pinned quest every active quest shows")
+	_check(quests.track("first_nails") and quests.objective_markers(carried).size() == 1 and quests.tracker_lines(carried).size() == 1, "a pinned quest is the only one on the tracker and compass")
+	_check(not quests.track("nonexistent_quest") and quests.tracked == "first_nails", "only a started, unfinished quest can be pinned")
+	var saved_quests := quests.to_data()
+	var restored := QuestLog.new()
+	restored.load_data(saved_quests)
+	_check(restored.tracked == "first_nails", "the pinned quest is saved")
+	var old_data := saved_quests.duplicate()
+	old_data.erase("tracked")
+	restored.load_data(old_data)
+	_check(restored.tracked == "" and restored.objective_markers(carried).size() == 2, "a save from before the journal tracks every quest")
+	quests.untrack()
+	_check(quests.tracked == "" and quests.tracker_lines(carried).size() == 2, "unpinning tracks every quest again")
+	quests.track("arrival")
+	quests.advance("arrival")
+	quests.advance("arrival")
+	_check(quests.is_done("arrival") and quests.tracker_lines(carried).size() == 1, "finishing the pinned quest shows the others again")
+	var entries := quests.journal_entries(carried)
+	_check(entries.size() == 2 and entries[0]["id"] == "first_nails" and entries[1]["done"] and entries[1]["objectives"].size() == 2 and entries[1]["objectives"].all(func(o: Dictionary) -> bool: return o["done"]), "the journal lists active quests first, then finished ones with their objectives")
+
+	# Notes.
+	var notes := JournalNotes.new()
+	_check(notes.count() == 0 and notes.add("test_note", "UI_JOURNAL", "UI_JOURNAL_NO_MAP") and not notes.add("test_note", "x", "y") and notes.has("test_note"), "a note is added once")
+	var restored_notes := JournalNotes.new()
+	restored_notes.load_data(notes.to_data())
+	restored_notes.load_data(restored_notes.to_data() + ["junk", { "id": 5 }])
+	_check(restored_notes.count() == 1 and restored_notes.entries()[0]["title"] == "Journal", "notes are saved and damaged entries are skipped")
+
+	# Saved in an optional key.
+	var data := JSON.parse_string(JSON.stringify({ "notes": notes.to_data() })) as Dictionary
+	var from_save := JournalNotes.new()
+	from_save.load_data(data.get("notes", []))
+	_check(from_save.has("test_note"), "notes survive a save file round trip")
+	_check(not JSON.parse_string(JSON.stringify({ "version": 2 })).has("notes"), "an old save without notes is still valid input")
+
+	# The screen.
+	var press := InputEventAction.new()
+	press.action = "journal"
+	press.pressed = true
+	journal._input(press)
+	_check(journal.is_open() and player.is_busy() and scene.get_tree().paused, "the journal key opens the journal and pauses the game")
+	_check(journal.current_tab() == Journal.TAB_QUESTS and journal.get_viewport().gui_get_focus_owner() != null, "the journal opens on the quests with something focused for a controller")
+	await process_frame
+	var quest_texts := _all_text(journal)
+	_check(quest_texts.contains(tr("QUEST_ARRIVAL")) or quest_texts.contains(tr("QUEST_FIRST_NAILS")), "the quests tab lists the player's quests")
+	journal.select_tab(Journal.TAB_MAP)
+	await process_frame
+	_check(journal.is_ancestor_of(controller.world_map._canvas) and not controller.world_map.is_open(), "the map tab shows the world map's own picture inside the journal")
+	journal.select_tab(Journal.TAB_NOTES)
+	_check(not journal.is_ancestor_of(controller.world_map._canvas) and controller.world_map.is_ancestor_of(controller.world_map._canvas), "leaving the map tab gives the picture back to the full-screen map")
+	_check(_all_text(journal).contains(tr("UI_JOURNAL_NO_NOTES")), "the notes tab says so when there are no notes")
+	player.notes.add("test_note", "UI_JOURNAL", "UI_JOURNAL_NO_MAP")
+	journal.select_tab(Journal.TAB_NOTES)
+	_check(not _all_text(journal).contains(tr("UI_JOURNAL_NO_NOTES")) and _all_text(journal).contains(tr("UI_JOURNAL_NO_MAP")), "a found note shows on the notes tab")
+	player.notes.load_data([])
+	var map_press := InputEventAction.new()
+	map_press.action = "map"
+	map_press.pressed = true
+	journal._input(map_press)
+	_check(journal.current_tab() == Journal.TAB_MAP and journal.is_open(), "the map key shows the map tab while the journal is open")
+	var cancel := InputEventAction.new()
+	cancel.action = "ui_cancel"
+	cancel.pressed = true
+	journal._input(cancel)
+	_check(not journal.is_open() and not player.is_busy() and not scene.get_tree().paused, "cancel closes the journal and resumes the game")
+	player.set_busy(true)
+	_check(not journal.can_open.call(), "the journal doesn't open over a menu")
+	player.set_busy(false)
+	TranslationServer.set_locale("de")
+	_check(tr("UI_JOURNAL") == "Tagebuch" and tr("UI_JOURNAL_QUESTS") == "Aufgaben" and tr("ACTION_JOURNAL") == "Tagebuch", "the journal is translated to German")
+	TranslationServer.set_locale("en")
+
+
+func _all_text(node: Node) -> String:
+	var text := ""
+	if node is Label or node is Button:
+		text += node.text + "\n"
+	for child in node.get_children():
+		text += _all_text(child)
+	return text
+
+
 func _close_color(a: Color, b: Color) -> bool:
 	return absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b) < 0.03
 
@@ -711,6 +807,7 @@ func _test_hud(scene: Node, player: Player) -> void:
 	await _test_item_models(scene)
 	await _test_interface_fit(scene)
 	await _test_controls_hint(scene)
+	_test_input_device_prompts(scene)
 	await _test_ground_dryness()
 
 	overlay.refresh()
@@ -1074,6 +1171,7 @@ func _test_villager_routines(scene: Node) -> void:
 	routines.update(18.4)
 	routines.update(18.6)
 	_check(bertram.is_processing(), "a villager sets off when their stop changes")
+	_check(bertram.activity().is_empty(), "and stops what they were doing")
 	# The walk goes by way of the places the stop names.
 	var first := VillagerRoutines.route_of(evening)[0]
 	var start := Vector2(bertram.position.x, bertram.position.z).distance_to(first)
@@ -1083,6 +1181,7 @@ func _test_villager_routines(scene: Node) -> void:
 	_check(absf(bertram.position.y - village.terrain.height_at(bertram.position.x, bertram.position.z)) < 0.01, "following the ground")
 	routines.update(6.5)
 	_check(not bertram.is_processing() and Vector2(bertram.position.x, bertram.position.z).is_equal_approx(bertram.home), "a jump in time puts villagers straight at their places")
+	await _test_routine_activities(village, routines)
 	var absent := Npc.new()
 	absent.setup({ "id": "absent", "name": "NPC_MAREK", "x": 0.0, "z": 0.0, "color": "#808080", "appears_when": { "flag": "nothing_yet" } })
 	absent.apply_flags({})
@@ -1094,6 +1193,30 @@ func _test_villager_routines(scene: Node) -> void:
 	routines._villagers.erase("absent")
 	absent.free()
 	routines.set_process(FeatureFlags.enabled("villager_routines"))
+
+
+## Villagers work, sit and sleep at their stops, and go out of sight indoors (#223).
+func _test_routine_activities(village: Village, routines: VillagerRoutines) -> void:
+	_check(not VillagerRoutines.problems({ "bertram": [{ "from": 5.0, "activity": "juggle" }] }, ["bertram"]).is_empty(), "an unknown activity is reported")
+	for activity: String in Npc.ACTIVITIES:
+		for key: String in ["loop", "shot"]:
+			var animation: StringName = Npc.ACTIVITIES[activity].get(key, &"")
+			_check(animation.is_empty() or CharacterAnimations.library().has_animation(animation), "the %s animation of %s exists" % [animation, activity])
+	var bertram: Npc = village.get_node("bertram")
+	var greta: Npc = village.get_node("greta")
+	routines.update(12.0)
+	_check(bertram.activity() == "hammer" and greta.activity() == "sweep", "villagers do their work by day")
+	for i in 4:
+		bertram.activity_tick(0.5)
+	_check(greta.visible and not greta.is_indoors(), "villagers are in sight while they work")
+	routines.update(23.0)
+	_check(bertram.activity() == "sleep" and is_equal_approx(bertram.get_child(0).rotation.x, PI / 2.0), "villagers lie down to sleep")
+	_check(greta.is_indoors() and not greta.visible, "a villager goes out of sight indoors at night")
+	await process_frame
+	var shapes := greta.get_children().filter(func(c: Node) -> bool: return c is CollisionShape3D)
+	_check(shapes.size() == 1 and shapes[0].disabled, "and cannot be bumped into or talked to there")
+	routines.update(7.0)
+	_check(greta.visible and not greta.is_indoors() and absf(bertram.get_child(0).rotation.x) < 0.01, "they come back out and get up in the morning")
 
 
 ## Every leg of every routine, from one stop's place through the "via" places to the next, has to
@@ -1148,7 +1271,7 @@ func _test_story(scene: Node, player: Player) -> void:
 	var hedda: Npc = village.get_node("hedda")
 	var hedda_model: Node3D = hedda.find_child("Model", true, false)
 	var hedda_player: AnimationPlayer = hedda_model.get_node("Animations")
-	_check(hedda_player.is_playing() and hedda_player.current_animation == "Idle", "a villager with a model plays its idle animation")
+	_check(hedda_player.is_playing() and hedda_player.current_animation in ["Idle", "Sitting_Idle"], "a villager with a model plays its idle animation (or sits, by her routine)")
 	_check(hedda_model.find_child("GeneralSkeleton", true, false) != null, "the model's skeleton is set up for shared animations")
 	var casters := 0
 	var shadows_only := 0
@@ -2432,6 +2555,151 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	DirAccess.remove_absolute(TEST_SAVE + SaveGame.BACKUP_SUFFIX)
 
 
+## Every screen can be used with a gamepad: it takes the focus when it opens, the d-pad reaches every
+## control, accept presses and back goes back to where the player came from.
+func _test_controller_navigation(scene: Node, player: Player) -> void:
+	var menu: GameMenu = scene.get_node("GameMenu")
+	menu.slot_paths = [TEST_SAVE, TEST_SLOT_2, TEST_SLOT_3]
+	scene.save_game()
+	var window := scene.get_viewport()
+	var back := InputEventAction.new()
+	back.action = "ui_cancel"
+	back.pressed = true
+
+	menu.open_title()
+	await _physics_frames(3)
+	_check(_focus_in(menu._panel) and _all_reachable(menu._panel), "the title menu takes the focus and the d-pad reaches every button")
+	var load_button: Button = menu._buttons.get_child(1)
+	load_button.pressed.emit()
+	await _physics_frames(3)
+	_check(_focus_in(menu._buttons) and _all_reachable(menu._buttons), "the load menu takes the focus and reaches every slot")
+	menu._input(back)
+	await _physics_frames(3)
+	_check(window.gui_get_focus_owner() == load_button or (window.gui_get_focus_owner() as Button).text == tr("UI_LOAD_GAME"), "back from the slots returns to the button that opened them")
+	menu._buttons.get_child(2).pressed.emit()
+	menu._buttons.get_child(0).pressed.emit()
+	await _physics_frames(3)
+	_check(menu._confirming and _focus_in(menu._buttons) and _all_reachable(menu._buttons), "the overwrite warning takes the focus")
+	menu._input(back)
+	await _physics_frames(3)
+	_check(menu._slot_screen and (window.gui_get_focus_owner() as Button).text.begins_with(tr("UI_SLOT").split("%")[0]), "back from the warning returns to the slot")
+	menu._input(back)
+
+	scene.open_pause_menu()
+	await _physics_frames(3)
+	_check(_focus_in(menu._panel) and _all_reachable(menu._panel), "the pause menu takes the focus")
+	menu.open_settings(menu.open_pause)
+	await _physics_frames(3)
+	_check(_focus_in(menu._buttons) and _all_reachable(menu._buttons), "the settings take the focus and the d-pad reaches every setting")
+	var slider: HSlider = null
+	for row in menu._buttons.get_children():
+		if row is HBoxContainer and row.get_child(1) is HSlider:
+			slider = row.get_child(1)
+			break
+	slider.grab_focus()
+	var before := slider.value
+	var right := InputEventAction.new()
+	right.action = "ui_right"
+	right.pressed = true
+	Input.parse_input_event(right)
+	Input.flush_buffered_events()
+	await _physics_frames(2)
+	_check(slider.value > before, "a slider changes with left and right")
+	menu.open_controls()
+	await _physics_frames(3)
+	_check(_focus_in(menu._controls) and _all_reachable(menu._controls), "the controls page takes the focus and the d-pad reaches every button")
+	menu._input(back)
+	await _physics_frames(3)
+	_check((window.gui_get_focus_owner() as Button).text == tr("UI_CONTROLS_TITLE"), "back from the controls returns to the controls button")
+	menu._input(back)
+	await _physics_frames(3)
+	_check((window.gui_get_focus_owner() as Button).text == tr("UI_SETTINGS"), "back from the settings returns to the settings button")
+	var resumed := [false]
+	menu.resume_chosen.connect(func() -> void: resumed[0] = true, CONNECT_ONE_SHOT)
+	menu._input(back)
+	_check(resumed[0], "back closes the pause menu")
+	scene.resume()
+	menu.close()
+
+	var crafting: CraftingUI = scene.get_node("CraftingUI")
+	player.inventory.add("berries")
+	player.inventory.add("iron_ingot", 2)
+	player.inventory.add("wood")
+	crafting.open_inventory(player)
+	await _physics_frames(3)
+	_check(_focus_in(crafting._panel) and _all_reachable(crafting._panel), "the inventory takes the focus and reaches every button")
+	crafting._input(back)
+	_check(not crafting.is_open(), "back closes the inventory")
+	crafting.open_station("anvil", "Anvil", player)
+	await _physics_frames(3)
+	_check(_focus_in(crafting._panel) and _all_reachable(crafting._panel), "a crafting station takes the focus and reaches every button")
+	crafting.add_material("iron_ingot")
+	crafting.add_material("iron_ingot")
+	crafting.add_material("wood")
+	await _physics_frames(3)
+	_check(_focus_in(crafting._panel) and _all_reachable(crafting._panel), "choosing materials keeps the focus in reach")
+	crafting.craft()
+	_check(crafting.is_forging(), "the forging minigame starts")
+	crafting._input(back)
+	await _physics_frames(3)
+	_check(not crafting.is_forging() and crafting.is_open() and _focus_in(crafting._panel), "back leaves the forging minigame and gives the focus back")
+	crafting._input(back)
+	_check(not crafting.is_open(), "back closes the crafting screen")
+
+	var dialogue: DialogueUI = scene.get_node("DialogueUI")
+	dialogue.open_conversation("bertram", "bertram", player)
+	await _physics_frames(3)
+	_check(_focus_in(dialogue._panel) and _all_reachable(dialogue._choices), "a conversation takes the focus and the d-pad reaches every reply")
+	while dialogue.is_open():
+		dialogue.choose(0)
+
+	var world_map: WorldMap = scene.get_node("MapController").world_map
+	for action in ["map", "map_zoom_in", "map_zoom_out", "move_forward", "move_back", "move_left", "move_right"]:
+		_check(InputMap.action_get_events(action).any(func(event: InputEvent) -> bool: return event is InputEventJoypadButton or event is InputEventJoypadMotion), "the %s action has a gamepad input" % action)
+	world_map.open()
+	world_map._input(back)
+	_check(not world_map.is_open() and not player.is_busy(), "back closes the map")
+	DirAccess.remove_absolute(TEST_SAVE)
+	DirAccess.remove_absolute(TEST_SAVE + SaveGame.BACKUP_SUFFIX)
+
+
+## Whether the focus is on a control inside the given one.
+func _focus_in(root: Node) -> bool:
+	var owner := root.get_viewport().gui_get_focus_owner()
+	return owner != null and root.is_ancestor_of(owner)
+
+
+## Whether the d-pad can get from the focused control to every control under `root` that takes focus.
+func _all_reachable(root: Node) -> bool:
+	var wanted: Array[Control] = []
+	_collect_focusable(root, wanted)
+	var start := root.get_viewport().gui_get_focus_owner()
+	if start == null or wanted.is_empty():
+		return false
+	var seen := {start: true}
+	var queue: Array[Control] = [start]
+	while not queue.is_empty():
+		var current: Control = queue.pop_back()
+		for side: Side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+			var next := current.find_valid_focus_neighbor(side)
+			if next != null and not seen.has(next):
+				seen[next] = true
+				queue.append(next)
+	for control in wanted:
+		if not seen.has(control):
+			print("not reachable by focus: ", control.get_path(), " ", control)
+			return false
+	return true
+
+
+func _collect_focusable(node: Node, found: Array[Control]) -> void:
+	for child in node.get_children():
+		var control := child as Control
+		if control != null and control.focus_mode == Control.FOCUS_ALL and control.is_visible_in_tree() and not (control is BaseButton and control.disabled):
+			found.append(control)
+		_collect_focusable(child, found)
+
+
 func _talk(ui: DialogueUI, npc_id: String, player: Player, answers: Array) -> void:
 	ui.open_conversation(npc_id, npc_id, player)
 	for answer: int in answers:
@@ -2511,7 +2779,7 @@ func _test_settings(scene: Node, player: Player) -> void:
 	TranslationServer.set_locale("en")
 	menu.open_pause()
 	menu._buttons.get_child(1).pressed.emit()
-	_check(menu._settings_open and menu._buttons.get_child_count() == 7 + AudioBuses.ALL.size(), "the pause menu opens the settings")
+	_check(menu._settings_open and menu._buttons.get_child_count() == 9 + AudioBuses.ALL.size(), "the pause menu opens the settings")
 
 	menu._choose_language(2)
 	await process_frame
@@ -2546,6 +2814,22 @@ func _test_settings(scene: Node, player: Player) -> void:
 	_check(dialogue_ui._speaker.get_theme_font_size("font_size") == roundi(DialogueUI.SPEAKER_FONT_SIZE * 1.5), "a larger text size scales the speaker's name")
 	_check(scene.get_node("UI/QuestLabel").label_settings.font_size == 24, "a larger text size scales the quest text")
 	_check(is_equal_approx(dialogue_ui._panel.self_modulate.a, 0.5), "the dialogue panel's opacity follows the setting")
+	var theme := ThemeDB.get_project_theme()
+	var health_pattern: BarPattern = scene.get_node("UI/HealthBar/Frame/Pattern")
+	var stamina_pattern: BarPattern = scene.get_node("UI/StaminaBar/Frame/Pattern")
+	_check(not health_pattern.visible and not stamina_pattern.visible and theme.get_stylebox("fill", "ProgressBar").modulate_color == Accessibility.PALETTES["off"]["health"], "the bars have no pattern with colour vision off")
+	menu._choose_colour_vision(1)
+	_check(Settings.colour_vision == "deuteranopia" and theme.get_stylebox("fill", "ProgressBar").modulate_color == Accessibility.PALETTES["deuteranopia"]["health"], "a colour vision mode recolors the health bar")
+	_check(theme.get_stylebox("fill", "StaminaBar").modulate_color == Accessibility.PALETTES["deuteranopia"]["stamina"] and health_pattern.visible and stamina_pattern.visible, "a colour vision mode recolors the stamina bar and shows the bar patterns")
+	for mode: String in Accessibility.MODES:
+		var palette: Dictionary = Accessibility.PALETTES[mode]
+		_check(palette["health"] != palette["stamina"] and palette["objective"] != palette["player"], "the %s palette tells the bars and markers apart" % mode)
+	menu._choose_high_contrast(true)
+	var label_settings: LabelSettings = scene.get_node("UI/QuestLabel").label_settings
+	_check(Settings.high_contrast and label_settings.outline_size == Accessibility.HC_OUTLINE_SIZE and theme.get_color("font_color", "Label") == Accessibility.HC_TEXT_COLOR, "high contrast outlines the HUD text and whitens the menu text")
+	_check(theme.get_stylebox("normal", "HudPlate").modulate_color == Accessibility.HC_PLATE_COLOR, "high contrast darkens the HUD plates")
+	menu._choose_colour_vision(0)
+	_check(Settings.high_contrast and stamina_pattern.visible, "high contrast shows the bar patterns on its own")
 	menu._close_settings()
 	_check(menu.is_open() and menu._title.text == tr("UI_PAUSED"), "leaving the settings returns to the pause menu")
 	Settings.look_speed = 1.0
@@ -2556,7 +2840,16 @@ func _test_settings(scene: Node, player: Player) -> void:
 	Settings.load_saved()
 	_check(Settings.language == "de" and Settings.look_speed == 2.0 and Settings.graphics == "high", "settings are remembered")
 	_check(Settings.text_size == 1.5 and is_equal_approx(Settings.dialogue_opacity, 0.5), "the text size and dialogue opacity are remembered")
+	_check(Settings.colour_vision == "off" and Settings.high_contrast, "high contrast is remembered")
 	_check(is_equal_approx(Settings.volumes[AudioBuses.MUSIC], 0.25) and Settings.volumes[AudioBuses.AMBIENCE] == 0.0 and Settings.volumes[AudioBuses.MASTER] == Settings.DEFAULT_VOLUME, "volumes are remembered")
+	var bad_vision := FileAccess.open(TEST_SETTINGS, FileAccess.WRITE)
+	bad_vision.store_string('{"colour_vision": "rainbow", "high_contrast": "yes"}')
+	bad_vision.close()
+	Settings.load_saved()
+	_check(Settings.colour_vision == "off" and not Settings.high_contrast, "invalid accessibility settings fall back to defaults")
+	_check(theme.get_color("font_color", "Label") == Color(0.93, 0.88, 0.76, 1) and theme.get_stylebox("normal", "HudPlate").modulate_color == Color.WHITE, "turning high contrast off puts the theme's colors back")
+	scene.get_node("UI").refresh_accessibility()
+	_check(label_settings.outline_size == 4 and not health_pattern.visible, "turning high contrast off puts the HUD text and bars back")
 	menu.close()
 	player.set_busy(false)
 
@@ -2577,13 +2870,61 @@ func _test_settings(scene: Node, player: Player) -> void:
 	TranslationServer.set_locale("en")
 
 
+## Prompts show only the inputs of the device used last, follow remapped bindings, and switch at once.
+func _test_input_device_prompts(scene: Node) -> void:
+	TranslationServer.set_locale("en")
+	KeyBindings.reset()
+	InputDevice.active = KeyBindings.KEYBOARD
+	var key := InputEventKey.new()
+	key.pressed = true
+	var button := InputEventJoypadButton.new()
+	button.pressed = true
+	var tiny_stick := InputEventJoypadMotion.new()
+	tiny_stick.axis_value = 0.1
+	var stick := InputEventJoypadMotion.new()
+	stick.axis_value = 0.9
+	_check(InputDevice.kind_for_event(key) == KeyBindings.KEYBOARD and InputDevice.kind_for_event(button) == KeyBindings.GAMEPAD and InputDevice.kind_for_event(stick) == KeyBindings.GAMEPAD and InputDevice.kind_for_event(tiny_stick) == "", "input events map to the device that made them, ignoring stick drift")
+
+	var device: InputDevice
+	for child in scene.get_children():
+		if child is InputDevice:
+			device = child
+	_check(device != null, "the game listens for the input device")
+	var controls: Label = scene.get_node("UI/ControlsLabel")
+	device.use(KeyBindings.KEYBOARD)
+	_check(KeyBindings.label_for("interact") == "E" and controls.text.contains("E: use"), "the keyboard shows key prompts")
+	device.use(KeyBindings.GAMEPAD)
+	_check(KeyBindings.label_for("interact") == "X" and controls.text.contains("X: use") and not controls.text.contains("WASD"), "using the gamepad switches the controls line at once")
+
+	var dialogue: DialogueUI = scene.get_tree().get_first_node_in_group(Npc.UI_GROUP)
+	dialogue.refresh_prompts()
+	_check(dialogue._hint.text == "X: choose", "the dialogue hint shows the gamepad input")
+	device.use(KeyBindings.KEYBOARD)
+	_check(dialogue._hint.text == "E: choose", "the dialogue hint switches back to the keyboard")
+	var remapped := InputEventJoypadButton.new()
+	remapped.button_index = JOY_BUTTON_Y
+	KeyBindings.bind("interact", remapped)
+	device.use(KeyBindings.GAMEPAD)
+	_check(KeyBindings.label_for("interact") == "Y" and dialogue._hint.text == "Y: choose", "pad prompts follow remapped bindings")
+	KeyBindings.reset()
+	TranslationServer.set_locale("de")
+	_check(tr("UI_DIALOGUE_HINT") != "UI_DIALOGUE_HINT" and tr("UI_DIALOGUE_HINT") != "%s: choose", "the dialogue hint is translated")
+	TranslationServer.set_locale("en")
+	device.use(KeyBindings.KEYBOARD)
+
+
 ## Remapped controls take effect, ask before taking an input that is in use, are saved, and fall back when damaged.
 func _test_key_bindings(scene: Node) -> void:
 	Settings.path = TEST_SETTINGS
 	TranslationServer.set_locale("en")
 	KeyBindings.reset()
+	InputDevice.active = KeyBindings.KEYBOARD
 	var default_hint := KeyBindings.controls_hint()
-	_check(default_hint.begins_with("WASD / Left stick: walk") and default_hint.contains("E / X: use") and default_hint.contains("Left click / RT: attack"), "the controls hint shows the default bindings (%s)" % default_hint)
+	_check(default_hint.begins_with("WASD: walk") and default_hint.contains("E: use") and default_hint.contains("Left click: attack"), "the controls hint shows the default keyboard bindings (%s)" % default_hint)
+	InputDevice.active = KeyBindings.GAMEPAD
+	var pad_hint := KeyBindings.controls_hint()
+	_check(pad_hint.begins_with("Left stick: walk") and pad_hint.contains("X: use") and pad_hint.contains("RT: attack") and not pad_hint.contains("WASD"), "the controls hint shows the default gamepad bindings (%s)" % pad_hint)
+	InputDevice.active = KeyBindings.KEYBOARD
 	var missing := PackedStringArray()
 	for action in KeyBindings.ACTIONS:
 		if not InputMap.has_action(action):
@@ -2596,7 +2937,7 @@ func _test_key_bindings(scene: Node) -> void:
 	var menu: GameMenu = scene.get_node("GameMenu")
 	menu.open_pause()
 	menu._buttons.get_child(1).pressed.emit()
-	menu._buttons.get_child(5 + AudioBuses.ALL.size()).pressed.emit()
+	menu._buttons.get_child(7 + AudioBuses.ALL.size()).pressed.emit()
 	await process_frame
 	var page: ControlsMenu = menu._controls
 	_check(menu._title.text == tr("UI_CONTROLS_TITLE") and page != null, "the settings open the Controls page")
@@ -2615,7 +2956,7 @@ func _test_key_bindings(scene: Node) -> void:
 	var old_key := InputEventKey.new()
 	old_key.physical_keycode = KEY_E
 	_check(not InputMap.event_is_action(old_key, "interact"), "the old key no longer triggers it")
-	_check(KeyBindings.label_for("interact") == "U / X" and KeyBindings.controls_hint().contains("U / X: use"), "the controls hint shows the new binding")
+	_check(KeyBindings.label_for("interact") == "U" and KeyBindings.controls_hint().contains("U: use"), "the controls hint shows the new binding")
 
 	# Binding an input that another action uses asks first.
 	var key_i := InputEventKey.new()
@@ -2652,9 +2993,9 @@ func _test_key_bindings(scene: Node) -> void:
 	# Saved, loaded, and reset.
 	Settings.save()
 	KeyBindings.reset()
-	_check(KeyBindings.label_for("interact") == "E / X", "reset restores the default bindings")
+	_check(KeyBindings.label_for("interact") == "E", "reset restores the default bindings")
 	Settings.load_saved()
-	_check(KeyBindings.label_for("interact") == "U / X" and KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_I and KeyBindings.event_for("attack", KeyBindings.GAMEPAD) is InputEventJoypadButton, "bindings are remembered")
+	_check(KeyBindings.label_for("interact") == "U" and KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_I and KeyBindings.event_for("attack", KeyBindings.GAMEPAD) is InputEventJoypadButton, "bindings are remembered")
 	page.reset_to_defaults()
 	_check(KeyBindings.controls_hint() == default_hint and KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_SPACE, "the reset button restores the defaults")
 
@@ -2983,6 +3324,42 @@ func _test_ranged(scene: Node, player: Player) -> void:
 		var german := tr(key)
 		TranslationServer.set_locale("en")
 		_check(german != key and german != tr(key) and tr(key) != key, "%s has English and German text" % key)
+
+	# Crafted bows and arrows.
+	for recipe_id in ["make_arrows", "make_short_bow", "make_long_bow"]:
+		var found := false
+		for recipe in CraftingData.recipes_for("anvil"):
+			found = found or recipe["id"] == recipe_id
+		_check(found, "%s is an anvil recipe" % recipe_id)
+	for key in ["ITEM_LONG_BOW", "SLOT_LIMB"]:
+		TranslationServer.set_locale("de")
+		var german_text := tr(key)
+		TranslationServer.set_locale("en")
+		_check(german_text != key and german_text != tr(key) and tr(key) != key, "%s has English and German text" % key)
+	_check(CraftingData.ranged_multiplier("short_bow") == 1.0, "a plain short bow shoots at the base damage")
+	_check(CraftingData.ranged_multiplier("long_bow") > 1.0, "a long bow hits harder than a short bow")
+	_check(CraftingData.ranged_multiplier("short_bow", "fine") > CraftingData.ranged_multiplier("short_bow", "crude"), "a finer bow hits harder")
+	_check(CraftingData.ranged_multiplier("arrow", "masterwork") > CraftingData.ranged_multiplier("arrow"), "a better arrow hits harder")
+	var held := Inventory.new()
+	held.add("arrow", 1, "crude")
+	held.add("arrow", 1, "fine")
+	_check(is_equal_approx(held.take_best_ranged("arrow"), CraftingData.ranged_multiplier("arrow", "fine")) and held.count("arrow") == 1, "the best arrow is used first")
+	_check(held.take_best_ranged("arrow") > 0.0 and held.take_best_ranged("arrow") == 0.0, "an empty quiver gives no arrow")
+	var weak_arrow := Projectile.launch("arrow", Vector3.ZERO, Vector3.FORWARD, null, 0.5)
+	_check(is_equal_approx(weak_arrow.damage, float(Projectile.stats("arrow")["damage"]) * 0.5), "projectile damage follows the multiplier")
+	weak_arrow.free()
+	player.inventory.remove("short_bow")
+	player.inventory.remove("arrow", player.inventory.count("arrow"))
+	player.inventory.add("long_bow", 1, "fine")
+	player.inventory.add("arrow", 3, "common")
+	_check(player.fire_ranged("shoot") and player.inventory.count("arrow") == 2, "a crafted long bow shoots arrows")
+	var shot: Projectile = root.get_tree().get_nodes_in_group(Projectile.GROUP).back()
+	var expected := float(Projectile.stats("arrow")["damage"]) * CraftingData.ranged_multiplier("long_bow", "fine") * CraftingData.ranged_multiplier("arrow", "common")
+	_check(is_equal_approx(shot.damage, expected), "the shot's damage comes from the bow and arrow quality")
+	await _physics_frames(90)
+	player.inventory.remove("long_bow")
+	player.inventory.remove("arrow", player.inventory.count("arrow"))
+	player.inventory.add("short_bow")
 
 	_write_flags(TEST_FLAGS_A, { "flags": { "ranged_weapons": false } })
 	FeatureFlags.load_layers([TEST_FLAGS_A])

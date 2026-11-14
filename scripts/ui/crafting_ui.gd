@@ -11,6 +11,7 @@ var _player: Player
 var _station := ""
 var _selected: Dictionary = {}
 var _game: HammerGame
+var _showing_forge_hint := false
 var _recipe: Dictionary = {}
 var _choices: Dictionary = {}
 var _variant := ""
@@ -38,6 +39,7 @@ var _marker: ColorRect
 
 func _ready() -> void:
 	add_to_group(CraftingStation.UI_GROUP)
+	add_to_group(InputDevice.PROMPT_GROUP)
 	_build()
 	_panel.visible = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -113,6 +115,7 @@ func craft() -> void:
 
 ## Hits the current strike. Public so the keyboard, controller, and tests share one path.
 func strike() -> void:
+	_showing_forge_hint = false
 	var accuracy := _game.strike()
 	_message.text = tr(_strike_key(accuracy))
 	if _game.is_finished():
@@ -191,7 +194,9 @@ func _refresh() -> void:
 	if not at_station or forging:
 		_parts.visible = false
 		if not forging:
-			_close_button.grab_focus()
+			# An item to use comes first, so that the A button does not close the screen at once.
+			var first: Control = _use_row.get_child(0) if _use_row.get_child_count() > 0 else _close_button
+			first.grab_focus()
 		return
 
 	var previous_focus := _focused_material()
@@ -361,9 +366,23 @@ func _start_forging(recipe: Dictionary) -> void:
 		levels_gained * float(FeatureFlags.value("skill_speed_reduction_per_level", 0.0)),
 	)
 	_bar.visible = true
-	_message.text = tr("UI_FORGE_HINT") % KeyBindings.label_for("interact")
+	_showing_forge_hint = true
+	_show_forge_hint()
 	_update_strike_text()
 	_refresh()
+
+
+func _show_forge_hint() -> void:
+	var stop := PackedStringArray()
+	for kind in InputDevice.shown_kinds():
+		stop.append(tr("UI_FORGE_STOP_" + kind.to_upper()))
+	_message.text = tr("UI_FORGE_HINT") % [KeyBindings.label_for("interact"), " / ".join(stop)]
+
+
+## Shows the forge hint again with the inputs of the device in use.
+func refresh_prompts() -> void:
+	if _showing_forge_hint and is_forging():
+		_show_forge_hint()
 
 
 func _update_strike_text() -> void:

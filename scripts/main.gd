@@ -33,6 +33,7 @@ var _fade_overlay: ColorRect
 @onready var _day_night: DayNight = $DayNight
 @onready var _player: Player = $Player
 var _map: MapController
+var _journal: Journal
 var _controls_tween: Tween
 var _hurt_tween: Tween
 
@@ -63,8 +64,13 @@ func _ready() -> void:
 	_apply_graphics()
 	_menu.graphics_changed.connect(_apply_graphics)
 	_menu.bindings_changed.connect(_set_translated_text)
+	var device := InputDevice.new()
+	add_child(device)
+	device.changed.connect(_on_input_device_changed)
 	_menu.text_size_changed.connect(_apply_text_size)
+	_menu.accessibility_changed.connect(_ui.refresh_accessibility)
 	_apply_text_size()
+	_ui.refresh_accessibility()
 	_welcome_label.modulate.a = 0.0
 	_set_translated_text()
 	_compass.visible = FeatureFlags.enabled("compass")
@@ -74,6 +80,7 @@ func _ready() -> void:
 	_map = MapController.new()
 	add_child(_map)
 	_map.setup(_terrain, _village, _player, _ui)
+	_journal = Journal.create(self, _player, _ui, _map.world_map)
 
 	_player.quests.changed.connect(_on_quests_changed)
 	_player.inventory.changed.connect(_update_quest_label)
@@ -143,6 +150,11 @@ func _notification(what: int) -> void:
 	elif what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
 		_set_translated_text()
 		_update_quest_label()
+
+
+func _on_input_device_changed(_kind: String) -> void:
+	_set_translated_text()
+	_update_prompt()
 
 
 func _set_translated_text() -> void:

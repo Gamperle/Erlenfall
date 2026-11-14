@@ -25,6 +25,20 @@ const RENDERED_HEADROOM := 0.25
 ## Metrics that are stable enough to gate in a rendered run. Counts of scene contents are only recorded there.
 const RENDERED_GATED := ["draw_calls", "primitives"]
 const SETTLE_FRAMES := 30
+## Metrics of the fixed path searches, which are the same with or without a renderer.
+const SEARCH_POINT := "path_search"
+## Fixed searches (x, z of the start and the goal) of an enemy body: along the road, around the
+## buildings, across the river, and out toward the forest. The grids are forgotten before each, so
+## the cost includes checking every cell the search looks at (#142, #148, #227).
+const SEARCHES := [
+	{"name": "road_to_square", "from": Vector2(0.0, 60.0), "to": Vector2(0.0, -10.0)},
+	{"name": "around_town_hall", "from": Vector2(-12.0, -20.0), "to": Vector2(12.0, -36.0)},
+	{"name": "around_forge", "from": Vector2(8.0, 8.0), "to": Vector2(24.0, 20.0)},
+]
+## Another search goes over the first bridge, from this far before it to this far beyond it.
+const BRIDGE_REACH := 12.0
+const SEARCH_RADIUS := 0.4
+const SEARCH_ARRIVE := 0.5
 const MEASURED_FRAMES := 60
 ## Camera positions (x, z) at eye height, and the direction they look in, in degrees.
 const PATH := [
@@ -75,6 +89,8 @@ func _run() -> void:
 			metrics.merge(await _measure_frames())
 		results["points"][point["name"]] = metrics
 
+	results["points"][SEARCH_POINT] = await _measure_searches(scene, terrain)
+
 	print(JSON.stringify(results, "\t"))
 	if out_path != "":
 		var file := FileAccess.open(out_path, FileAccess.WRITE)
@@ -89,6 +105,40 @@ func _run() -> void:
 	await process_frame
 	print("perf check: %s" % ("FAILED" if _failures > 0 else "PASSED"))
 	quit(1 if _failures > 0 else 0)
+
+
+## Runs the fixed searches and counts their work: the search steps (cells expanded), the cells
+## checked against the physics world, and how many frames the step budget spreads each over.
+func _measure_searches(scene: Node, terrain: Terrain) -> Dictionary:
+	var walker := CharacterBody3D.new()
+	scene.add_child(walker)
+	var metrics := {}
+	var total_steps := 0
+	var searches: Array = SEARCHES.duplicate()
+	var bridge := scene.get_node("Village").find_child("Bridge*", false, false) as Node3D
+	var along := Vector2(sin(bridge.rotation.y), cos(bridge.rotation.y))
+	var middle := Vector2(bridge.position.x, bridge.position.z)
+	searches.append({"name": "over_bridge", "from": middle - along * BRIDGE_REACH, "to": middle + along * BRIDGE_REACH})
+	for search: Dictionary in searches:
+		EnemyPath.forget_all()
+		var path := EnemyPath.new(walker, SEARCH_RADIUS)
+		var from: Vector2 = search["from"]
+		var to: Vector2 = search["to"]
+		path.begin(Vector3(from.x, terrain.height_at(from.x, from.y) + 0.1, from.y), Vector3(to.x, terrain.height_at(to.x, to.y) + 0.1, to.y), SEARCH_ARRIVE)
+		var frames := 1
+		while not path.advance():
+			await physics_frame
+			frames += 1
+		print("search %s reached %s steps %s" % [search["name"], path.reached, path._expanded])
+		_check(path.reached, "the search %s reaches its goal" % search["name"])
+		metrics["%s_steps" % search["name"]] = path._expanded
+		metrics["%s_cells" % search["name"]] = path._cells.size()
+		metrics["%s_frames" % search["name"]] = frames
+		total_steps += path._expanded
+	metrics["search_steps_total"] = total_steps
+	EnemyPath.forget_all()
+	walker.queue_free()
+	return metrics
 
 
 ## Counts what the renderer will have to draw, from the scene itself.
@@ -119,29 +169,43 @@ func _count_scene(scene: Node, camera_at: Vector3) -> Dictionary:
 			multimesh_instances += shown
 			surfaces += multimesh.mesh.get_surface_count()
 			triangles += shown * _triangles_of(multimesh.mesh, triangles_per_mesh)
-	return {
+	var metrics := {
 		"nodes": nodes,
 		"mesh_instances": meshes,
 		"mesh_surfaces": surfaces,
 		"multimesh_nodes": multimesh_nodes,
 		"multimesh_instances": multimesh_instances,
 		"triangles": triangles,
-		"grass_tufts": _grass_tufts(grass, Vector2(camera_at.x, camera_at.z)),
 	}
+	metrics.merge(_grass_tufts(grass, Vector2(camera_at.x, camera_at.z)))
+	return metrics
 
 
-## How many tufts grow within drawing distance of a point: the same seeded growth the game uses, so it is exact.
-func _grass_tufts(grass: GrassField, center: Vector2) -> int:
+## How many tufts grow within drawing distance of a point, and how many of them the game draws once
+## each cell has fitted its distance band (a share of the tufts, and one tuft per cell far away). It
+## is the same seeded growth and the same bands the game uses, so it is exact.
+func _grass_tufts(grass: GrassField, center: Vector2) -> Dictionary:
 	var tufts := 0
+	var drawn := 0
 	var reach := ceili(grass._draw_distance / GrassField.CELL_SIZE)
 	var center_cell := Vector2i((center / GrassField.CELL_SIZE).floor())
 	for x in range(center_cell.x - reach, center_cell.x + reach + 1):
 		for y in range(center_cell.y - reach, center_cell.y + reach + 1):
 			var cell := Vector2i(x, y)
 			if grass._cell_nearest_distance(cell, center) < grass._draw_distance:
+				var band := floori(maxf(grass._cell_nearest_distance(cell, center) - GrassField.DETAIL_UPDATE_STEP, 0.0) / GrassField.DETAIL_BAND)
+				var distance := band * GrassField.DETAIL_BAND
+				var share := grass.tuft_share(distance)
+				var far := distance >= grass._far_distance
+				var cell_tufts := 0
 				for spots: Array in grass.grow_cell(cell):
 					tufts += spots.size()
-	return tufts
+					cell_tufts += spots.size()
+					if not far:
+						drawn += ceili(spots.size() * share)
+				if far:
+					drawn += ceili(cell_tufts * share)
+	return {"grass_tufts": tufts, "grass_tufts_drawn": drawn}
 
 
 func _triangles_of(mesh: Mesh, cache: Dictionary) -> int:
@@ -217,7 +281,7 @@ func _check_budgets(results: Dictionary) -> void:
 			var limit = budgets.get(point_name, {}).get(metric)
 			if limit == null or (_is_timing(metric) and not _gate_frame_time):
 				continue
-			if results["rendered"] and not _is_timing(metric) and not metric in RENDERED_GATED:
+			if results["rendered"] and point_name != SEARCH_POINT and not _is_timing(metric) and not metric in RENDERED_GATED:
 				continue
 			var value = results["points"][point_name][metric]
 			_check(value <= limit, "%s %s %s is within the budget of %s" % [point_name, metric, value, limit])

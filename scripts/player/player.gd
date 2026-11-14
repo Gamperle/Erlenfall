@@ -97,6 +97,7 @@ var known_recipes: Dictionary = {}
 ## Practice in each craft, by skill id.
 var skill_xp: Dictionary = {}
 var quests := QuestLog.new()
+var notes := JournalNotes.new()
 ## What pressing the use button would act on right now, if anything.
 var interact_target: Interactable
 var torch_lit := false
@@ -278,7 +279,7 @@ func give_starting_items() -> void:
 		inventory.add(TORCH_ITEM)
 
 
-## Gives the placeholder bow, arrows, and flasks once per game. Crafting them comes later (#29).
+## Gives the placeholder bow, arrows, and flasks once per game. They can also be crafted.
 func give_ranged_items() -> void:
 	if not ranged_given and FeatureFlags.enabled("ranged_starting_items"):
 		ranged_given = true
@@ -296,16 +297,23 @@ func fire_ranged(action: String) -> bool:
 		var type := Projectile.stats(projectile_id)
 		if type["action"] != action:
 			continue
-		if type["requires_item"] != "" and inventory.count(type["requires_item"]) == 0:
-			notice.emit("UI_NEED_" + String(type["requires_item"]).to_upper())
-			return false
-		if not inventory.remove(type["ammo_item"]):
+		var strength := 1.0
+		if type["requires_item"] != "":
+			var launchers := CraftingData.launchers(projectile_id)
+			if launchers.is_empty():
+				launchers.append(type["requires_item"])
+			strength = inventory.best_launcher_multiplier(launchers)
+			if strength == 0.0:
+				notice.emit("UI_NEED_" + String(type["requires_item"]).to_upper())
+				return false
+		var ammo := inventory.take_best_ranged(type["ammo_item"])
+		if ammo == 0.0:
 			notice.emit("UI_NO_" + String(type["ammo_item"]).to_upper())
 			return false
 		_ranged_cooldown = type["cooldown"]
 		var aim := -_pivot.global_basis.z
 		var origin := global_position + Vector3.UP * RANGED_ORIGIN_HEIGHT + _forward() * 0.5
-		get_parent().add_child(Projectile.launch(projectile_id, origin, aim, self))
+		get_parent().add_child(Projectile.launch(projectile_id, origin, aim, self, strength * ammo))
 		_body_mesh.rotation.y = _pivot.rotation.y
 		return true
 	return false

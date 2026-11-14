@@ -37,6 +37,7 @@ dodge={"deadzone":0.5,"events":[Object(InputEventKey,"device":-1,"physical_keyco
 interact={"deadzone":0.5,"events":[Object(InputEventKey,"device":-1,"physical_keycode":69), Object(InputEventJoypadButton,"device":-1,"button_index":2)]}
 inventory={"deadzone":0.5,"events":[Object(InputEventKey,"device":-1,"physical_keycode":73), Object(InputEventJoypadButton,"device":-1,"button_index":4)]}
 map={"deadzone":0.5,"events":[Object(InputEventKey,"device":-1,"physical_keycode":77), Object(InputEventJoypadButton,"device":-1,"button_index":8)]}
+journal={"deadzone":0.5,"events":[Object(InputEventKey,"device":-1,"physical_keycode":74), Object(InputEventJoypadButton,"device":-1,"button_index":14)]}
 map_zoom_in={"deadzone":0.5,"events":[Object(InputEventKey,"device":-1,"physical_keycode":61), Object(InputEventKey,"device":-1,"physical_keycode":4194437), Object(InputEventMouseButton,"device":-1,"button_index":4), Object(InputEventJoypadButton,"device":-1,"button_index":10)]}
 map_zoom_out={"deadzone":0.5,"events":[Object(InputEventKey,"device":-1,"physical_keycode":45), Object(InputEventKey,"device":-1,"physical_keycode":4194435), Object(InputEventMouseButton,"device":-1,"button_index":5), Object(InputEventJoypadButton,"device":-1,"button_index":9)]}
 pause={"deadzone":0.5,"events":[Object(InputEventKey,"device":-1,"keycode":4194305,"physical_keycode":4194305), Object(InputEventJoypadButton,"device":-1,"button_index":6)]}

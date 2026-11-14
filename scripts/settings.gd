@@ -26,6 +26,10 @@ static var graphics := "high"
 static var text_size := 1.0
 ## How solid the dialogue panel's frame is, from MIN_DIALOGUE_OPACITY to 1.
 static var dialogue_opacity := 1.0
+## One of Accessibility.MODES: "off", or the kind of colour vision the colors are made for.
+static var colour_vision := "off"
+## Outlined text and darker panels in the HUD, the menus, and the compass.
+static var high_contrast := false
 ## Volume per audio bus (see AudioBuses), from 0 to 1.
 static var volumes: Dictionary = default_volumes()
 
@@ -38,6 +42,8 @@ static func load_saved() -> void:
 	var bindings: Variant = null
 	text_size = 1.0
 	dialogue_opacity = 1.0
+	colour_vision = "off"
+	high_contrast = false
 	volumes = default_volumes()
 	if FileAccess.file_exists(path):
 		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
@@ -52,6 +58,10 @@ static func load_saved() -> void:
 				text_size = data["text_size"]
 			if data.get("dialogue_opacity") is float:
 				dialogue_opacity = clampf(data["dialogue_opacity"], MIN_DIALOGUE_OPACITY, 1.0)
+			if data.get("colour_vision") is String and data["colour_vision"] in Accessibility.MODES:
+				colour_vision = data["colour_vision"]
+			if data.get("high_contrast") is bool:
+				high_contrast = data["high_contrast"]
 			var saved_volumes: Variant = data.get("volumes")
 			if saved_volumes is Dictionary:
 				for bus_name: String in AudioBuses.ALL:
@@ -63,6 +73,7 @@ static func load_saved() -> void:
 	apply_language()
 	apply_volumes()
 	apply_text_size()
+	Accessibility.apply_theme()
 
 
 static func save() -> void:
@@ -73,6 +84,7 @@ static func save() -> void:
 	file.store_string(JSON.stringify({
 		"language": language, "look_speed": look_speed, "graphics": graphics,
 		"text_size": text_size, "dialogue_opacity": dialogue_opacity,
+		"colour_vision": colour_vision, "high_contrast": high_contrast,
 		"volumes": volumes,
 		"bindings": KeyBindings.to_data(),
 	}, "\t"))

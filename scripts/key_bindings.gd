@@ -11,7 +11,7 @@ const KINDS: Array[String] = [KEYBOARD, GAMEPAD]
 const ACTIONS: Array[String] = [
 	"move_forward", "move_back", "move_left", "move_right", "look_up", "look_down", "look_left", "look_right",
 	"jump", "sprint", "sneak", "dodge", "attack", "block", "shoot", "throw",
-	"interact", "inventory", "toggle_torch", "toggle_camera", "fast_forward_time", "map", "pause",
+	"interact", "inventory", "toggle_torch", "toggle_camera", "fast_forward_time", "map", "journal", "pause",
 ]
 const MAX_KEY := 0x7FFFFFFF
 const MAX_MOUSE_BUTTON := 9
@@ -25,7 +25,7 @@ const HINTS: Array = [
 	["block", "UI_HINT_BLOCK"], ["dodge", "UI_HINT_DODGE"], ["interact", "UI_HINT_USE"],
 	["inventory", "UI_HINT_INVENTORY"], ["toggle_camera", "UI_HINT_CAMERA"], ["toggle_torch", "UI_HINT_TORCH"],
 	["fast_forward_time", "UI_HINT_TIME"], ["shoot", "UI_HINT_SHOOT"], ["throw", "UI_HINT_THROW"],
-	["map", "UI_HINT_MAP"], ["pause", "UI_HINT_MENU"],
+	["map", "UI_HINT_MAP"], ["journal", "UI_HINT_JOURNAL"], ["pause", "UI_HINT_MENU"],
 ]
 const JOY_BUTTON_NAMES: Array[String] = ["A", "B", "X", "Y", "Back", "Guide", "Start", "L3", "R3", "LB", "RB"]
 const JOY_DPAD_KEYS: Array[String] = ["UI_PAD_UP", "UI_PAD_DOWN", "UI_PAD_LEFT", "UI_PAD_RIGHT"]
@@ -191,10 +191,11 @@ static func stick_text(event: InputEvent) -> String:
 	return event_text(event)
 
 
-## The action's inputs for display, such as "E / X".
+## The action's inputs for display: only the active device's ("E" or "X"), or both ("E / X")
+## when the device_prompts flag is off.
 static func label_for(action: String) -> String:
 	var parts := PackedStringArray()
-	for kind in KINDS:
+	for kind in InputDevice.shown_kinds():
 		var event := event_for(action, kind)
 		if event != null:
 			parts.append(event_text(event))
@@ -214,18 +215,23 @@ static func controls_hint() -> String:
 
 
 static func _hint_inputs(action: String) -> String:
-	if action == "move_forward":
-		var keys := PackedStringArray()
-		for part in ["move_forward", "move_left", "move_back", "move_right"]:
-			keys.append(event_text(event_for(part, KEYBOARD)))
-		return _with_pad("".join(keys) if _all_single_characters(keys) else "/".join(keys), event_for("move_left", GAMEPAD))
-	if action == "look_left":
-		return _with_pad(TranslationServer.translate("UI_MOUSE"), event_for("look_left", GAMEPAD))
+	if action == "move_forward" or action == "look_left":
+		var parts := PackedStringArray()
+		var pad_action := "move_left" if action == "move_forward" else "look_left"
+		for kind in InputDevice.shown_kinds():
+			if kind == KEYBOARD:
+				parts.append(_walk_keys() if action == "move_forward" else TranslationServer.translate("UI_MOUSE"))
+			elif event_for(pad_action, GAMEPAD) != null:
+				parts.append(stick_text(event_for(pad_action, GAMEPAD)))
+		return " / ".join(parts) if not parts.is_empty() else "-"
 	return label_for(action)
 
 
-static func _with_pad(keyboard: String, pad: InputEvent) -> String:
-	return "%s / %s" % [keyboard, stick_text(pad)] if pad != null else keyboard
+static func _walk_keys() -> String:
+	var keys := PackedStringArray()
+	for part in ["move_forward", "move_left", "move_back", "move_right"]:
+		keys.append(event_text(event_for(part, KEYBOARD)))
+	return "".join(keys) if _all_single_characters(keys) else "/".join(keys)
 
 
 static func _all_single_characters(texts: PackedStringArray) -> bool:

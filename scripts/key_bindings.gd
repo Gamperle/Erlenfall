@@ -191,10 +191,11 @@ static func stick_text(event: InputEvent) -> String:
 	return event_text(event)
 
 
-## The action's inputs for display, such as "E / X".
+## The action's inputs for display: only the active device's ("E" or "X"), or both ("E / X")
+## when the device_prompts flag is off.
 static func label_for(action: String) -> String:
 	var parts := PackedStringArray()
-	for kind in KINDS:
+	for kind in InputDevice.shown_kinds():
 		var event := event_for(action, kind)
 		if event != null:
 			parts.append(event_text(event))
@@ -214,18 +215,23 @@ static func controls_hint() -> String:
 
 
 static func _hint_inputs(action: String) -> String:
-	if action == "move_forward":
-		var keys := PackedStringArray()
-		for part in ["move_forward", "move_left", "move_back", "move_right"]:
-			keys.append(event_text(event_for(part, KEYBOARD)))
-		return _with_pad("".join(keys) if _all_single_characters(keys) else "/".join(keys), event_for("move_left", GAMEPAD))
-	if action == "look_left":
-		return _with_pad(TranslationServer.translate("UI_MOUSE"), event_for("look_left", GAMEPAD))
+	if action == "move_forward" or action == "look_left":
+		var parts := PackedStringArray()
+		var pad_action := "move_left" if action == "move_forward" else "look_left"
+		for kind in InputDevice.shown_kinds():
+			if kind == KEYBOARD:
+				parts.append(_walk_keys() if action == "move_forward" else TranslationServer.translate("UI_MOUSE"))
+			elif event_for(pad_action, GAMEPAD) != null:
+				parts.append(stick_text(event_for(pad_action, GAMEPAD)))
+		return " / ".join(parts) if not parts.is_empty() else "-"
 	return label_for(action)
 
 
-static func _with_pad(keyboard: String, pad: InputEvent) -> String:
-	return "%s / %s" % [keyboard, stick_text(pad)] if pad != null else keyboard
+static func _walk_keys() -> String:
+	var keys := PackedStringArray()
+	for part in ["move_forward", "move_left", "move_back", "move_right"]:
+		keys.append(event_text(event_for(part, KEYBOARD)))
+	return "".join(keys) if _all_single_characters(keys) else "/".join(keys)
 
 
 static func _all_single_characters(texts: PackedStringArray) -> bool:

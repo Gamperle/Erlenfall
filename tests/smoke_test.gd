@@ -711,6 +711,7 @@ func _test_hud(scene: Node, player: Player) -> void:
 	await _test_item_models(scene)
 	await _test_interface_fit(scene)
 	await _test_controls_hint(scene)
+	_test_input_device_prompts(scene)
 	await _test_ground_dryness()
 
 	overlay.refresh()
@@ -2511,13 +2512,61 @@ func _test_settings(scene: Node, player: Player) -> void:
 	TranslationServer.set_locale("en")
 
 
+## Prompts show only the inputs of the device used last, follow remapped bindings, and switch at once.
+func _test_input_device_prompts(scene: Node) -> void:
+	TranslationServer.set_locale("en")
+	KeyBindings.reset()
+	InputDevice.active = KeyBindings.KEYBOARD
+	var key := InputEventKey.new()
+	key.pressed = true
+	var button := InputEventJoypadButton.new()
+	button.pressed = true
+	var tiny_stick := InputEventJoypadMotion.new()
+	tiny_stick.axis_value = 0.1
+	var stick := InputEventJoypadMotion.new()
+	stick.axis_value = 0.9
+	_check(InputDevice.kind_for_event(key) == KeyBindings.KEYBOARD and InputDevice.kind_for_event(button) == KeyBindings.GAMEPAD and InputDevice.kind_for_event(stick) == KeyBindings.GAMEPAD and InputDevice.kind_for_event(tiny_stick) == "", "input events map to the device that made them, ignoring stick drift")
+
+	var device: InputDevice
+	for child in scene.get_children():
+		if child is InputDevice:
+			device = child
+	_check(device != null, "the game listens for the input device")
+	var controls: Label = scene.get_node("UI/ControlsLabel")
+	device.use(KeyBindings.KEYBOARD)
+	_check(KeyBindings.label_for("interact") == "E" and controls.text.contains("E: use"), "the keyboard shows key prompts")
+	device.use(KeyBindings.GAMEPAD)
+	_check(KeyBindings.label_for("interact") == "X" and controls.text.contains("X: use") and not controls.text.contains("WASD"), "using the gamepad switches the controls line at once")
+
+	var dialogue: DialogueUI = scene.get_tree().get_first_node_in_group(Npc.UI_GROUP)
+	dialogue.refresh_prompts()
+	_check(dialogue._hint.text == "X: choose", "the dialogue hint shows the gamepad input")
+	device.use(KeyBindings.KEYBOARD)
+	_check(dialogue._hint.text == "E: choose", "the dialogue hint switches back to the keyboard")
+	var remapped := InputEventJoypadButton.new()
+	remapped.button_index = JOY_BUTTON_Y
+	KeyBindings.bind("interact", remapped)
+	device.use(KeyBindings.GAMEPAD)
+	_check(KeyBindings.label_for("interact") == "Y" and dialogue._hint.text == "Y: choose", "pad prompts follow remapped bindings")
+	KeyBindings.reset()
+	TranslationServer.set_locale("de")
+	_check(tr("UI_DIALOGUE_HINT") != "UI_DIALOGUE_HINT" and tr("UI_DIALOGUE_HINT") != "%s: choose", "the dialogue hint is translated")
+	TranslationServer.set_locale("en")
+	device.use(KeyBindings.KEYBOARD)
+
+
 ## Remapped controls take effect, ask before taking an input that is in use, are saved, and fall back when damaged.
 func _test_key_bindings(scene: Node) -> void:
 	Settings.path = TEST_SETTINGS
 	TranslationServer.set_locale("en")
 	KeyBindings.reset()
+	InputDevice.active = KeyBindings.KEYBOARD
 	var default_hint := KeyBindings.controls_hint()
-	_check(default_hint.begins_with("WASD / Left stick: walk") and default_hint.contains("E / X: use") and default_hint.contains("Left click / RT: attack"), "the controls hint shows the default bindings (%s)" % default_hint)
+	_check(default_hint.begins_with("WASD: walk") and default_hint.contains("E: use") and default_hint.contains("Left click: attack"), "the controls hint shows the default keyboard bindings (%s)" % default_hint)
+	InputDevice.active = KeyBindings.GAMEPAD
+	var pad_hint := KeyBindings.controls_hint()
+	_check(pad_hint.begins_with("Left stick: walk") and pad_hint.contains("X: use") and pad_hint.contains("RT: attack") and not pad_hint.contains("WASD"), "the controls hint shows the default gamepad bindings (%s)" % pad_hint)
+	InputDevice.active = KeyBindings.KEYBOARD
 	var missing := PackedStringArray()
 	for action in KeyBindings.ACTIONS:
 		if not InputMap.has_action(action):
@@ -2549,7 +2598,7 @@ func _test_key_bindings(scene: Node) -> void:
 	var old_key := InputEventKey.new()
 	old_key.physical_keycode = KEY_E
 	_check(not InputMap.event_is_action(old_key, "interact"), "the old key no longer triggers it")
-	_check(KeyBindings.label_for("interact") == "U / X" and KeyBindings.controls_hint().contains("U / X: use"), "the controls hint shows the new binding")
+	_check(KeyBindings.label_for("interact") == "U" and KeyBindings.controls_hint().contains("U: use"), "the controls hint shows the new binding")
 
 	# Binding an input that another action uses asks first.
 	var key_i := InputEventKey.new()
@@ -2586,9 +2635,9 @@ func _test_key_bindings(scene: Node) -> void:
 	# Saved, loaded, and reset.
 	Settings.save()
 	KeyBindings.reset()
-	_check(KeyBindings.label_for("interact") == "E / X", "reset restores the default bindings")
+	_check(KeyBindings.label_for("interact") == "E", "reset restores the default bindings")
 	Settings.load_saved()
-	_check(KeyBindings.label_for("interact") == "U / X" and KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_I and KeyBindings.event_for("attack", KeyBindings.GAMEPAD) is InputEventJoypadButton, "bindings are remembered")
+	_check(KeyBindings.label_for("interact") == "U" and KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_I and KeyBindings.event_for("attack", KeyBindings.GAMEPAD) is InputEventJoypadButton, "bindings are remembered")
 	page.reset_to_defaults()
 	_check(KeyBindings.controls_hint() == default_hint and KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_SPACE, "the reset button restores the defaults")
 

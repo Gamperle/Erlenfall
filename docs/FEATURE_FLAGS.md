@@ -64,6 +64,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `compass` | `true` | Shows the compass at the top of the screen |
 | `world_map` | `true` | Lets the player open a full-screen map with the map key (M, or the right stick button). It shows the terrain, river, roads, fields, buildings, the player, the current objectives, and the places the player has visited. The picture is drawn once in the background after loading |
 | `minimap` | `true` | Shows a small map of the surroundings below the health bar. It uses the same picture as the full map |
+| `device_prompts` | `true` | Prompts and the controls line show only the inputs of the device the player used last (keyboard and mouse, or gamepad). Off shows both, such as "E / X" |
 | `compass_landmarks` | `true` | Shows a ring on the compass for landmarks such as the buried mine |
 | `villager_routines` | `true` | Villagers follow their daily routines from [`data/villager_routines.json`](../data/villager_routines.json), walking to a place at the hours it names. Off keeps everyone where the layout puts them |
 | `realistic_villagers` | `true` | Uses the MakeHuman models for villagers who have one, instead of the simple figures |

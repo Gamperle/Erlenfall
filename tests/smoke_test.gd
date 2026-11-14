@@ -1,13 +1,16 @@
 extends SceneTree
 ## Run with: godot --headless --path . --script res://tests/smoke_test.gd
 
-const TEST_SAVE := "user://smoke_test_save.json"
-const TEST_OLD_SAVE := "user://smoke_test_old_save.json"
-const TEST_SLOT_2 := "user://smoke_test_save_2.json"
-const TEST_SLOT_3 := "user://smoke_test_save_3.json"
-const TEST_SETTINGS := "user://smoke_test_settings.json"
-const TEST_FLAGS_A := "user://smoke_test_flags_a.json"
-const TEST_FLAGS_B := "user://smoke_test_flags_b.json"
+## Every run keeps its files in its own folder, so runs that overlap (other worktrees, CI) and the
+## player's real saves in user:// never share a file (#356). The folder is deleted at the end.
+var _test_dir := "user://smoke_test_%d" % OS.get_process_id()
+var TEST_SAVE := _test_dir.path_join("save.json")
+var TEST_OLD_SAVE := _test_dir.path_join("old_save.json")
+var TEST_SLOT_2 := _test_dir.path_join("save_2.json")
+var TEST_SLOT_3 := _test_dir.path_join("save_3.json")
+var TEST_SETTINGS := _test_dir.path_join("settings.json")
+var TEST_FLAGS_A := _test_dir.path_join("flags_a.json")
+var TEST_FLAGS_B := _test_dir.path_join("flags_b.json")
 ## How far a prop model's lowest point may be from its base, in meters, before it visibly floats or sinks.
 const PROP_GROUND_TOLERANCE := 0.1
 
@@ -19,6 +22,9 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	# A leftover folder from an earlier run that had the same process id would be stale.
+	_remove_dir(_test_dir)
+	DirAccess.make_dir_recursive_absolute(_test_dir)
 	DirAccess.remove_absolute(TEST_SAVE)
 	DirAccess.remove_absolute(TEST_SAVE + SaveGame.BACKUP_SUFFIX)
 	DirAccess.remove_absolute(TEST_SETTINGS)
@@ -200,6 +206,7 @@ func _run() -> void:
 	_test_dialogue_conditions()
 	_test_data_validation()
 
+	_remove_dir(_test_dir)
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")
 	quit(1 if _failures > 0 else 0)
 
@@ -891,8 +898,17 @@ func _test_feature_flags() -> void:
 	_test_mod_loader()
 
 
+## Deletes a folder and everything in it.
+func _remove_dir(path: String) -> void:
+	for sub in DirAccess.get_directories_at(path):
+		_remove_dir(path.path_join(sub))
+	for file in DirAccess.get_files_at(path):
+		DirAccess.remove_absolute(path.path_join(file))
+	DirAccess.remove_absolute(path)
+
+
 func _test_mod_loader() -> void:
-	var dir := "user://smoke_test_mods"
+	var dir := _test_dir.path_join("mods")
 	DirAccess.make_dir_recursive_absolute(dir.path_join("first"))
 	DirAccess.make_dir_recursive_absolute(dir.path_join("second"))
 	DirAccess.make_dir_recursive_absolute(dir.path_join("empty"))

@@ -24,6 +24,12 @@ The results are printed as JSON. Add `--out=PATH` after `--` to also save them t
 
 If a change fails the check on purpose (more buildings, a denser forest), look first for a cheaper way, such as joining meshes or using a MultiMesh. If the cost is worth it, update the budgets with `-- --update-budgets`. This adds headroom to the measured values (10% headless, 25% rendered), and only updates the mode you ran, so run it once headless and once with a display, and say in the pull request why the budgets grew.
 
+## Memory check
+
+`godot --headless --path . --script res://tests/memory_check.gd` loads the main scene, runs it for 15 simulated seconds and frees it, six times in a row. Then it plays 40 simulated seconds to let the village finish streaming in and a further 2 minutes while measuring. Throughout it prints static memory, object count, node count and orphan node count (the `Performance` monitors). It takes about 4 minutes, so CI does not run it. Run it before a change that creates scenes, resources or threads at runtime, and after anything that touches loading or freeing the world. `--loads=N` and `--minutes=N` after `--` change the number of loads and the length of the play session.
+
+The first load is a warm-up. The check fails when a later load ends with more objects, orphan nodes or static memory than the one before it, or when the play session grows past its budget. A real leak grows with every load, so it trips the check. The budgets are constants at the top of `tests/memory_check.gd`: orphan nodes may not grow at all, objects may grow by 50 per load (500 over the play session) to allow for cache noise, and static memory by 4 MB per load (16 MB over the play session) because the allocator moves. They sit well above the measured growth, which is zero. If a change grows them on purpose, say why in the pull request.
+
 ## After pulling
 
 Godot only registers new `class_name` scripts in `.godot/global_script_class_cache.cfg` when the editor or an import runs. If the game fails after a pull with `Identifier "..." not declared in the current scope`, rebuild the cache once:

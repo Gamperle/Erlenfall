@@ -19,6 +19,11 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	var pointers := _lfs_pointer_files("res://assets")
+	if not pointers.is_empty():
+		printerr("FAIL: %d asset files are Git LFS pointers, for example %s. Run 'git lfs pull' and then 'godot --headless --path . --import' (see CONTRIBUTING.md, Setting up a fresh checkout). Revert any .import files the import rewrote." % [pointers.size(), pointers[0]])
+		quit(1)
+		return
 	DirAccess.remove_absolute(TEST_SAVE)
 	DirAccess.remove_absolute(TEST_SAVE + SaveGame.BACKUP_SUFFIX)
 	DirAccess.remove_absolute(TEST_SETTINGS)
@@ -3551,6 +3556,20 @@ func _check_water_ripples(terrain: Terrain, player: Player) -> void:
 	_check(terrain._stir_water() == 0, "low graphics skips the ripples")
 	Settings.graphics = saved_graphics
 	player.global_position = before
+
+
+## Files under `dir` that are still Git LFS pointer text instead of the real asset (#172).
+func _lfs_pointer_files(dir: String) -> PackedStringArray:
+	var found := PackedStringArray()
+	for sub in DirAccess.get_directories_at(dir):
+		found.append_array(_lfs_pointer_files(dir.path_join(sub)))
+	for file in DirAccess.get_files_at(dir):
+		if file.get_extension() in ["import", "uid", "md", "txt", "json", "tres", "gd"]:
+			continue
+		var f := FileAccess.open(dir.path_join(file), FileAccess.READ)
+		if f != null and f.get_buffer(23).get_string_from_ascii() == "version https://git-lfs":
+			found.append(dir.path_join(file))
+	return found
 
 
 func _check(condition: bool, label: String) -> void:

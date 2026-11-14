@@ -21,6 +21,10 @@ const NEXT := {
 const RAIN_AMOUNT := { "low": 500, "medium": 900, "high": 1500 }
 const RAIN_HEIGHT := 14.0
 const RAIN_SPEED := 24.0
+## How often (seconds) a single upward ray checks whether the camera stands under a roof.
+const COVER_CHECK_INTERVAL := 0.2
+## How fast the rain fades in and out when moving under or out from cover, per second.
+const COVER_FADE_SPEED := 2.5
 ## At full overcast the sun is this share of its strength, and the sky this much darker.
 const OVERCAST_LIGHT := 0.35
 const OVERCAST_GREY := 0.75
@@ -33,6 +37,10 @@ var overcast := 0.0
 var rain := 0.0
 var wind := 0.2
 
+## 1 when a roof or other solid thing is overhead, so the rain is hidden, 0 in the open.
+var cover := 0.0
+var _cover_target := 0.0
+var _cover_timer := 0.0
 var _time_left := 0.0
 var _rng := RandomNumberGenerator.new()
 var _rain_particles: GPUParticles3D
@@ -58,6 +66,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	update(delta)
+	_update_cover(delta)
 
 
 ## Moves time on: counts down to the next change and eases the values towards the current state.
@@ -117,6 +126,17 @@ func grey_sky(color: Color) -> Color:
 	return color.lerp(grey, overcast * 0.8)
 
 
+## True when something solid (a roof, a bridge, a ceiling) is within rain height above this point.
+## One ray, no per-drop work.
+func is_covered(point: Vector3) -> bool:
+	var world := get_viewport().world_3d if is_inside_tree() else null
+	if world == null:
+		return false
+	var query := PhysicsRayQueryParameters3D.create(point, point + Vector3(0.0, RAIN_HEIGHT, 0.0))
+	query.exclude = _body_rids()
+	return not world.direct_space_state.intersect_ray(query).is_empty()
+
+
 func rain_particles() -> GPUParticles3D:
 	return _rain_particles
 
@@ -141,6 +161,30 @@ func load_data(data: Dictionary) -> void:
 	wind = clampf(float(data.get("wind", STATES[state]["wind"])), 0.0, 1.0)
 	_time_left = maxf(float(data.get("time_left", _next_duration())), 1.0)
 	_push()
+
+
+## Checks for a roof over the camera a few times a second, and fades the rain out under one.
+func _update_cover(delta: float) -> void:
+	if _rain_particles == null:
+		return
+	_cover_timer -= delta
+	if _cover_timer <= 0.0:
+		_cover_timer = COVER_CHECK_INTERVAL
+		var camera := get_viewport().get_camera_3d()
+		_cover_target = 1.0 if rain > 0.02 and camera and is_covered(camera.global_position) else 0.0
+	var before := cover
+	cover = move_toward(cover, _cover_target, COVER_FADE_SPEED * delta)
+	if cover != before:
+		_push()
+
+
+## Characters carry colliders that must not count as a roof.
+func _body_rids() -> Array[RID]:
+	var rids: Array[RID] = []
+	for node in get_tree().get_nodes_in_group("player"):
+		if node is CollisionObject3D:
+			rids.append(node.get_rid())
+	return rids
 
 
 func _next_duration() -> float:
@@ -198,8 +242,9 @@ func _push() -> void:
 	if _grass:
 		_grass.set_wind(wind)
 	if _rain_particles:
-		_rain_particles.emitting = rain > 0.02
-		_rain_particles.amount_ratio = clampf(rain, 0.0, 1.0)
+		var shown := clampf(rain * (1.0 - cover), 0.0, 1.0)
+		_rain_particles.emitting = shown > 0.02
+		_rain_particles.amount_ratio = shown
 		_rain_material.direction = Vector3(wind * 0.25, -1.0, wind * 0.1).normalized()
 		var camera := get_viewport().get_camera_3d()
 		if camera:

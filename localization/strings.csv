@@ -43,6 +43,7 @@ ITEM_IRON_SWORD,Iron sword,Eisenschwert
 ITEM_IRON_AXE,Iron axe,Eisenaxt
 ITEM_TORCH,Torch,Fackel
 SLOT_GRIP,Grip,Griff
+SLOT_LIMB,Limbs,Bogenarme
 SLOT_BLADE,Blade,Klinge
 PART_OAK,Oak,Eiche
 PART_ASH,Ash,Esche
@@ -257,6 +258,7 @@ DLG_FALK_IDLE,"Quiet steps keep you alive out here. Keep to the road, and you'll
 DLG_LENE_IDLE,"Welcome. If you need something from the village stores, it goes in the ledger first.","Willkommen. Wenn du etwas aus den Vorräten des Dorfes brauchst, kommt es zuerst ins Hauptbuch."
 ITEM_SHORT_BOW,Short bow,Kurzbogen
 ITEM_ARROW,Arrow,Pfeil
+ITEM_LONG_BOW,Long bow,Langbogen
 ITEM_FIRE_FLASK,Fire flask,Feuerflasche
 UI_NEED_SHORT_BOW,You have no bow.,Du hast keinen Bogen.
 UI_NO_ARROW,You have no arrows.,Du hast keine Pfeile.

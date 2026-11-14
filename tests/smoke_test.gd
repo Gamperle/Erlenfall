@@ -2918,6 +2918,42 @@ func _test_ranged(scene: Node, player: Player) -> void:
 		TranslationServer.set_locale("en")
 		_check(german != key and german != tr(key) and tr(key) != key, "%s has English and German text" % key)
 
+	# Crafted bows and arrows.
+	for recipe_id in ["make_arrows", "make_short_bow", "make_long_bow"]:
+		var found := false
+		for recipe in CraftingData.recipes_for("anvil"):
+			found = found or recipe["id"] == recipe_id
+		_check(found, "%s is an anvil recipe" % recipe_id)
+	for key in ["ITEM_LONG_BOW", "SLOT_LIMB"]:
+		TranslationServer.set_locale("de")
+		var german_text := tr(key)
+		TranslationServer.set_locale("en")
+		_check(german_text != key and german_text != tr(key) and tr(key) != key, "%s has English and German text" % key)
+	_check(CraftingData.ranged_multiplier("short_bow") == 1.0, "a plain short bow shoots at the base damage")
+	_check(CraftingData.ranged_multiplier("long_bow") > 1.0, "a long bow hits harder than a short bow")
+	_check(CraftingData.ranged_multiplier("short_bow", "fine") > CraftingData.ranged_multiplier("short_bow", "crude"), "a finer bow hits harder")
+	_check(CraftingData.ranged_multiplier("arrow", "masterwork") > CraftingData.ranged_multiplier("arrow"), "a better arrow hits harder")
+	var held := Inventory.new()
+	held.add("arrow", 1, "crude")
+	held.add("arrow", 1, "fine")
+	_check(is_equal_approx(held.take_best_ranged("arrow"), CraftingData.ranged_multiplier("arrow", "fine")) and held.count("arrow") == 1, "the best arrow is used first")
+	_check(held.take_best_ranged("arrow") > 0.0 and held.take_best_ranged("arrow") == 0.0, "an empty quiver gives no arrow")
+	var weak_arrow := Projectile.launch("arrow", Vector3.ZERO, Vector3.FORWARD, null, 0.5)
+	_check(is_equal_approx(weak_arrow.damage, float(Projectile.stats("arrow")["damage"]) * 0.5), "projectile damage follows the multiplier")
+	weak_arrow.free()
+	player.inventory.remove("short_bow")
+	player.inventory.remove("arrow", player.inventory.count("arrow"))
+	player.inventory.add("long_bow", 1, "fine")
+	player.inventory.add("arrow", 3, "common")
+	_check(player.fire_ranged("shoot") and player.inventory.count("arrow") == 2, "a crafted long bow shoots arrows")
+	var shot: Projectile = root.get_tree().get_nodes_in_group(Projectile.GROUP).back()
+	var expected := float(Projectile.stats("arrow")["damage"]) * CraftingData.ranged_multiplier("long_bow", "fine") * CraftingData.ranged_multiplier("arrow", "common")
+	_check(is_equal_approx(shot.damage, expected), "the shot's damage comes from the bow and arrow quality")
+	await _physics_frames(90)
+	player.inventory.remove("long_bow")
+	player.inventory.remove("arrow", player.inventory.count("arrow"))
+	player.inventory.add("short_bow")
+
 	_write_flags(TEST_FLAGS_A, { "flags": { "ranged_weapons": false } })
 	FeatureFlags.load_layers([TEST_FLAGS_A])
 	player.inventory.add("arrow", 2)

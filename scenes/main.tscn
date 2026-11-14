@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/world/terrain.gd" id="2"]
@@ -13,6 +13,7 @@
 [ext_resource type="Script" path="res://scripts/ui/performance_overlay.gd" id="11"]
 [ext_resource type="Script" path="res://scripts/ui/hud_layout.gd" id="12"]
 [ext_resource type="Script" path="res://scripts/world/sky_dome.gd" id="13"]
+[ext_resource type="Script" path="res://scripts/world/weather.gd" id="99"]
 
 [sub_resource type="ProceduralSkyMaterial" id="1"]
 sky_top_color = Color(0.34, 0.45, 0.58, 1)
@@ -75,6 +76,9 @@ sky_dome = NodePath("../SkyDome")
 sun = NodePath("../Sun")
 world_environment = NodePath("../WorldEnvironment")
 mist = NodePath("../Mist")
+
+[node name="Weather" type="Node" parent="."]
+script = ExtResource("99")
 
 [node name="Terrain" type="StaticBody3D" parent="."]
 script = ExtResource("2")

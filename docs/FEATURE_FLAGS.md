@@ -80,6 +80,17 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `screen_ambient_occlusion` | `true` | Darkens corners, eaves, and the ground under things on high graphics. Off never does, which saves about 1.3 ms a frame on a Radeon 680M, most of it for the extra normal buffer that it needs whatever its quality |
 | `ambient_life` | `true` | Adds birds that circle high above by day, butterflies over lush grass by day, and fireflies over lush grass and the river at night. Each kind is one MultiMesh draw call without shadows or collision. Off adds none of them. Low and medium graphics show 40% and 70% of each count |
 
+## Weather flags and values
+
+Weather is [#241](https://github.com/Gamperle/Erlenfall/issues/241): clear, overcast, and rain, which follow each other at random and blend smoothly (`scripts/world/weather.gd`). Overcast skies dim the sun, grey the sky and thicken the fog and clouds, rain adds one `GPUParticles3D` that follows the camera, and wind sways the grass and speeds up the clouds. The weather is saved with the game. The durations are placeholders for the maintainer to tune. Rain shows 33%, 60%, and 100% of its particles (500, 900, 1500) on low, medium, and high graphics.
+
+| Name | Default | Effect |
+|---|---|---|
+| `weather` | `true` | Turns weather on or off. Off keeps the sky clear and the grass in a light breeze, and adds no rain |
+| `weather_min_seconds` | `180` | The shortest time before the weather changes. A game day lasts 600 seconds |
+| `weather_max_seconds` | `420` | The longest time before the weather changes |
+| `weather_blend_seconds` | `20` | How long a change takes to blend fully |
+
 ## Player flags and values
 
 | Name | Default | Effect |

@@ -73,6 +73,7 @@ static func write(path: String, player: Player, day_night: DayNight, village: Vi
 		"torch_burned_seconds": player.torch_burned_seconds,
 		"quests": player.quests.to_data(),
 		"hour": day_night.hour,
+		"weather": _weather_of(day_night).to_data() if _weather_of(day_night) else {},
 		"world": village.to_data(),
 	}
 	var temp_path := path + TEMP_SUFFIX
@@ -125,12 +126,20 @@ static func apply(path: String, player: Player, day_night: DayNight, village: Vi
 	var can_light: bool = FeatureFlags.enabled("torches") and player.inventory.count(Player.TORCH_ITEM) > 0
 	player.set_torch_lit(data.get("torch_lit", false) and can_light)
 	day_night.hour = data["hour"]
+	# Games saved before weather existed stay clear.
+	var weather := _weather_of(day_night)
+	if weather:
+		weather.load_data(data.get("weather", {}))
 	# Games saved before enemies and gathering spots were saved don't have this.
 	if data.has("world"):
 		village.load_data(data["world"])
 	# Last, because quest changes trigger an autosave.
 	player.quests.load_data(data["quests"])
 	return true
+
+
+static func _weather_of(day_night: DayNight) -> Weather:
+	return day_night.get_tree().get_first_node_in_group(Weather.GROUP) as Weather
 
 
 ## Reads a save and upgrades it to the current format. Returns {} if it is missing, damaged or too new.

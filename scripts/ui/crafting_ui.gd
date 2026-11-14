@@ -260,7 +260,13 @@ func _refresh_use_buttons() -> void:
 		button.pressed.connect(use_item.bind(item_id))
 		_use_row.add_child(button)
 		if item_id == focused_item:
-			button.grab_focus.call_deferred()
+			_focus_later.call_deferred(button)
+
+
+## A button can leave the tree again before the deferred focus runs, when the list is rebuilt.
+func _focus_later(control: Control) -> void:
+	if is_instance_valid(control) and control.is_inside_tree():
+		control.grab_focus()
 
 
 ## The item the selected materials would make, or "" if they make nothing.

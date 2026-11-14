@@ -249,7 +249,13 @@ func _toggle_tracking(quest_id: String) -> void:
 	var index := focused.get_index() if focused != null and focused.get_parent() == _quest_list else -1
 	_fill_quests()
 	if index >= 0 and index < _quest_list.get_child_count():
-		_quest_list.get_child(index).call_deferred("grab_focus")
+		_focus_later.call_deferred(_quest_list.get_child(index))
+
+
+## The list can be rebuilt before the deferred focus runs, which takes the button out of the tree.
+func _focus_later(control: Control) -> void:
+	if is_instance_valid(control) and control.is_inside_tree():
+		control.grab_focus()
 
 
 func _fill_notes() -> void:

@@ -51,11 +51,23 @@ func refresh_style() -> void:
 func choose(index: int) -> void:
 	_runner.advance(index)
 	if _runner.is_finished():
-		_panel.visible = false
-		_player.set_busy(false)
-		_player.end_conversation()
+		_close()
 	else:
 		_show_line()
+
+
+## Ends the conversation early, if the story allows it (see DialogueRunner.can_leave).
+func leave() -> bool:
+	if not is_open() or not _runner.can_leave():
+		return false
+	_close()
+	return true
+
+
+func _close() -> void:
+	_panel.visible = false
+	_player.set_busy(false)
+	_player.end_conversation()
 
 
 ## Shows the choose hint with the inputs of the device in use.
@@ -64,6 +76,11 @@ func refresh_prompts() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if is_open() and event.is_action_pressed("ui_cancel"):
+		# Back never counts when the story wants an answer.
+		if leave():
+			get_viewport().set_input_as_handled()
+		return
 	if is_open() and event.is_action_pressed("interact"):
 		var focused := get_viewport().gui_get_focus_owner() as Button
 		if focused != null:

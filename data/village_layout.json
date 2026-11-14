@@ -36,7 +36,10 @@
 	"enemies": [
 		{ "type": "goblin", "x": 118, "z": -150 },
 		{ "type": "goblin", "x": 124, "z": -142 },
-		{ "type": "goblin", "x": 112, "z": -140 }
+		{ "type": "goblin", "x": 112, "z": -140 },
+		{ "type": "goblin_brute", "x": 108, "z": -168 },
+		{ "type": "wolf", "x": -70, "z": -110 },
+		{ "type": "wolf", "x": -82, "z": -98 }
 	],
 	"repair_sites": [
 		{ "quest": "first_nails", "objective": "repair_roof", "flag": "inn_roof_repaired", "model": "ladder", "rotation": -80, "prompt": "PROMPT_REPAIR_ROOF", "x": 20.6, "z": -11.5, "width": 0.6, "depth": 0.3, "height": 5, "color": "#8a6a42" }

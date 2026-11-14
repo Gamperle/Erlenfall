@@ -1,6 +1,8 @@
 {
 	"items": {
 		"iron_scrap": { "name": "ITEM_IRON_SCRAP", "material": true },
+		"hide": { "name": "ITEM_HIDE", "material": true },
+		"meat": { "name": "ITEM_MEAT", "material": true },
 		"iron_ore": { "name": "ITEM_IRON_ORE", "material": true },
 		"coal": { "name": "ITEM_COAL", "material": true },
 		"wood": { "name": "ITEM_WOOD", "material": true },

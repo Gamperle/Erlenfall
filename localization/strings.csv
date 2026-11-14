@@ -109,6 +109,8 @@ DLG_BRANDT_WARM,"You again. The inn will be dry soon enough, I'm told. Carry on,
 DLG_BRANDT_COLD,I'm watching what you do in my village. That is all.,Ich beobachte, was du in meinem Dorf tust. Das ist alles.
 DLG_BRANDT_IDLE,"I am Mayor Brandt. Erlenfall has its own way of doing things, and you would do well to learn it.","Ich bin Bürgermeister Brandt. Erlenfall hat seine eigene Art, die Dinge zu regeln, und du tätest gut daran, sie zu lernen."
 ENEMY_GOBLIN,Goblin,Goblin
+ENEMY_GOBLIN_BRUTE,Goblin brute,Goblin-Rüpel
+ENEMY_WOLF,Wolf,Wolf
 UI_WOKE_UP,"You wake up in the village, sore and bruised. Some of the materials you carried are gone.","Du wachst im Dorf auf, wund und zerschlagen. Ein Teil deiner Materialien ist verloren."
 OBJ_REPAIR_ROOF,Use the ladder at the inn to nail the roof back together,"Benutze die Leiter am Gasthaus, um das Dach wieder zusammenzunageln"
 PROMPT_REPAIR_ROOF,Nail the roof back together,Das Dach zusammennageln
@@ -138,6 +140,8 @@ UI_GRAPHICS_MEDIUM,Medium,Mittel
 UI_GRAPHICS_HIGH,High,Hoch
 UI_GOT_DROP,You picked up %d x %s.,Du hast %d x %s aufgehoben.
 ITEM_IRON_SCRAP,Iron scrap,Eisenschrott
+ITEM_HIDE,Hide,Fell
+ITEM_MEAT,Meat,Fleisch
 UI_NEW_GAME_WARNING,Starting a new game overwrites your saved game.,Ein neues Spiel überschreibt deinen Spielstand.
 UI_OVERWRITE_SAVE,Start and overwrite,Starten und überschreiben
 UI_BACK,Back,Zurück

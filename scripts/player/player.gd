@@ -550,6 +550,7 @@ func _update_combat(delta: float) -> void:
 		elif torch_lit:
 			idle = TORCH_ANIMATION
 		(_body_mesh as CharacterModel).idle_override = idle
+		SneakLook.apply(self, _body_mesh as CharacterModel)
 		_hand_pose.guarding = is_blocking() and not is_dodging()
 		_hand_pose.grip_left = torch_lit
 		# In third person, the model's own animations move the weapon.

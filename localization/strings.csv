@@ -394,3 +394,6 @@ UI_JOURNAL_MAP_HINT,WASD / left stick: move the map   Mouse wheel / + and - / LB
 UI_FORGE_STOP_KEYBOARD,Esc,Esc
 UI_FORGE_STOP_GAMEPAD,B,B
 UI_DIALOGUE_HINT,%s: choose,%s: auswählen
+UI_SNEAK_HIDDEN,Hidden,Verborgen
+UI_SNEAK_CAUTIOUS,Risky,Riskant
+UI_SNEAK_SEEN,Seen,Gesehen

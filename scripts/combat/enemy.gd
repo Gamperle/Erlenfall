@@ -237,13 +237,11 @@ func _process_idle(player: Player) -> void:
 		_stop()
 
 
-## How far away this enemy notices the player. A sneaking player is noticed from less far.
-## An enemy already chasing keeps chasing, so sneaking only helps before a fight starts.
+## How far away this enemy notices the player (see Noticing for the rules: stance, speed, light,
+## facing, and line of sight). An enemy already chasing keeps chasing, so sneaking only helps before
+## a fight starts.
 func notice_range(player: Player) -> float:
-	var notice := float(_stats["aggro_range"])
-	if player.is_sneaking():
-		notice *= float(FeatureFlags.value("sneak_notice_factor", 0.35))
-	return notice
+	return Noticing.notice_range(self, player, float(_stats["aggro_range"]))
 
 
 func _process_chase(player: Player) -> void:

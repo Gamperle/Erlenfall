@@ -1409,7 +1409,7 @@ func _test_combat(scene: Node, player: Player) -> void:
 
 	# Goblins that wait to be spoken to would throw off the fights below, so only the talking test has it on.
 	FeatureFlags._flags["enemy_talk"] = false
-	await _test_sneaking(player, enemy)
+	await _test_sneaking(scene, player, enemy)
 	FeatureFlags._flags["enemy_talk"] = true
 	await _test_enemy_talk(scene, player)
 	FeatureFlags._flags["enemy_talk"] = false
@@ -1620,19 +1620,23 @@ func _test_heavy_swing(player: Player) -> void:
 	player.stamina = Player.MAX_STAMINA
 
 
-func _test_sneaking(player: Player, enemy: Enemy) -> void:
+func _test_sneaking(scene: Node, player: Player, enemy: Enemy) -> void:
 	enemy.revive()
 	var normal_range := float(enemy._stats["aggro_range"])
 	player.position = enemy.position + Vector3(0.0, 0.3, 8.0)
+	# In daylight, in front of the enemy, so only the stance counts here (see _test_noticing_rules).
+	var day_night := player.get_tree().get_first_node_in_group(DayNight.GROUP) as DayNight
+	day_night.hour = 12.0
+	enemy.rotation.y = PI
 	Input.action_press("sneak")
 	await _physics_frames(5)
 	_check(player.is_sneaking(), "holding the sneak key sneaks")
-	_check(is_equal_approx(enemy.notice_range(player), normal_range * float(FeatureFlags.value("sneak_notice_factor"))), "sneaking shortens the range goblins notice at")
+	_check(is_equal_approx(enemy.notice_range(player), normal_range * float(FeatureFlags.value("sneak_notice_factor")) * float(FeatureFlags.value("still_notice_factor"))), "sneaking shortens the range goblins notice at")
 	_check(enemy.state == Enemy.State.IDLE, "goblins don't notice a sneaking player at 8 m")
 	var sneak_speed := Vector2(player.velocity.x, player.velocity.z).length()
 	Input.action_release("sneak")
 	await _physics_frames(5)
-	_check(not player.is_sneaking() and enemy.notice_range(player) == normal_range, "letting go of the key ends sneaking")
+	_check(not player.is_sneaking() and is_equal_approx(enemy.notice_range(player), normal_range * float(FeatureFlags.value("still_notice_factor"))), "letting go of the key ends sneaking")
 	_check(enemy.state != Enemy.State.IDLE, "goblins notice the same player at 8 m when not sneaking")
 	_check(sneak_speed <= Player.WALK_SPEED * float(FeatureFlags.value("sneak_speed_factor")) + 0.01, "sneaking is slower than walking")
 
@@ -1643,6 +1647,7 @@ func _test_sneaking(player: Player, enemy: Enemy) -> void:
 	_check(not player.is_sneaking(), "the sneaking flag turns sneaking off")
 	Input.action_release("sneak")
 	FeatureFlags._flags["sneaking"] = true
+	await _test_noticing_rules(scene, player, enemy, day_night)
 	# Back to the start of the fight the next checks expect.
 	enemy.revive()
 	player.health.restore()
@@ -3886,3 +3891,99 @@ func _test_enemy_accessibility(scene: Node) -> void:
 		_check(Accessibility.PALETTES[mode]["warning"] != Accessibility.PALETTES[mode]["enemy"], "the %s palette tells the wind-up warning from the enemy bar" % mode)
 	enemy.free()
 	await process_frame
+
+
+## The noticing rules, the sneak look, and the visibility indicator (#207).
+func _test_noticing_rules(scene: Node, player: Player, enemy: Enemy, day_night: DayNight) -> void:
+	var base := float(enemy._stats["aggro_range"])
+	enemy.revive()
+	player.position = enemy.position + Vector3(0.0, 0.3, 8.0)
+	enemy.rotation.y = PI
+	day_night.hour = 12.0
+	await _physics_frames(3)
+	enemy.state = Enemy.State.IDLE
+	var standing := Noticing.player_factor(player)
+	_check(is_equal_approx(standing, float(FeatureFlags.value("still_notice_factor"))), "standing still in daylight is noticed from the still share of the range")
+	_check(is_equal_approx(Noticing.facing_factor(Vector3.FORWARD, Vector3.FORWARD), 1.0), "an enemy facing the player notices in full")
+	_check(is_equal_approx(Noticing.facing_factor(Vector3.FORWARD, Vector3.BACK), float(FeatureFlags.value("notice_back_factor"))), "from behind an enemy notices less far")
+	_check(Noticing.facing_factor(Vector3.FORWARD, Vector3(1.0, 0.0, -0.2)) == 1.0, "the side of the front cone still counts as seen")
+
+	# Looking away: noticed from less far, so not at 8 m.
+	enemy.rotation.y = 0.0
+	_check(is_equal_approx(enemy.notice_range(player), base * standing * float(FeatureFlags.value("notice_back_factor"))), "an enemy facing away notices a standing player from less far")
+	_check(enemy.notice_range(player) < 8.0, "a goblin facing away doesn't notice a player 8 m behind it")
+	# Right next to it, it hears them whichever way it faces.
+	player.position = enemy.position + Vector3(0.0, 0.3, 2.0)
+	_check(is_equal_approx(Noticing.enemy_factor(enemy, player), 1.0), "closer than the close range an enemy notices from any side")
+	player.position = enemy.position + Vector3(0.0, 0.3, 8.0)
+	enemy.rotation.y = PI
+
+	# Something solid in the way.
+	var wall := StaticBody3D.new()
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(6.0, 10.0, 0.5)
+	shape.shape = box
+	wall.add_child(shape)
+	wall.collision_layer = 1
+	enemy.get_parent().add_child(wall)
+	wall.global_position = enemy.global_position + Vector3(0.0, 1.0, 4.0)
+	await _physics_frames(2)
+	_check(Noticing.is_blocked(enemy, player), "a wall between them blocks the view")
+	_check(is_equal_approx(Noticing.enemy_factor(enemy, player), float(FeatureFlags.value("notice_blocked_factor"))), "a blocked view shortens the noticing range")
+	wall.queue_free()
+	await _physics_frames(2)
+	_check(not Noticing.is_blocked(enemy, player), "the view is clear again without the wall")
+
+	# Light: dark at night, and a lit torch shows.
+	day_night.hour = 1.0
+	var dark := Noticing.light_factor(player)
+	player.torch_lit = true
+	var lit := Noticing.light_factor(player)
+	player.torch_lit = false
+	day_night.hour = 12.0
+	_check(is_equal_approx(dark, float(FeatureFlags.value("night_notice_factor"))), "the night makes the player harder to see")
+	_check(lit > dark and lit > 1.0 - 0.001, "a lit torch makes the player easier to see at night")
+	player.torch_lit = true
+	_check(Noticing.light_factor(player) < lit, "a torch shows less in daylight")
+	player.torch_lit = false
+
+	# The indicator and the sneak look.
+	Input.action_press("sneak")
+	await _physics_frames(5)
+	var indicator := (scene.get_node("UI") as HudLayout).visibility_indicator
+	_check(indicator != null and indicator.visible, "the visibility indicator shows while sneaking")
+	_check(Noticing.level(player) == 0, "a standing sneaking player in daylight is hidden")
+	Input.action_press("move_forward")
+	await _physics_frames(30)
+	_check(Noticing.level(player) == 1, "a sneaking player on the move is cautious")
+	if player._body_mesh is CharacterModel:
+		var model := player._body_mesh as CharacterModel
+		_check(model.crouched and model._player.current_animation == CharacterModel.CROUCH_WALK, "sneaking walks in a crouch")
+		_check(model._player.speed_scale < 1.0, "the crouch walk cycle is slower")
+	Input.action_release("move_forward")
+	await _physics_frames(30)
+	if player._body_mesh is CharacterModel:
+		_check((player._body_mesh as CharacterModel)._player.current_animation == CharacterModel.CROUCH_IDLE, "a standing sneaking player crouches")
+	Input.action_release("sneak")
+	await _physics_frames(5)
+	_check(not indicator.visible, "the visibility indicator hides when not sneaking")
+	for new_level in 3:
+		indicator.update_from(new_level, 0.5)
+		for high_contrast in [false, true]:
+			Settings.high_contrast = high_contrast
+			indicator.queue_redraw()
+			await _physics_frames(1)
+	Settings.high_contrast = false
+	_check(tr("UI_SNEAK_SEEN") != "UI_SNEAK_SEEN", "the indicator words are translated")
+	_check(indicator.level_color(0) != indicator.level_color(2), "the indicator levels differ in colour")
+	Settings.colour_vision = "deuteranopia"
+	_check(indicator.level_color(0) != indicator.level_color(2), "the indicator levels differ in colour for colour vision modes")
+	Settings.colour_vision = "off"
+
+	# The rules turn off, leaving only the sneak factor.
+	FeatureFlags._flags["noticing_rules"] = false
+	enemy.rotation.y = 0.0
+	_check(is_equal_approx(enemy.notice_range(player), base), "with the rules off, a standing player is noticed from the full range")
+	FeatureFlags._flags["noticing_rules"] = true
+	enemy.rotation.y = PI

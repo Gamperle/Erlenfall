@@ -64,7 +64,9 @@ func _ready() -> void:
 	_menu.graphics_changed.connect(_apply_graphics)
 	_menu.bindings_changed.connect(_set_translated_text)
 	_menu.text_size_changed.connect(_apply_text_size)
+	_menu.accessibility_changed.connect(_ui.refresh_accessibility)
 	_apply_text_size()
+	_ui.refresh_accessibility()
 	_welcome_label.modulate.a = 0.0
 	_set_translated_text()
 	_compass.visible = FeatureFlags.enabled("compass")

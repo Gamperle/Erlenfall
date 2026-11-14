@@ -184,6 +184,7 @@ func _run() -> void:
 	await _test_forest(scene, player)
 	await _test_player_fixes(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
+	await _test_controller_navigation(scene, player)
 	await _test_ambient_life(scene, day_night)
 	await _test_weather(scene, day_night)
 	await _test_grass_cost(scene)
@@ -2364,6 +2365,151 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	menu.close()
 	DirAccess.remove_absolute(TEST_SAVE)
 	DirAccess.remove_absolute(TEST_SAVE + SaveGame.BACKUP_SUFFIX)
+
+
+## Every screen can be used with a gamepad: it takes the focus when it opens, the d-pad reaches every
+## control, accept presses and back goes back to where the player came from.
+func _test_controller_navigation(scene: Node, player: Player) -> void:
+	var menu: GameMenu = scene.get_node("GameMenu")
+	menu.slot_paths = [TEST_SAVE, TEST_SLOT_2, TEST_SLOT_3]
+	scene.save_game()
+	var window := scene.get_viewport()
+	var back := InputEventAction.new()
+	back.action = "ui_cancel"
+	back.pressed = true
+
+	menu.open_title()
+	await _physics_frames(3)
+	_check(_focus_in(menu._panel) and _all_reachable(menu._panel), "the title menu takes the focus and the d-pad reaches every button")
+	var load_button: Button = menu._buttons.get_child(1)
+	load_button.pressed.emit()
+	await _physics_frames(3)
+	_check(_focus_in(menu._buttons) and _all_reachable(menu._buttons), "the load menu takes the focus and reaches every slot")
+	menu._input(back)
+	await _physics_frames(3)
+	_check(window.gui_get_focus_owner() == load_button or (window.gui_get_focus_owner() as Button).text == tr("UI_LOAD_GAME"), "back from the slots returns to the button that opened them")
+	menu._buttons.get_child(2).pressed.emit()
+	menu._buttons.get_child(0).pressed.emit()
+	await _physics_frames(3)
+	_check(menu._confirming and _focus_in(menu._buttons) and _all_reachable(menu._buttons), "the overwrite warning takes the focus")
+	menu._input(back)
+	await _physics_frames(3)
+	_check(menu._slot_screen and (window.gui_get_focus_owner() as Button).text.begins_with(tr("UI_SLOT").split("%")[0]), "back from the warning returns to the slot")
+	menu._input(back)
+
+	scene.open_pause_menu()
+	await _physics_frames(3)
+	_check(_focus_in(menu._panel) and _all_reachable(menu._panel), "the pause menu takes the focus")
+	menu.open_settings(menu.open_pause)
+	await _physics_frames(3)
+	_check(_focus_in(menu._buttons) and _all_reachable(menu._buttons), "the settings take the focus and the d-pad reaches every setting")
+	var slider: HSlider = null
+	for row in menu._buttons.get_children():
+		if row is HBoxContainer and row.get_child(1) is HSlider:
+			slider = row.get_child(1)
+			break
+	slider.grab_focus()
+	var before := slider.value
+	var right := InputEventAction.new()
+	right.action = "ui_right"
+	right.pressed = true
+	Input.parse_input_event(right)
+	Input.flush_buffered_events()
+	await _physics_frames(2)
+	_check(slider.value > before, "a slider changes with left and right")
+	menu.open_controls()
+	await _physics_frames(3)
+	_check(_focus_in(menu._controls) and _all_reachable(menu._controls), "the controls page takes the focus and the d-pad reaches every button")
+	menu._input(back)
+	await _physics_frames(3)
+	_check((window.gui_get_focus_owner() as Button).text == tr("UI_CONTROLS_TITLE"), "back from the controls returns to the controls button")
+	menu._input(back)
+	await _physics_frames(3)
+	_check((window.gui_get_focus_owner() as Button).text == tr("UI_SETTINGS"), "back from the settings returns to the settings button")
+	var resumed := [false]
+	menu.resume_chosen.connect(func() -> void: resumed[0] = true, CONNECT_ONE_SHOT)
+	menu._input(back)
+	_check(resumed[0], "back closes the pause menu")
+	scene.resume()
+	menu.close()
+
+	var crafting: CraftingUI = scene.get_node("CraftingUI")
+	player.inventory.add("berries")
+	player.inventory.add("iron_ingot", 2)
+	player.inventory.add("wood")
+	crafting.open_inventory(player)
+	await _physics_frames(3)
+	_check(_focus_in(crafting._panel) and _all_reachable(crafting._panel), "the inventory takes the focus and reaches every button")
+	crafting._input(back)
+	_check(not crafting.is_open(), "back closes the inventory")
+	crafting.open_station("anvil", "Anvil", player)
+	await _physics_frames(3)
+	_check(_focus_in(crafting._panel) and _all_reachable(crafting._panel), "a crafting station takes the focus and reaches every button")
+	crafting.add_material("iron_ingot")
+	crafting.add_material("iron_ingot")
+	crafting.add_material("wood")
+	await _physics_frames(3)
+	_check(_focus_in(crafting._panel) and _all_reachable(crafting._panel), "choosing materials keeps the focus in reach")
+	crafting.craft()
+	_check(crafting.is_forging(), "the forging minigame starts")
+	crafting._input(back)
+	await _physics_frames(3)
+	_check(not crafting.is_forging() and crafting.is_open() and _focus_in(crafting._panel), "back leaves the forging minigame and gives the focus back")
+	crafting._input(back)
+	_check(not crafting.is_open(), "back closes the crafting screen")
+
+	var dialogue: DialogueUI = scene.get_node("DialogueUI")
+	dialogue.open_conversation("bertram", "bertram", player)
+	await _physics_frames(3)
+	_check(_focus_in(dialogue._panel) and _all_reachable(dialogue._choices), "a conversation takes the focus and the d-pad reaches every reply")
+	while dialogue.is_open():
+		dialogue.choose(0)
+
+	var world_map: WorldMap = scene.get_node("MapController").world_map
+	for action in ["map", "map_zoom_in", "map_zoom_out", "move_forward", "move_back", "move_left", "move_right"]:
+		_check(InputMap.action_get_events(action).any(func(event: InputEvent) -> bool: return event is InputEventJoypadButton or event is InputEventJoypadMotion), "the %s action has a gamepad input" % action)
+	world_map.open()
+	world_map._input(back)
+	_check(not world_map.is_open() and not player.is_busy(), "back closes the map")
+	DirAccess.remove_absolute(TEST_SAVE)
+	DirAccess.remove_absolute(TEST_SAVE + SaveGame.BACKUP_SUFFIX)
+
+
+## Whether the focus is on a control inside the given one.
+func _focus_in(root: Node) -> bool:
+	var owner := root.get_viewport().gui_get_focus_owner()
+	return owner != null and root.is_ancestor_of(owner)
+
+
+## Whether the d-pad can get from the focused control to every control under `root` that takes focus.
+func _all_reachable(root: Node) -> bool:
+	var wanted: Array[Control] = []
+	_collect_focusable(root, wanted)
+	var start := root.get_viewport().gui_get_focus_owner()
+	if start == null or wanted.is_empty():
+		return false
+	var seen := {start: true}
+	var queue: Array[Control] = [start]
+	while not queue.is_empty():
+		var current: Control = queue.pop_back()
+		for side: Side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+			var next := current.find_valid_focus_neighbor(side)
+			if next != null and not seen.has(next):
+				seen[next] = true
+				queue.append(next)
+	for control in wanted:
+		if not seen.has(control):
+			print("not reachable by focus: ", control.get_path(), " ", control)
+			return false
+	return true
+
+
+func _collect_focusable(node: Node, found: Array[Control]) -> void:
+	for child in node.get_children():
+		var control := child as Control
+		if control != null and control.focus_mode == Control.FOCUS_ALL and control.is_visible_in_tree() and not (control is BaseButton and control.disabled):
+			found.append(control)
+		_collect_focusable(child, found)
 
 
 func _talk(ui: DialogueUI, npc_id: String, player: Player, answers: Array) -> void:

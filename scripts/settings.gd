@@ -5,9 +5,9 @@ extends RefCounted
 const DEFAULT_PATH := "user://settings.json"
 const LANGUAGES: Array[String] = ["", "en", "de"]
 const GRAPHICS_LEVELS: Dictionary = {
-	"low": { "name": "UI_GRAPHICS_LOW", "render_scale": 0.7, "shadows": false, "ambient_occlusion": false },
-	"medium": { "name": "UI_GRAPHICS_MEDIUM", "render_scale": 0.85, "shadows": true, "shadow_splits": DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS, "ambient_occlusion": false },
-	"high": { "name": "UI_GRAPHICS_HIGH", "render_scale": 1.0, "shadows": true, "shadow_splits": DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS, "ambient_occlusion": true },
+	"low": { "name": "UI_GRAPHICS_LOW", "render_scale": 0.7, "shadows": false, "water_ripples": 0, "ambient_occlusion": false },
+	"medium": { "name": "UI_GRAPHICS_MEDIUM", "render_scale": 0.85, "shadows": true, "water_ripples": 4, "shadow_splits": DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS, "ambient_occlusion": false },
+	"high": { "name": "UI_GRAPHICS_HIGH", "render_scale": 1.0, "shadows": true, "water_ripples": 8, "shadow_splits": DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS, "ambient_occlusion": true },
 }
 const MIN_LOOK_SPEED := 0.25
 const MAX_LOOK_SPEED := 2.5
@@ -54,6 +54,11 @@ static func render_scale() -> float:
 
 static func grass_draw_scale() -> float:
 	return FeatureFlags.value("grass_draw_scale_" + graphics, 1.0)
+
+
+## How many people wading in the river stir the water on screen. 0 skips the ripple work.
+static func water_ripples() -> int:
+	return GRAPHICS_LEVELS[graphics]["water_ripples"]
 
 
 static func shadows() -> bool:

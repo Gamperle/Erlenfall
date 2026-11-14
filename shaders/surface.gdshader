@@ -22,6 +22,9 @@ uniform float area_frequency = 0.037;
 uniform float photo_strength = 1.0;
 uniform vec3 base_color : source_color;
 uniform int pattern = 0;
+// Turns the first photo a quarter turn. The wood photos run in different directions (the first
+// has horizontal boards, the second vertical ones), and upright logs need both to run up and down.
+uniform bool turn_first_photo = false;
 // How much the relief's occlusion also darkens sunlight, not only the light from the sky.
 uniform float relief_light_affect = 0.6;
 // How strongly the relief bends the light, where 1 is as the maps were made.
@@ -55,8 +58,15 @@ void vertex() {
 // walls and roads from repeating.
 void sample_photos(vec2 uv, vec2 dx, vec2 dy, out vec3 photo, out vec4 relief) {
 	float fine = textureGrad(detail_noise, uv * 0.61, dx * 0.61, dy * 0.61).r;
-	photo = photo_detail(surface_texture, uv / tile_metres, dx / tile_metres, dy / tile_metres);
-	relief = textureGrad(surface_relief, uv / tile_metres, dx / tile_metres, dy / tile_metres);
+	if (turn_first_photo) {
+		photo = photo_detail(surface_texture, uv.yx / tile_metres, dx.yx / tile_metres, dy.yx / tile_metres);
+		relief = textureGrad(surface_relief, uv.yx / tile_metres, dx.yx / tile_metres, dy.yx / tile_metres);
+		// The relief's bend turns with the photo: its x and y swap, and both change sign.
+		relief.rg = vec2(1.0 - relief.g, 1.0 - relief.r);
+	} else {
+		photo = photo_detail(surface_texture, uv / tile_metres, dx / tile_metres, dy / tile_metres);
+		relief = textureGrad(surface_relief, uv / tile_metres, dx / tile_metres, dy / tile_metres);
+	}
 	float area = textureGrad(detail_noise, uv * area_frequency, dx * area_frequency, dy * area_frequency).r + (fine - 0.5) * 0.15;
 	float other = smoothstep(0.5 - area_softness, 0.5 + area_softness, area);
 	if (other > 0.0) {

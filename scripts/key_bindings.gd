@@ -214,6 +214,62 @@ static func controls_hint() -> String:
 	return "   ".join(entries)
 
 
+## Like label_for, as segments for a PromptLine: glyph specs for the inputs and " / " between them.
+static func segments_for(action: String) -> Array:
+	var segments: Array = []
+	for kind in InputDevice.shown_kinds():
+		var event := event_for(action, kind)
+		if event != null:
+			if not segments.is_empty():
+				segments.append(" / ")
+			segments.append(InputGlyph.spec_for(event))
+	return segments if not segments.is_empty() else ["-"]
+
+
+## Like controls_hint, as segments for a PromptLine. Its plain text is the same as controls_hint.
+static func controls_segments() -> Array:
+	var segments: Array = []
+	for i in HINTS.size():
+		if i > 0:
+			segments.append("   ")
+		segments.append_array(_hint_segments(HINTS[i][0]))
+		segments.append(": %s" % TranslationServer.translate(HINTS[i][1]))
+	return segments
+
+
+static func _hint_segments(action: String) -> Array:
+	if action != "move_forward" and action != "look_left":
+		return segments_for(action)
+	var segments: Array = []
+	var pad_action := "move_left" if action == "move_forward" else "look_left"
+	for kind in InputDevice.shown_kinds():
+		if kind == KEYBOARD:
+			if not segments.is_empty():
+				segments.append(" / ")
+			if action == "move_forward":
+				segments.append_array(_walk_segments())
+			else:
+				segments.append({ "shape": "key", "text": TranslationServer.translate("UI_MOUSE") })
+		elif event_for(pad_action, GAMEPAD) != null:
+			if not segments.is_empty():
+				segments.append(" / ")
+			segments.append(InputGlyph.stick_spec(event_for(pad_action, GAMEPAD)))
+	return segments if not segments.is_empty() else ["-"]
+
+
+static func _walk_segments() -> Array:
+	var segments: Array = []
+	var keys := PackedStringArray()
+	for part in ["move_forward", "move_left", "move_back", "move_right"]:
+		keys.append(event_text(event_for(part, KEYBOARD)))
+	var joined := _all_single_characters(keys)
+	for part in ["move_forward", "move_left", "move_back", "move_right"]:
+		if not segments.is_empty() and not joined:
+			segments.append("/")
+		segments.append(InputGlyph.spec_for(event_for(part, KEYBOARD)))
+	return segments
+
+
 static func _hint_inputs(action: String) -> String:
 	if action == "move_forward" or action == "look_left":
 		var parts := PackedStringArray()

@@ -9,6 +9,7 @@
 		"compass_objectives": true,
 		"compass_landmarks": true,
 		"device_prompts": true,
+		"input_glyphs": true,
 		"realistic_villagers": true,
 		"realistic_enemies": true,
 		"realistic_player": true,

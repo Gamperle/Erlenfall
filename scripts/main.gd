@@ -40,8 +40,8 @@ var _hurt_tween: Tween
 @onready var _menu: GameMenu = $GameMenu
 @onready var _ui: HudLayout = $UI
 @onready var _welcome_label: Label = $UI/WelcomeLabel
-@onready var _controls_label: Label = $UI/ControlsLabel
-@onready var _prompt_label: Label = $UI/PromptLabel
+@onready var _controls_label: PromptLine = $UI/ControlsLabel
+@onready var _prompt_label: PromptLine = $UI/PromptLabel
 @onready var _quest_label: Label = $UI/QuestLabel
 @onready var _health_bar: ProgressBar = $UI/HealthBar
 @onready var _stamina_bar: ProgressBar = $UI/StaminaBar
@@ -142,7 +142,7 @@ func _update_prompt() -> void:
 	var target := _player.interact_target
 	_prompt_label.visible = target != null and not _player.is_busy()
 	if _prompt_label.visible:
-		_prompt_label.text = tr("UI_INTERACT_PROMPT") % [KeyBindings.label_for("interact"), target.prompt()]
+		_prompt_label.set_template(tr("UI_INTERACT_PROMPT"), [KeyBindings.segments_for("interact"), target.prompt()])
 
 
 func _notification(what: int) -> void:
@@ -160,7 +160,7 @@ func _on_input_device_changed(_kind: String) -> void:
 
 func _set_translated_text() -> void:
 	_welcome_label.text = tr("UI_WELCOME")
-	_controls_label.text = KeyBindings.controls_hint()
+	_controls_label.set_segments(KeyBindings.controls_segments())
 
 
 func _fit_interface() -> void:
@@ -173,6 +173,8 @@ func _fit_interface() -> void:
 ## The HUD's text follows the text size setting. Menus and dialogue follow the theme.
 func _apply_text_size() -> void:
 	_quest_label.label_settings.font_size = Settings.scaled_font_size(HUD_FONT_SIZE)
+	_controls_label.rebuild()
+	_prompt_label.rebuild()
 	_ui.arrange()
 
 

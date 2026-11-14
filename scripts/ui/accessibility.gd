@@ -33,6 +33,13 @@ const HC_TEXT_COLOR := Color(1.0, 1.0, 1.0)
 const HC_TITLE_COLOR := Color(1.0, 0.95, 0.55)
 const HC_INK_COLOR := Color(0.0, 0.0, 0.0)
 const HC_PLATE_COLOR := Color(0.05, 0.05, 0.08)
+## Input glyph colors, and the tints of the gamepad face buttons (used only with the normal look).
+const GLYPH_FILL := Color(0.1, 0.1, 0.12, 0.88)
+const GLYPH_BORDER := Color(0.96, 0.91, 0.8, 1.0)
+const GLYPH_FACE_TINTS: Dictionary = {
+	"A": Color(0.2, 0.5, 0.25, 0.95), "B": Color(0.62, 0.17, 0.17, 0.95),
+	"X": Color(0.18, 0.34, 0.65, 0.95), "Y": Color(0.62, 0.5, 0.1, 0.95),
+}
 const HC_OUTLINE_SIZE := 6
 const HC_OUTLINE_COLOR := Color(0.0, 0.0, 0.0, 1.0)
 ## Theme text colors made plain white in high contrast: [type, name].
@@ -55,6 +62,18 @@ static var _original_modulates: Dictionary = {}
 
 static func color(key: String) -> Color:
 	return PALETTES[Settings.colour_vision][key]
+
+
+## How an input glyph is drawn: { fill, border, border_width, text }. High contrast is plain black
+## and white. The face button tint (by letter, "" for none) only shows with the normal colour vision
+## mode, since the letter carries the meaning and the colours only help.
+static func glyph_look(face: String = "") -> Dictionary:
+	if Settings.high_contrast:
+		return { "fill": HC_INK_COLOR, "border": HC_TEXT_COLOR, "border_width": 2, "text": HC_TEXT_COLOR }
+	var fill := GLYPH_FILL
+	if Settings.colour_vision == "off" and GLYPH_FACE_TINTS.has(face):
+		fill = GLYPH_FACE_TINTS[face]
+	return { "fill": fill, "border": GLYPH_BORDER, "border_width": 1, "text": GLYPH_BORDER }
 
 
 ## Changes the theme's colors for the colour vision mode and high contrast, and puts them back when off.

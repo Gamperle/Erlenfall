@@ -808,6 +808,7 @@ func _test_hud(scene: Node, player: Player) -> void:
 	await _test_interface_fit(scene)
 	await _test_controls_hint(scene)
 	_test_input_device_prompts(scene)
+	_test_input_glyphs(scene)
 	await _test_ground_dryness()
 
 	overlay.refresh()
@@ -2980,7 +2981,7 @@ func _test_input_device_prompts(scene: Node) -> void:
 		if child is InputDevice:
 			device = child
 	_check(device != null, "the game listens for the input device")
-	var controls: Label = scene.get_node("UI/ControlsLabel")
+	var controls: PromptLine = scene.get_node("UI/ControlsLabel")
 	device.use(KeyBindings.KEYBOARD)
 	_check(KeyBindings.label_for("interact") == "E" and controls.text.contains("E: use"), "the keyboard shows key prompts")
 	device.use(KeyBindings.GAMEPAD)
@@ -3001,6 +3002,84 @@ func _test_input_device_prompts(scene: Node) -> void:
 	_check(tr("UI_DIALOGUE_HINT") != "UI_DIALOGUE_HINT" and tr("UI_DIALOGUE_HINT") != "%s: choose", "the dialogue hint is translated")
 	TranslationServer.set_locale("en")
 	device.use(KeyBindings.KEYBOARD)
+
+
+## Prompts draw code-made glyphs for the active device, follow the settings, and fall back to plain text.
+func _test_input_glyphs(scene: Node) -> void:
+	TranslationServer.set_locale("en")
+	KeyBindings.reset()
+	var saved_size := Settings.text_size
+	_check(FeatureFlags.enabled("input_glyphs"), "the input_glyphs flag is on by default")
+	for kind in KeyBindings.KINDS:
+		InputDevice.active = kind
+		_check(PromptLine.plain_text(KeyBindings.controls_segments()) == KeyBindings.controls_hint(), "the glyph segments read as the plain controls line for %s" % kind)
+		_check(PromptLine.plain_text(KeyBindings.segments_for("interact")) == KeyBindings.label_for("interact"), "the interact glyph reads as its plain text for %s" % kind)
+	InputDevice.active = KeyBindings.KEYBOARD
+	_check(InputGlyph.spec_for(KeyBindings.event_for("interact", KeyBindings.KEYBOARD))["shape"] == "key", "keys are drawn as rounded rectangles")
+	_check(InputGlyph.spec_for(KeyBindings.event_for("interact", KeyBindings.GAMEPAD))["shape"] == "round", "face buttons are drawn as circles")
+	var shapes := {}
+	for index in [JOY_BUTTON_A, JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_START, JOY_BUTTON_DPAD_RIGHT, JOY_BUTTON_LEFT_STICK, 40]:
+		var pad_button := InputEventJoypadButton.new()
+		pad_button.button_index = index
+		var spec := InputGlyph.spec_for(pad_button)
+		shapes[spec["shape"]] = true
+		_check(InputGlyph.can_draw(spec), "pad button %d has a drawable glyph" % index)
+	_check(shapes.has("round") and shapes.has("bumper") and shapes.has("pill") and shapes.has("dpad"), "buttons, bumpers, the d-pad and other buttons use their own shapes")
+	var trigger := InputEventJoypadMotion.new()
+	trigger.axis = JOY_AXIS_TRIGGER_RIGHT
+	trigger.axis_value = 1.0
+	var left_up := InputEventJoypadMotion.new()
+	left_up.axis = JOY_AXIS_LEFT_Y
+	left_up.axis_value = -1.0
+	_check(InputGlyph.spec_for(trigger)["shape"] == "trigger" and InputGlyph.spec_for(left_up)["shape"] == "stick" and InputGlyph.spec_for(left_up)["dir"] == Vector2i.UP, "triggers and sticks have shapes, and a stick shows its direction")
+	_check(not InputGlyph.can_draw({}) and not InputGlyph.can_draw({ "shape": "star", "text": "x" }) and not InputGlyph.can_draw({ "shape": "key", "text": "" }), "a spec that can't be drawn is refused")
+
+	var line := PromptLine.new()
+	scene.add_child(line)
+	line.set_template("%s: %s", [KeyBindings.segments_for("interact"), "Open"])
+	var glyph_count := 0
+	for child in line.find_children("*", "InputGlyph", true, false):
+		glyph_count += 1
+	_check(glyph_count == 1 and line.text == "E: Open", "a prompt line draws a glyph for the key and keeps the plain text (%s)" % line.text)
+	var glyph: InputGlyph = line.find_children("*", "InputGlyph", true, false)[0]
+	var small := glyph.get_combined_minimum_size()
+	Settings.text_size = 1.5
+	line.label_settings = LabelSettings.new()
+	line.label_settings.font_size = Settings.scaled_font_size(16)
+	line.rebuild()
+	glyph = line.find_children("*", "InputGlyph", true, false)[0]
+	_check(glyph.get_combined_minimum_size().y > small.y, "glyphs grow with the text size")
+	Settings.text_size = saved_size
+	var wasd := InputGlyph.new({ "shape": "key", "text": "Space" }, 16)
+	var short := InputGlyph.new({ "shape": "key", "text": "E" }, 16)
+	_check(wasd.get_combined_minimum_size().x > short.get_combined_minimum_size().x and short.get_combined_minimum_size().x >= short.get_combined_minimum_size().y, "a long key name makes a wider key")
+
+	var normal_a := Accessibility.glyph_look("A")
+	var high_before := Settings.high_contrast
+	var vision_before := Settings.colour_vision
+	Settings.colour_vision = "deuteranopia"
+	var vision_a := Accessibility.glyph_look("A")
+	Settings.colour_vision = "off"
+	Settings.high_contrast = true
+	var high_a := Accessibility.glyph_look("A")
+	Settings.high_contrast = high_before
+	Settings.colour_vision = vision_before
+	_check(normal_a["fill"] != vision_a["fill"] and vision_a["fill"] == Accessibility.glyph_look("")["fill"], "colour vision modes drop the face button colours")
+	_check(high_a["fill"] == Accessibility.HC_INK_COLOR and high_a["border"] == Accessibility.HC_TEXT_COLOR and high_a["border_width"] > normal_a["border_width"], "high contrast draws black and white glyphs with a thicker border")
+
+	var hud_line: PromptLine = scene.get_node("UI/ControlsLabel")
+	hud_line.rebuild()
+	var hud_glyphs := hud_line.find_children("*", "InputGlyph", true, false).size()
+	_check(hud_glyphs > 5, "the controls line draws glyphs (%d)" % hud_glyphs)
+	_write_flags(TEST_FLAGS_A, { "flags": { "input_glyphs": false } })
+	FeatureFlags.load_layers([TEST_FLAGS_A])
+	hud_line.rebuild()
+	hud_glyphs = hud_line.find_children("*", "InputGlyph", true, false).size()
+	_check(hud_glyphs == 0 and hud_line.text == KeyBindings.controls_hint(), "with input_glyphs off the line is plain text")
+	FeatureFlags.load_layers()
+	hud_line.rebuild()
+	line.queue_free()
+	InputDevice.active = KeyBindings.KEYBOARD
 
 
 ## Remapped controls take effect, ask before taking an input that is in use, are saved, and fall back when damaged.

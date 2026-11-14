@@ -33,6 +33,7 @@ var _close_button: Button
 var _known_label: Label
 var _known_page: PanelContainer
 var _message: Label
+var _forge_line: PromptLine
 var _bar: Control
 var _target: Panel
 var _marker: ColorRect
@@ -87,15 +88,15 @@ func choose_part(slot: String, option_id: String) -> void:
 ## Eats or drinks one of the item to regain health. Public so the buttons and tests share one path.
 func use_item(item_id: String) -> void:
 	if _player.health.current >= _player.health.maximum:
-		_message.text = tr("UI_HEALTH_FULL")
+		_say(tr("UI_HEALTH_FULL"))
 	elif Healing.use_item(_player, item_id):
-		_message.text = tr("UI_USED_ITEM") % CraftingData.item_name(item_id)
+		_say(tr("UI_USED_ITEM") % CraftingData.item_name(item_id))
 	_refresh()
 
 
 func clear_selection() -> void:
 	_selected.clear()
-	_message.text = ""
+	_say("")
 	_refresh()
 
 
@@ -103,7 +104,7 @@ func clear_selection() -> void:
 func craft() -> void:
 	var recipe := CraftingData.find_recipe(_station, _selected)
 	if recipe.is_empty():
-		_message.text = tr("UI_NO_RESULT")
+		_say(tr("UI_NO_RESULT"))
 		return
 	for item_id: String in recipe["inputs"]:
 		_player.inventory.remove(item_id, int(recipe["inputs"][item_id]))
@@ -120,7 +121,7 @@ func craft() -> void:
 func strike() -> void:
 	_showing_forge_hint = false
 	var accuracy := _game.strike()
-	_message.text = tr(_strike_key(accuracy))
+	_say(tr(_strike_key(accuracy)))
 	if _game.is_finished():
 		var quality := CraftingData.quality_for_score(_game.score())
 		_game = null
@@ -138,7 +139,7 @@ func abandon_forging() -> void:
 			_player.inventory.add(item_id, saved)
 	_game = null
 	_bar.visible = false
-	_message.text = tr("UI_FORGE_ABANDONED")
+	_say(tr("UI_FORGE_ABANDONED"))
 	_title.text = tr("UI_" + _station.to_upper())
 	_refresh()
 
@@ -179,7 +180,7 @@ func _open(player: Player, station_id: String, title: String) -> void:
 	_selected.clear()
 	_choices.clear()
 	_title.text = title
-	_message.text = ""
+	_say("")
 	_panel.visible = true
 	_player.set_busy(true)
 	_refresh()
@@ -388,13 +389,23 @@ func _show_forge_hint() -> void:
 	var stop := PackedStringArray()
 	for kind in InputDevice.shown_kinds():
 		stop.append(tr("UI_FORGE_STOP_" + kind.to_upper()))
-	_message.text = tr("UI_FORGE_HINT") % [KeyBindings.label_for("interact"), " / ".join(stop)]
+	_forge_line.set_template(tr("UI_FORGE_HINT"), [KeyBindings.segments_for("interact"), " / ".join(stop)])
+	_message.text = _forge_line.text
+	_message.visible = false
+	_forge_line.visible = true
 
 
 ## Shows the forge hint again with the inputs of the device in use.
 func refresh_prompts() -> void:
 	if _showing_forge_hint and is_forging():
 		_show_forge_hint()
+
+
+## Shows a plain message in place of the forge hint.
+func _say(text: String) -> void:
+	_message.text = text
+	_message.visible = true
+	_forge_line.visible = false
 
 
 func _update_strike_text() -> void:
@@ -417,7 +428,7 @@ func _finish_recipe(quality: String) -> void:
 	if not details.is_empty():
 		made = "%s (%s)" % [made, ", ".join(details)]
 	_variant = ""
-	_message.text = tr("UI_MADE_NEW" if is_new else "UI_MADE") % made
+	_say(tr("UI_MADE_NEW" if is_new else "UI_MADE") % made)
 	if FeatureFlags.enabled("crafting_skill") and _recipe.has("skill"):
 		var new_level := _player.practice(_recipe["skill"], int(_recipe.get("xp", 1)))
 		if new_level > 0:
@@ -505,6 +516,9 @@ func _build() -> void:
 	_close_button = _action_button("UI_CLOSE", close)
 
 	_message = _wrapped_label(column)
+	_forge_line = PromptLine.new()
+	_forge_line.visible = false
+	column.add_child(_forge_line)
 	_known_page = PanelContainer.new()
 	_known_page.theme_type_variation = &"ParchmentPanel"
 	column.add_child(_known_page)

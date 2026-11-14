@@ -43,6 +43,10 @@ const BOULDER_LUMPINESS := 0.35
 const PROP_FOLDER := "res://assets/props/"
 ## Smaller props have no collision, so they never block the player.
 const PROP_SOLID_SIZE := 0.6
+## Props that keep the rain off (by the start of their model name), and the share of their height
+## below which a drop can still pass under them.
+const ROOFED_PROPS := ["goblin_tent"]
+const PROP_COVER_START := 0.6
 const PLANT_CHUNK_SIZE := 128.0
 const FOREST_ATTEMPTS_PER_TREE := 12
 const STUMP_HEIGHT := 0.45
@@ -148,6 +152,8 @@ func _ready() -> void:
 	mine.position = _ground_position(mine_data["x"], mine_data["z"])
 	mine.rotation_degrees.y = mine_data["rotation"]
 	add_child(mine)
+	roof_covers.append(mine.roof_cover())
+	roof_version += 1
 
 
 ## Returns what changes during play in the world, in the same order as the layout file.
@@ -534,6 +540,8 @@ func _add_props(props: Array, buildings: Array) -> void:
 		# In the body's space, so the tuned scale and lift count for collision and for props set on top.
 		var bounds: AABB = (body.global_transform.affine_inverse() * mesh.global_transform) * mesh.get_aabb()
 		placed[data["model"]] = { "position": at, "height": bounds.end.y }
+		if not data.has("tilt") and ROOFED_PROPS.any(func(prefix: String) -> bool: return String(data["model"]).begins_with(prefix)):
+			_add_prop_cover(body, bounds)
 		_busy_spots.append(Vector2(at.x, at.z))
 		# Small props are specks from far away, and drawing them and their shadows costs as much as a house.
 		if bounds.get_longest_axis_size() < PROP_SOLID_SIZE:
@@ -545,6 +553,18 @@ func _add_props(props: Array, buildings: Array) -> void:
 			collision.shape = shape
 			collision.position = bounds.get_center()
 			body.add_child(collision)
+
+
+## Notes where a tent or other roofed prop keeps the rain off: its top third, as a ridge along its length.
+func _add_prop_cover(body: Node3D, bounds: AABB) -> void:
+	var middle := body.position + Basis(Vector3.UP, body.rotation.y) * bounds.get_center()
+	var low := bounds.end.y * PROP_COVER_START
+	roof_covers.append({
+		"center": Vector2(middle.x, middle.z), "half": Vector2(bounds.size.x, bounds.size.z) / 2.0,
+		"yaw": body.rotation.y, "base": body.position.y + low, "rise": bounds.end.y - low,
+		"shape": "ridge", "active": true,
+	})
+	roof_version += 1
 
 
 func _building_heading(buildings: Array, id: String) -> float:

@@ -4,6 +4,7 @@ extends CanvasLayer
 
 const PANEL_WIDTH := 760.0
 const BOTTOM_MARGIN := 90.0
+const SPEAKER_FONT_SIZE := 24
 
 var _player: Player
 var _runner: DialogueRunner
@@ -29,9 +30,16 @@ func open_conversation(npc_id: String, speaker: String, player: Player) -> void:
 	_player = player
 	_runner = DialogueRunner.new(npc_id, player)
 	_speaker.text = speaker
+	refresh_style()
 	_panel.visible = true
 	_player.set_busy(true)
 	_show_line()
+
+
+## Applies the text size and panel opacity settings.
+func refresh_style() -> void:
+	_speaker.add_theme_font_size_override("font_size", Settings.scaled_font_size(SPEAKER_FONT_SIZE))
+	_panel.self_modulate.a = Settings.dialogue_opacity
 
 
 ## Answers with the given reply. Public so buttons, keys, and tests share one path.
@@ -89,7 +97,6 @@ func _build() -> void:
 
 	_speaker = Label.new()
 	_speaker.theme_type_variation = &"TitleLabel"
-	_speaker.add_theme_font_size_override("font_size", 24)
 	column.add_child(_speaker)
 
 	var page := PanelContainer.new()

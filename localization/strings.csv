@@ -128,6 +128,8 @@ UI_LANGUAGE,Language,Sprache
 UI_LANGUAGE_SYSTEM,System language,Systemsprache
 UI_LOOK_SPEED,Look speed,Blickgeschwindigkeit
 UI_GRAPHICS,Graphics,Grafik
+UI_TEXT_SIZE,Text size,Textgröße
+UI_DIALOGUE_OPACITY,Dialogue panel opacity,Deckkraft des Dialogfelds
 UI_GRAPHICS_LOW,Low,Niedrig
 UI_GRAPHICS_MEDIUM,Medium,Mittel
 UI_GRAPHICS_HIGH,High,Hoch

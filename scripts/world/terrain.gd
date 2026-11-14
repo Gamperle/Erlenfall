@@ -50,7 +50,7 @@ const ROAD_BLEND := 11.0
 ## How many meters of valley side the river gets per meter the land lies above its banks, so the
 ## sides stay below the player's 45 degree floor limit, and the most they spread.
 const VALLEY_RUN_PER_DROP := 3.4
-const MAX_VALLEY_WIDTH := 160.0
+const MAX_VALLEY_WIDTH := 240.0
 const ROAD_SMOOTH_SAMPLES := 14
 const ROAD_SMOOTH_PASSES := 3
 const RIVER_SPACING := 8.0

@@ -292,6 +292,7 @@ UI_CONTROLS_KEYBOARD,Keyboard and mouse,Tastatur und Maus
 UI_CONTROLS_GAMEPAD,Gamepad,Gamepad
 UI_CONTROLS_PRESS,Press an input...,Eingabe drücken ...
 UI_CONTROLS_LISTENING,"Press the new input for ""%s"". Esc cancels.",Drücke die neue Eingabe für „%s“. Esc bricht ab.
+UI_CONTROLS_LISTENING_PAD,"Press the new input for ""%s"". Waiting stops after %d seconds, or press Esc.","Drücke die neue Eingabe für „%s“. Das Warten endet nach %d Sekunden, oder drücke Esc."
 UI_CONTROLS_CONFLICT,"%s is already used for ""%s"". Swap it with ""%s""?",%s wird schon für „%s“ verwendet. Mit „%s“ tauschen?
 UI_CONTROLS_SWAP,Swap,Tauschen
 UI_CONTROLS_CANCEL,Cancel,Abbrechen

@@ -2650,6 +2650,12 @@ func _test_controller_navigation(scene: Node, player: Player) -> void:
 	dialogue.open_conversation("bertram", "bertram", player)
 	await _physics_frames(3)
 	_check(_focus_in(dialogue._panel) and _all_reachable(dialogue._choices), "a conversation takes the focus and the d-pad reaches every reply")
+	dialogue._input(back)
+	_check(not dialogue.is_open() and not player.is_busy(), "back leaves a conversation")
+	dialogue.open_conversation("bertram", "bertram", player)
+	dialogue._runner._node["must_answer"] = true
+	dialogue._input(back)
+	_check(dialogue.is_open() and player.is_busy(), "back does not leave a line that needs an answer")
 	while dialogue.is_open():
 		dialogue.choose(0)
 
@@ -2989,6 +2995,23 @@ func _test_key_bindings(scene: Node) -> void:
 	page.listen("block", KeyBindings.KEYBOARD)
 	page.offer(escape)
 	_check(not page.is_listening(), "Esc stops listening")
+
+	# A gamepad wait ends by itself, and back cancels the question about a used input.
+	page.listen("attack", KeyBindings.GAMEPAD)
+	page.wait(ControlsMenu.GAMEPAD_WAIT_SECONDS - 1.0)
+	_check(page.is_listening(), "a gamepad wait goes on for a while")
+	page.wait(1.0)
+	_check(not page.is_listening(), "a gamepad wait ends by itself")
+	page.listen("block", KeyBindings.KEYBOARD)
+	page.wait(ControlsMenu.GAMEPAD_WAIT_SECONDS * 2.0)
+	_check(page.is_listening(), "a keyboard wait does not time out")
+	page.offer(escape)
+	page.listen("jump", KeyBindings.GAMEPAD)
+	page.offer(pad_button)
+	var back := InputEventAction.new()
+	back.action = "ui_cancel"
+	back.pressed = true
+	_check(page.is_asking() and page.offer(back) and not page.is_asking() and not page.is_listening(), "back on a gamepad cancels the question about a used input")
 
 	# Saved, loaded, and reset.
 	Settings.save()

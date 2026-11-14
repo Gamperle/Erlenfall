@@ -42,6 +42,11 @@ func choice_keys() -> PackedStringArray:
 	return keys
 
 
+## Whether the player may walk away now. A node can ask for an answer with "must_answer": true.
+func can_leave() -> bool:
+	return not _node.get("must_answer", false)
+
+
 ## Moves on from the current line, using the given choice if it offers any.
 func advance(choice_index: int = 0) -> void:
 	var choices := _choices()

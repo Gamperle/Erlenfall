@@ -1185,8 +1185,11 @@ func _test_crafting_parts(scene: Node, player: Player) -> void:
 	ui.add_material("iron_ingot")
 	ui.add_material("iron_ingot")
 	ui.add_material("wood")
-	_check(ui._parts.visible and ui._parts.get_child_count() == 4, "the crafting screen offers a choice per part")
+	_check(ui._parts_row.visible and ui._parts.get_child_count() == 4, "the crafting screen offers a choice per part")
+	_check(ui._preview_box.visible and ui._preview_model != null, "the crafting screen previews the item")
+	var preview_width: float = ui._preview_model.get_child(2).mesh.size.x
 	ui.choose_part("blade", "broad")
+	_check(ui._preview_model.get_child(2).mesh.size.x > preview_width, "the preview follows the chosen parts")
 	ui.choose_part("grip", "bogus")
 	ui.craft()
 	while ui.is_forging():
@@ -1202,7 +1205,8 @@ func _test_crafting_parts(scene: Node, player: Player) -> void:
 	ui.abandon_forging()
 	ui.add_material("iron_ingot")
 	ui.add_material("wood")
-	_check(ui._parts.visible and ui._choices.is_empty(), "choices start from the defaults again")
+	_check(ui._parts_row.visible and ui._choices.is_empty(), "choices start from the defaults again")
+	_check(ui._preview_model != null and ui._preview_box.visible, "the preview follows the new item")
 	ui.close()
 	player.inventory.load_data({})
 	player.inventory.add("iron_sword", 1, "common", "blade=broad")

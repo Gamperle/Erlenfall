@@ -76,6 +76,7 @@ func _collect_ids() -> void:
 		_markers[_dict(npc).get("id")] = true
 	for building: Variant in _array(layout.get("buildings")):
 		_markers[_dict(building).get("id")] = true
+	_markers[_dict(layout.get("mine")).get("id")] = true
 	for station: Variant in _array(layout.get("stations")):
 		_stations[_dict(station).get("id")] = true
 		_markers[_dict(station).get("id")] = true
@@ -159,9 +160,11 @@ func _check_crafting(data: Dictionary) -> void:
 	var skills := _dict(data.get("skills"))
 	for id: String in _items:
 		var path := "items[%s]" % id
-		if not _fields(file, path, _items[id], { "name": ["text", true], "material": ["bool", false], "damage": ["number", false], "model": ["array", false], "parts": ["object", false] }):
+		if not _fields(file, path, _items[id], { "name": ["text", true], "material": ["bool", false], "damage": ["number", false], "model": ["array", false], "parts": ["object", false], "use": ["object", false] }):
 			continue
 		var item: Dictionary = _items[id]
+		if item.has("use") and _fields(file, path + ".use", item["use"], { "heal": ["number", true] }) and item["use"]["heal"] <= 0:
+			_add(file, path + ".use.heal", "must be more than 0")
 		var model_slots := []
 		for i in _array(item.get("model")).size():
 			var part: Variant = item["model"][i]
@@ -354,7 +357,7 @@ func _check_enemies(data: Dictionary) -> void:
 	for id: String in data:
 		var path := "[%s]" % id
 		_fields(file, path, data[id], {
-			"name": ["text", true], "model": ["string", false], "model_height": ["number", false], "color": ["color", true], "skin": ["color", false],
+			"name": ["text", true], "model": ["string", false], "model_height": ["number", false], "shape": ["string", false], "color": ["color", true], "skin": ["color", false],
 			"height": ["number", true], "radius": ["number", true], "health": ["number", true], "damage": ["number", true], "speed": ["number", true],
 			"aggro_range": ["number", true], "leash_range": ["number", true], "attack_range": ["number", true], "windup_seconds": ["number", true],
 			"recover_seconds": ["number", true], "respawn_seconds": ["number", true], "drops": ["array", false],
@@ -412,9 +415,13 @@ func _check_villager_routines(data: Dictionary) -> void:
 		var previous := -1.0
 		for i in data[id].size():
 			var spath := "%s[%d]" % [path, i]
-			if not _fields(file, spath, data[id][i], { "from": ["number", true], "x": ["number", false], "z": ["number", false], "facing": ["number", false] }):
+			if not _fields(file, spath, data[id][i], { "from": ["number", true], "x": ["number", false], "z": ["number", false], "facing": ["number", false], "via": ["array", false] }):
 				continue
 			var stop: Dictionary = data[id][i]
+			var via: Array = stop.get("via", []) if stop.get("via") is Array else []
+			for j in via.size():
+				if not (via[j] is Array and via[j].size() == 2 and _is_type(via[j][0], "number") and _is_type(via[j][1], "number")):
+					_add(file, "%s.via[%d]" % [spath, j], "must be an [x, z] pair of numbers")
 			if stop.has("x") != stop.has("z"):
 				_add(file, spath, "a stop needs both x and z, or neither")
 			if stop.get("from") is float:
@@ -461,6 +468,7 @@ func _check_village_layout(data: Dictionary) -> void:
 				if entry.get(key) is String and entry[key].begins_with("res://") and not ResourceLoader.exists(entry[key]):
 					_add(file, "%s.%s" % [path, key], "file not found: %s" % entry[key])
 			_check_layout_references(file, path, list, entry)
+	_fields(file, "mine", data.get("mine"), { "id": ["string", true], "x": ["number", true], "z": ["number", true], "rotation": ["number", true], "width": ["number", true], "height": ["number", true], "opening_width": ["number", true], "opening_height": ["number", true], "seed": ["int", true], "plaza_radius": ["number", true], "plaza_blend": ["number", true], "compass": ["bool", false] })
 	for i in _array(data.get("roads")).size():
 		var road: Variant = data["roads"][i]
 		if _fields(file, "roads[%d]" % i, road, { "width": ["number", true], "points": ["array", true] }) and road.has("points") and road["points"].size() < 2:

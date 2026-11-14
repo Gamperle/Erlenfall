@@ -1,6 +1,8 @@
 {
 	"items": {
 		"iron_scrap": { "name": "ITEM_IRON_SCRAP", "material": true },
+		"hide": { "name": "ITEM_HIDE", "material": true },
+		"meat": { "name": "ITEM_MEAT", "material": true },
 		"iron_ore": { "name": "ITEM_IRON_ORE", "material": true },
 		"coal": { "name": "ITEM_COAL", "material": true },
 		"wood": { "name": "ITEM_WOOD", "material": true },
@@ -12,6 +14,9 @@
 			{ "size": [0.012, 0.012, 0.09], "at": [0.0, 0.006, 0.02], "color": "#8a8d92" },
 			{ "size": [0.012, 0.012, 0.09], "at": [0.03, 0.006, -0.01], "color": "#8a8d92" }
 		] },
+		"healing_herb": { "name": "ITEM_HEALING_HERB", "material": true },
+		"berries": { "name": "ITEM_BERRIES", "use": { "heal": 15 } },
+		"healing_potion": { "name": "ITEM_HEALING_POTION", "use": { "heal": 50 } },
 		"torch": { "name": "ITEM_TORCH" },
 		"short_bow": { "name": "ITEM_SHORT_BOW", "model": [{ "size": [0.03, 0.7, 0.03], "at": [0, 0.35, 0], "color": "#6b4a2b" }] },
 		"arrow": { "name": "ITEM_ARROW", "material": true },
@@ -64,6 +69,7 @@
 			"xp": 1
 		},
 		{ "id": "make_torch", "station": "furnace", "requires_flag": "torch_recipe", "inputs": { "wood": 1, "coal": 1 }, "result": "torch", "count": 1, "skill": "smithing", "xp": 1 },
+		{ "id": "brew_healing_potion", "station": "furnace", "requires_flag": "healing_items", "inputs": { "healing_herb": 2 }, "result": "healing_potion", "count": 1 },
 		{ "id": "forge_nails", "station": "anvil", "inputs": { "iron_ingot": 1 }, "result": "iron_nails", "count": 4, "strikes": 3, "speed": 0.8, "skill": "smithing", "xp": 3 },
 		{ "id": "forge_dagger", "station": "anvil", "inputs": { "iron_ingot": 1, "wood": 1 }, "result": "iron_dagger", "count": 1, "strikes": 4, "speed": 1.0, "skill": "smithing", "xp": 4 },
 		{ "id": "forge_axe", "station": "anvil", "inputs": { "iron_ingot": 2, "wood": 2 }, "result": "iron_axe", "count": 1, "strikes": 5, "speed": 1.15, "skill": "smithing", "xp": 5 },

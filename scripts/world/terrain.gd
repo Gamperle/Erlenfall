@@ -116,6 +116,7 @@ func _init() -> void:
 	_rounded_hills = layout["hills"]
 	_add_flat_areas(layout)
 	_add_roads(layout["roads"])
+	_add_mine_plaza(layout["mine"])
 	_add_river(layout["river"])
 
 
@@ -267,6 +268,20 @@ func _smoothed_road_heights(positions: PackedVector2Array) -> PackedFloat32Array
 			evened.append(total / (ROAD_SMOOTH_SAMPLES * 2 + 1))
 		heights = evened
 	return heights
+
+
+## Levels the ground in front of the mine to where its trail ends, so that the trail runs onto it
+## without a step, however the hill lies.
+func _add_mine_plaza(mine: Dictionary) -> void:
+	var plaza := Mine.plaza_of(mine)
+	var trail_height := _flattened_height(plaza["x"], plaza["z"])
+	var nearest := INF
+	for road in roads:
+		var found := road.nearest(plaza["x"], plaza["z"])
+		if found.x < nearest:
+			nearest = found.x
+			trail_height = found.y
+	_add_flat_area(plaza["x"], plaza["z"], plaza["radius"], plaza["blend"], trail_height - _flattened_height(plaza["x"], plaza["z"]))
 
 
 func _add_river(data: Dictionary) -> void:

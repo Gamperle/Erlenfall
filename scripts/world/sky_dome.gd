@@ -2,12 +2,14 @@ class_name SkyDome
 extends MeshInstance3D
 ## Stars, a moon disc, and drifting clouds on a big dome that follows the camera, drawn over the sky gradient.
 
+const GROUP := "sky_dome"
 const RADIUS := 2500.0
 ## Which way the clouds drift, as a flat direction, and how fast in cloud-space units per second.
 const WIND := Vector2(0.6, 0.25)
 const WIND_SPEED := 0.004
 ## The stars turn around the pole that sits north, a little above the horizon.
 const POLE := Vector3(0.0, 0.6, -0.8)
+const CLEAR_COVERAGE := 0.5
 const CLOUD_OCTAVES := { "low": 2, "medium": 3, "high": 4 }
 
 const CLOUD_DAY := Color(1.0, 1.0, 1.0)
@@ -19,6 +21,11 @@ const CLOUD_NIGHT_SHADE := Color(0.05, 0.07, 0.14)
 
 var _material := ShaderMaterial.new()
 var _wind_time := 0.0
+var _wind := 0.2
+
+
+func _enter_tree() -> void:
+	add_to_group(GROUP)
 
 
 func _init() -> void:
@@ -36,7 +43,7 @@ func _init() -> void:
 
 
 func _process(delta: float) -> void:
-	_wind_time += delta
+	_wind_time += delta * (0.5 + _wind * 2.0)
 	_material.set_shader_parameter("cloud_offset", WIND.normalized() * WIND_SPEED * _wind_time)
 	var camera := get_viewport().get_camera_3d()
 	if camera:
@@ -57,3 +64,10 @@ func set_time(hour: float, light: float, dusk: float, moon_direction: Vector3, m
 	_material.set_shader_parameter("moon_visibility", clampf(night * 1.2, 0.0, 1.0) if moon_up else 0.0)
 	_material.set_shader_parameter("cloud_light_color", CLOUD_NIGHT.lerp(CLOUD_DAY, light).lerp(CLOUD_DUSK, dusk))
 	_material.set_shader_parameter("cloud_shade_color", CLOUD_NIGHT_SHADE.lerp(CLOUD_DAY_SHADE, light).lerp(CLOUD_DUSK_SHADE, dusk))
+
+
+## Thickens and darkens the clouds as the sky closes over (0 clear, 1 full cloud), and drifts them faster in wind.
+func set_weather(overcast: float, wind: float) -> void:
+	_wind = wind
+	_material.set_shader_parameter("cloud_coverage", lerpf(CLEAR_COVERAGE, 1.0, overcast))
+	_material.set_shader_parameter("cloud_gloom", overcast)

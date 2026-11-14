@@ -6,6 +6,7 @@ extends Node3D
 ## grass.gdshader), and the ones left use one simple tuft for every species, tinted and sized per
 ## species, so that a far cell is a single draw call instead of one per species.
 
+const GROUP := "grass_field"
 const SHADER := preload("res://shaders/grass.gdshader")
 const CELL_SIZE := 48.0
 const FADE_START := 120.0
@@ -59,6 +60,10 @@ var _batch_results: Array = []
 var _task := -1
 
 
+func _enter_tree() -> void:
+	add_to_group(GROUP)
+
+
 func setup(terrain_node: Terrain, data: Dictionary, fields: Array, road_samples: Array[PackedVector2Array], building_spots: Array[Vector2]) -> void:
 	terrain = terrain_node
 	_data = data
@@ -84,6 +89,11 @@ func setup(terrain_node: Terrain, data: Dictionary, fields: Array, road_samples:
 
 ## Shortens how far grass reaches. The tufts that sink soonest keep their distance, so grass
 ## near the player looks the same at every scale.
+## How hard the wind blows, from 0 to 1. Blades sway in the shader, so this costs nothing per frame.
+func set_wind(strength: float) -> void:
+	_material.set_shader_parameter("wind_strength", strength)
+
+
 func set_draw_scale(draw_scale: float) -> void:
 	_draw_distance = DRAW_DISTANCE * draw_scale
 	_early_fade = minf(EARLY_FADE / draw_scale, 1.0)

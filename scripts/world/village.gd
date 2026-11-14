@@ -52,6 +52,8 @@ const PLANT_DETAIL_DISTANCE := 150.0
 const FAR_FIR_TIERS := 2
 const FAR_FIR_SIDES := 5
 const BUSH_DRAW_DISTANCE := 450.0
+## How far from the mine's plaza and its trail the landslide's loose boulders stay.
+const MINE_BOULDER_MARGIN := 4.0
 const WOOD_PILE_SHAPE := Vector3(1.0, 0.9, 1.5)
 
 @export var terrain: Terrain
@@ -68,6 +70,8 @@ func _ready() -> void:
 	for building: Dictionary in layout["buildings"]:
 		_add_building(building)
 		_building_spots.append(Vector2(building["x"], building["z"]))
+	var mine_data: Dictionary = layout["mine"]
+	_building_spots.append(Vector2(mine_data["x"], mine_data["z"]))
 	for list: String in ["npcs", "enemies", "stations", "beds", "repair_sites", "resources"]:
 		for spot: Dictionary in layout[list]:
 			_busy_spots.append(Vector2(spot["x"], spot["z"]))
@@ -90,7 +94,7 @@ func _ready() -> void:
 		ambient.name = "AmbientLife"
 		ambient.terrain = terrain
 		add_child(ambient)
-	_add_boulders(layout["boulders"])
+	_add_boulders(layout["boulders"], mine_data)
 	var routines := VillagerRoutines.new()
 	routines.name = "VillagerRoutines"
 	add_child(routines)
@@ -98,7 +102,7 @@ func _ready() -> void:
 		var npc := Npc.new()
 		npc.setup(npc_data)
 		npc.position = _ground_position(npc_data["x"], npc_data["z"])
-		npc.ground_height = terrain.height_at
+		npc.ground_height = walking_height
 		add_child(npc)
 		if not npc.arrival_flag.is_empty():
 			_arrivals.append(npc)
@@ -125,6 +129,11 @@ func _ready() -> void:
 		_add_box_interactable(Bed.new(), bed_data)
 	for resource: Dictionary in layout["resources"]:
 		_add_resource(resource)
+	var mine := Mine.new()
+	mine.setup(mine_data)
+	mine.position = _ground_position(mine_data["x"], mine_data["z"])
+	mine.rotation_degrees.y = mine_data["rotation"]
+	add_child(mine)
 
 
 ## Returns what changes during play in the world, in the same order as the layout file.
@@ -155,6 +164,15 @@ func load_data(data: Dictionary) -> void:
 			child.load_data(resources.pop_front())
 	if has_node("Forest"):
 		(get_node("Forest") as Forest).load_data(data.get("forest", {}))
+
+
+## Returns the x and z of each place the compass always points out, such as the buried mine.
+func landmark_positions() -> Array[Vector2]:
+	var places: Array[Vector2] = []
+	for child in get_children():
+		if child is Mine and child.landmark:
+			places.append(Vector2(child.position.x, child.position.z))
+	return places
 
 
 ## Returns the x and z of a quest marker: a villager, station, or repair site by name, or a pair of numbers.
@@ -226,6 +244,31 @@ func _add_roads(roads: Array) -> void:
 
 
 ## Spans each stretch of road that crosses the river.
+## How near the river a walker may be before a bridge deck could be under their feet.
+const WALK_BRIDGE_DISTANCE := 3.0
+## How far above the river bed a walker's feet can be, and how deep below the deck to look.
+const WALK_RAY_ABOVE := 4.0
+const WALK_RAY_BELOW := 1.0
+
+## Where a walker's feet are at an x and a z: on the ground, or on a bridge deck over the river.
+## Looking for the deck takes a ray, so only places near the river do it.
+func walking_height(x: float, z: float) -> float:
+	var ground := terrain.height_at(x, z)
+	if terrain.river_clearance(x, z) > WALK_BRIDGE_DISTANCE:
+		return ground
+	var query := PhysicsRayQueryParameters3D.create(Vector3(x, ground + WALK_RAY_ABOVE, z), Vector3(x, ground - WALK_RAY_BELOW, z))
+	var skipped: Array[RID] = []
+	for i in 4:
+		query.exclude = skipped
+		var hit := get_world_3d().direct_space_state.intersect_ray(query)
+		if hit.is_empty() or hit["collider"] == terrain:
+			break
+		if hit["collider"] is StaticBody3D and not hit["collider"] is Npc and hit["normal"].y >= 0.7:
+			return hit["position"].y
+		skipped.append(hit["collider"].get_rid())
+	return ground
+
+
 func _add_bridges(samples: PackedVector2Array, road_width: float) -> void:
 	var i := 0
 	while i < samples.size():
@@ -282,7 +325,7 @@ func _road_mesh(samples: PackedVector2Array, width: float) -> MeshInstance3D:
 	return instance
 
 
-func _add_boulders(data: Dictionary) -> void:
+func _add_boulders(data: Dictionary, mine: Dictionary) -> void:
 	var random := RandomNumberGenerator.new()
 	random.seed = data["seed"]
 	var body := StaticBody3D.new()
@@ -299,6 +342,9 @@ func _add_boulders(data: Dictionary) -> void:
 		var size: float = lerpf(data["min_size"], data["max_size"], pow(random.randf(), 2.0))
 		var stretch := Vector3(random.randf_range(0.8, 1.3), random.randf_range(0.6, 1.0), random.randf_range(0.8, 1.3))
 		var basis := Basis.from_euler(Vector3(random.randf(), random.randf() * TAU, random.randf())).scaled(stretch * size)
+		# The mine's plaza and the trail to it stay clear.
+		if point.distance_to(Vector2(mine["x"], mine["z"])) < float(mine["plaza_radius"]) + MINE_BOULDER_MARGIN or _is_on_road(point, MINE_BOULDER_MARGIN):
+			continue
 		var at := _ground_position(point.x, point.y)
 		transforms.append(Transform3D(basis, at))
 
@@ -310,6 +356,14 @@ func _add_boulders(data: Dictionary) -> void:
 
 	mesh.surface_set_material(0, Surfaces.get_material(Surfaces.Pattern.BOULDER, BOULDER_COLOR))
 	_add_multimesh(mesh, transforms, 0.0)
+
+
+func _is_on_road(point: Vector2, margin: float) -> bool:
+	for road in terrain.roads:
+		var found := road.nearest(point.x, point.y)
+		if found.x < found.z + margin:
+			return true
+	return false
 
 
 ## A convex shape that fits the mesh. The basis is built in, because collision shapes can't be stretched.

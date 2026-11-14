@@ -27,6 +27,8 @@ const MOON_ENERGY := 0.35
 @export var sky_dome: SkyDome
 @export_range(0.0, 24.0) var hour := 9.0
 
+var _weather_node: Weather
+
 
 func _enter_tree() -> void:
 	add_to_group(GROUP)
@@ -81,10 +83,22 @@ func _apply() -> void:
 	var sky: ProceduralSkyMaterial = environment.sky.sky_material
 	var top := NIGHT_TOP.lerp(DAY_TOP, light).lerp(DUSK_TOP, dusk)
 	var horizon := NIGHT_HORIZON.lerp(DAY_HORIZON, light).lerp(DUSK_HORIZON, dusk)
+	var weather := _weather()
+	if weather:
+		top = weather.grey_sky(top)
+		horizon = weather.grey_sky(horizon)
+		sun.light_energy *= weather.light_factor()
+		environment.fog_density = weather.fog_density()
 	sky.sky_top_color = top
 	sky.sky_horizon_color = horizon
 	sky.ground_horizon_color = horizon
 	sky.ground_bottom_color = horizon.darkened(0.4)
 	environment.fog_light_color = horizon
 	mist.set_color(horizon.lerp(top, 0.2).lightened(0.15))
-	environment.ambient_light_energy = lerpf(0.6, 1.0, light)
+	environment.ambient_light_energy = lerpf(0.6, 1.0, light) * (lerpf(1.0, 0.8, weather.overcast) if weather else 1.0)
+
+
+func _weather() -> Weather:
+	if _weather_node == null or not is_instance_valid(_weather_node):
+		_weather_node = get_tree().get_first_node_in_group(Weather.GROUP) as Weather
+	return _weather_node

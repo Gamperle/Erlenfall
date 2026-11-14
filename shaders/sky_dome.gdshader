@@ -11,6 +11,8 @@ uniform float moon_size : hint_range(0.001, 0.2) = 0.035;
 uniform vec3 cloud_light_color : source_color = vec3(1.0);
 uniform vec3 cloud_shade_color : source_color = vec3(0.6);
 uniform float cloud_coverage : hint_range(0.0, 1.0) = 0.5;
+// How overcast the sky is: clouds go grey and hide the stars and the moon.
+uniform float cloud_gloom : hint_range(0.0, 1.0) = 0.0;
 uniform vec2 cloud_offset = vec2(0.0);
 uniform int cloud_octaves : hint_range(1, 5) = 4;
 
@@ -93,6 +95,8 @@ void fragment() {
 		colour.a = max(colour.a, a);
 	}
 
+	colour.a *= 1.0 - cloud_gloom * 0.9;
+
 	if (dir.y > 0.0) {
 		// Project the direction onto a flat cloud layer so clouds shrink toward the horizon.
 		vec2 plane = dir.xz / (dir.y + 0.12);
@@ -100,7 +104,8 @@ void fragment() {
 		float mass = smoothstep(1.0 - cloud_coverage, 1.0 - cloud_coverage + 0.25, density);
 		float shifted = cloud_density(plane * 0.9 + cloud_offset + vec2(0.06, 0.04));
 		vec3 cloud_colour = mix(cloud_light_color, cloud_shade_color, clamp((density - shifted) * 6.0 + 0.4, 0.0, 1.0));
-		float cloud_alpha = mass * smoothstep(0.0, 0.2, dir.y) * 0.9;
+		cloud_colour = mix(cloud_colour, cloud_shade_color * 1.1, cloud_gloom * 0.7);
+		float cloud_alpha = mass * smoothstep(0.0, 0.2, dir.y) * mix(0.9, 1.0, cloud_gloom);
 		float out_alpha = cloud_alpha + colour.a * (1.0 - cloud_alpha);
 		colour.rgb = mix(colour.rgb, cloud_colour, cloud_alpha / max(out_alpha, 0.0001));
 		colour.a = out_alpha;

@@ -191,7 +191,9 @@ func _refresh() -> void:
 	if not at_station or forging:
 		_parts.visible = false
 		if not forging:
-			_close_button.grab_focus()
+			# An item to use comes first, so that the A button does not close the screen at once.
+			var first: Control = _use_row.get_child(0) if _use_row.get_child_count() > 0 else _close_button
+			first.grab_focus()
 		return
 
 	var previous_focus := _focused_material()

@@ -26,6 +26,11 @@ var _slot_screen := false
 var _settings_open := false
 var _leave_settings: Callable
 var _controls: ControlsMenu
+## The key of the control that gets the focus when the next screen shows, so that going back lands
+## on the control that led there.
+var _focus_key := ""
+var _slots_key := ""
+var _warning_slot := 0
 
 
 func _ready() -> void:
@@ -170,12 +175,12 @@ func _input(event: InputEvent) -> void:
 		return
 	if is_open() and (_confirming or _slot_screen) and event.is_action_pressed("ui_cancel"):
 		if _confirming:
-			_open_new_game_slots()
+			_leave_warning()
 		else:
-			open_title()
+			_leave_slots()
 		get_viewport().set_input_as_handled()
 		return
-	if is_open() and _title.text == tr("UI_PAUSED") and event.is_action_pressed("pause"):
+	if is_open() and _title.text == tr("UI_PAUSED") and (event.is_action_pressed("pause") or event.is_action_pressed("ui_cancel")):
 		resume_chosen.emit()
 		get_viewport().set_input_as_handled()
 
@@ -187,7 +192,7 @@ func _open_load_slots() -> void:
 		var button := _add_slot_button(i)
 		button.disabled = not SaveGame.exists(path)
 		button.pressed.connect(func() -> void: continue_chosen.emit(path))
-	_add_action("UI_BACK", open_title)
+	_add_action("UI_BACK", _leave_slots)
 	_show()
 
 
@@ -200,13 +205,14 @@ func _open_new_game_slots() -> void:
 			button.pressed.connect(_open_new_game_warning.bind(path))
 		else:
 			button.pressed.connect(func() -> void: new_game_chosen.emit(path))
-	_add_action("UI_BACK", open_title)
+	_add_action("UI_BACK", _leave_slots)
 	_show()
 
 
 func _open_slots(title_key: String) -> void:
 	_confirming = false
 	_slot_screen = true
+	_slots_key = title_key
 	_title.text = tr(title_key)
 	_message.visible = false
 	_asset_note.visible = false
@@ -224,26 +230,41 @@ func _add_slot_button(index: int) -> Button:
 		state = SaveGame.saved_at_text(path)
 	var button := Button.new()
 	button.text = tr("UI_SLOT") % [index + 1, state]
+	button.set_meta("focus_key", "slot_%d" % index)
 	_buttons.add_child(button)
 	return button
 
 
 ## Starting over in a used slot overwrites it, so ask first. The safe choice has the focus.
 func _open_new_game_warning(path: String) -> void:
+	_warning_slot = slot_paths.find(path)
 	_confirming = true
 	_slot_screen = false
 	_title.text = tr("UI_NEW_GAME")
 	_message.text = tr("UI_NEW_GAME_WARNING")
 	_message.visible = true
 	_clear_buttons()
-	_add_action("UI_BACK", _open_new_game_slots)
+	_add_action("UI_BACK", _leave_warning)
 	_add_action("UI_OVERWRITE_SAVE", func() -> void: new_game_chosen.emit(path))
 	_asset_note.visible = false
 	_show()
 
 
+## Back to the title menu, on the button that opened the slots.
+func _leave_slots() -> void:
+	_focus_key = _slots_key
+	open_title()
+
+
+## Back to the slots, on the slot that was asked about.
+func _leave_warning() -> void:
+	_focus_key = "slot_%d" % _warning_slot
+	_open_new_game_slots()
+
+
 func _close_controls() -> void:
 	_controls = null
+	_focus_key = "UI_CONTROLS_TITLE"
 	open_settings(_leave_settings)
 
 
@@ -254,6 +275,7 @@ func _save_bindings() -> void:
 
 func _close_settings() -> void:
 	Settings.save()
+	_focus_key = "UI_SETTINGS"
 	_leave_settings.call()
 
 
@@ -262,6 +284,7 @@ func _choose_language(index: int) -> void:
 	Settings.apply_language()
 	Settings.save()
 	# The options' own text was set when they were built.
+	_focus_key = "UI_LANGUAGE"
 	open_settings.call_deferred(_leave_settings)
 
 
@@ -298,6 +321,7 @@ func _add_setting(text_key: String, control: Control) -> void:
 	label.size_flags_stretch_ratio = 0.8
 	row.add_child(label)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	control.set_meta("focus_key", text_key)
 	row.add_child(control)
 	_buttons.add_child(row)
 
@@ -307,7 +331,17 @@ func _show() -> void:
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if _controls == null or not _controls.is_inside_tree():
-		_first_focusable(_buttons).grab_focus()
+		_focus_target(_buttons).grab_focus()
+	_focus_key = ""
+
+
+## The control with the wanted key, or else the first one that can be used.
+func _focus_target(parent: Node) -> Control:
+	for child in parent.get_children():
+		var control: Control = child.get_child(1) if child is HBoxContainer else child
+		if _focus_key != "" and control.get_meta("focus_key", "") == _focus_key and not (control is Button and control.disabled):
+			return control
+	return _first_focusable(parent)
 
 
 func _first_focusable(parent: Node) -> Control:
@@ -331,6 +365,7 @@ func _add_button(text_key: String, chosen: Signal) -> void:
 func _add_action(text_key: String, action: Callable) -> void:
 	var button := Button.new()
 	button.text = tr(text_key)
+	button.set_meta("focus_key", text_key)
 	button.pressed.connect(action)
 	_buttons.add_child(button)
 

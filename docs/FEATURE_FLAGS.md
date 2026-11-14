@@ -105,13 +105,25 @@ Weather is [#241](https://github.com/Gamperle/Erlenfall/issues/241): clear, over
 
 ## Sneaking
 
-Holding the sneak key (Ctrl, or pressing the left stick) slows the player and makes enemies notice them from less far away. It does not stop an enemy that is already chasing, and it can't be used while rolling or blocking. Talking as a way out of fights is not built yet: see [#206](https://github.com/Gamperle/Erlenfall/issues/206).
+Holding the sneak key (Ctrl, or pressing the left stick) slows the player and makes enemies notice them from less far away. It does not stop an enemy that is already chasing, and it can't be used while rolling or blocking.
 
 | Name | Default | Effect |
 |---|---|---|
 | `sneaking` | `true` | Turns the sneak stance on or off. Off ignores the sneak key |
 | `sneak_speed_factor` | `0.5` | The share of walking speed that a sneaking player moves at. Sneaking replaces sprinting. A default pick, for the maintainer to balance |
 | `sneak_notice_factor` | `0.35` | The share of an enemy's `aggro_range` at which it notices a sneaking player: 14 m becomes 4.9 m for a goblin. A default pick, for the maintainer to balance |
+
+## Talking to enemies
+
+Part of [#206](https://github.com/Gamperle/Erlenfall/issues/206). An enemy with a `talk` block in [`data/enemies.json`](../data/enemies.json) can be spoken to. Today that is the goblin; wolves and goblin brutes cannot. When such an enemy notices the player from beyond `range` and walks up, it stops within `range` for `wary_seconds` before attacking. While it waits, the interact key opens the conversation named by `dialogue` in [`data/dialogue.json`](../data/dialogue.json). An enemy that noticed the player at arm's length, or that has already been hit or provoked, attacks at once.
+
+The goblin conversation (`enemy_goblin`) offers: paying 2 iron scrap (calms it for 120 s), being a friend of the village once the first nails quest is done (180 s), a bluff that works 40% of the time (60 s) and otherwise starts the fight, daring it to fight, or backing away. A calmed goblin gives up the chase, goes home, and does not notice the player again until the calm runs out. Hitting it ends the calm. The numbers are placeholders for the maintainer to balance.
+
+Dialogue data gained: a choice `when` (the choice is hidden unless its conditions hold), a choice `chance` with `fail_next`, and the effects `calm_enemy` (`seconds`) and `provoke_enemy`.
+
+| Name | Default | Effect |
+|---|---|---|
+| `enemy_talk` | `true` | Turns talking to enemies on or off. Off makes enemies attack without waiting |
 
 ## Ranged flags and values
 

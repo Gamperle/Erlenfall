@@ -10,10 +10,15 @@ static var _data: Dictionary = {}
 var _player: Player
 var _nodes: Dictionary = {}
 var _node: Dictionary = {}
+## Whoever is being spoken to, if they react to effects like "calm_enemy".
+var _talker: Object
+## Gives a number from 0 to 1 for choices that only sometimes work. Tests swap it.
+var roll := randf
 
 
-func _init(npc_id: String, player: Player) -> void:
+func _init(npc_id: String, player: Player, talker: Object = null) -> void:
 	_player = player
+	_talker = talker
 	for conversation: Dictionary in _get_data()[npc_id]:
 		if _conditions_hold(conversation.get("when", {})):
 			_nodes = conversation["nodes"]
@@ -41,13 +46,21 @@ func choice_keys() -> PackedStringArray:
 func advance(choice_index: int = 0) -> void:
 	var choices := _choices()
 	var next: String = choices[choice_index].get("next", "") if choices.size() > 0 else _node.get("next", "")
+	# A choice with a "chance" only works that often. Otherwise it goes to "fail_next".
+	if choices.size() > 0 and choices[choice_index].has("chance") and float(roll.call()) >= float(choices[choice_index]["chance"]):
+		next = choices[choice_index].get("fail_next", "")
 	_enter(next)
 
 
 ## A node lists its own choices, or borrows another node's with "choices_of".
+## A choice with a "when" is left out while its conditions don't hold.
 func _choices() -> Array:
 	var source: Dictionary = _nodes.get(_node["choices_of"], {}) if _node.has("choices_of") else _node
-	return source.get("choices", [])
+	var shown := []
+	for choice: Dictionary in source.get("choices", []):
+		if _conditions_hold(choice.get("when", {})):
+			shown.append(choice)
+	return shown
 
 
 func _enter(node_id: String) -> void:
@@ -68,6 +81,9 @@ func _apply(effect: Dictionary) -> void:
 			_player.inventory.remove(effect["item"], int(effect["count"]))
 		"give_item":
 			_player.inventory.add(effect["item"], int(effect["count"]))
+		"calm_enemy", "provoke_enemy":
+			if _talker != null:
+				_talker.apply_effect(effect)
 
 
 func _conditions_hold(when: Dictionary) -> bool:

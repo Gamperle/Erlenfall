@@ -15,7 +15,7 @@ const FILES: Array[String] = [
 	"crafting.json", "dialogue.json", "enemies.json", "feature_flags.json", "projectiles.json",
 	"prop_tuning.json", "quests.json", "village_layout.json", "villager_routines.json",
 ]
-const EFFECT_TYPES: Array[String] = ["start_quest", "advance_quest", "set_flag", "take_item", "give_item"]
+const EFFECT_TYPES: Array[String] = ["start_quest", "advance_quest", "set_flag", "take_item", "give_item", "calm_enemy", "provoke_enemy"]
 const CONDITIONS: Array[String] = ["objective", "quest_done", "flag", "not_flag", "has_item"]
 
 var _problems: Array[String] = []
@@ -82,6 +82,16 @@ func _collect_ids() -> void:
 		_markers[_dict(station).get("id")] = true
 	for site: Variant in _array(layout.get("repair_sites")):
 		_markers[_dict(site).get("flag")] = true
+
+
+## The conversations that enemies open, named by "talk.dialogue" in the enemy data. They belong to no villager.
+func _talk_dialogues() -> Dictionary:
+	var ids := {}
+	for enemy: Variant in _dict(_files.get("enemies.json")).values():
+		var talk: Variant = _dict(enemy).get("talk")
+		if talk is Dictionary and talk.get("dialogue") is String:
+			ids[talk["dialogue"]] = true
+	return ids
 
 
 func _add(file: String, path: String, message: String) -> void:
@@ -260,7 +270,7 @@ func _check_marker(file: String, path: String, marker: Variant) -> void:
 func _check_dialogue(data: Dictionary) -> void:
 	var file := "dialogue.json"
 	for npc_id: String in data:
-		if _files.has("village_layout.json"):
+		if _files.has("village_layout.json") and not _talk_dialogues().has(npc_id):
 			_known(file, "[%s]" % npc_id, npc_id, _npcs, "villager")
 		if not data[npc_id] is Array:
 			_add(file, "[%s]" % npc_id, "must be a list of conversations")
@@ -288,8 +298,14 @@ func _check_conversation(file: String, path: String, entry: Variant) -> void:
 		var choices: Array = _array(node.get("choices"))
 		for i in choices.size():
 			var cpath := "%s.choices[%d]" % [npath, i]
-			if not _fields(file, cpath, choices[i], { "text": ["text", true], "next": ["string", false], "when": ["object", false] }):
+			if not _fields(file, cpath, choices[i], { "text": ["text", true], "next": ["string", false], "when": ["object", false], "chance": ["number", false], "fail_next": ["string", false] }):
 				continue
+			if choices[i].has("chance") and _is_type(choices[i]["chance"], "number") and (choices[i]["chance"] < 0 or choices[i]["chance"] > 1):
+				_add(file, cpath + ".chance", "must be between 0 and 1")
+			if choices[i].has("chance") != choices[i].has("fail_next"):
+				_add(file, cpath, "\"chance\" and \"fail_next\" go together")
+			if choices[i].has("fail_next") and not nodes.has(choices[i]["fail_next"]):
+				_add(file, cpath + ".fail_next", "unknown node \"%s\"" % choices[i]["fail_next"])
 			if choices[i].has("next") and not nodes.has(choices[i]["next"]):
 				_add(file, cpath + ".next", "unknown node \"%s\"" % choices[i]["next"])
 			if choices[i].has("when"):
@@ -347,6 +363,11 @@ func _check_effect(file: String, path: String, effect: Variant) -> void:
 				_known(file, path + ".quest", effect.get("quest"), _quests, "quest")
 		"set_flag":
 			_fields(file, path, effect, { "flag": ["string", true] })
+		"calm_enemy":
+			if _fields(file, path, effect, { "seconds": ["number", true] }) and _is_type(effect.get("seconds"), "number") and effect["seconds"] <= 0:
+				_add(file, path + ".seconds", "must be more than 0")
+		"provoke_enemy":
+			pass
 		_:
 			if _fields(file, path, effect, { "item": ["string", true], "count": ["int", true] }):
 				_known(file, path + ".item", effect.get("item"), _items, "item")
@@ -360,12 +381,20 @@ func _check_enemies(data: Dictionary) -> void:
 			"name": ["text", true], "model": ["string", false], "model_height": ["number", false], "shape": ["string", false], "color": ["color", true], "skin": ["color", false],
 			"height": ["number", true], "radius": ["number", true], "health": ["number", true], "damage": ["number", true], "speed": ["number", true],
 			"aggro_range": ["number", true], "leash_range": ["number", true], "attack_range": ["number", true], "windup_seconds": ["number", true],
-			"recover_seconds": ["number", true], "respawn_seconds": ["number", true], "drops": ["array", false],
+			"recover_seconds": ["number", true], "respawn_seconds": ["number", true], "drops": ["array", false], "talk": ["object", false],
 		})
 		if not data[id] is Dictionary:
 			continue
 		if data[id].has("model") and data[id]["model"] is String and not ResourceLoader.exists(data[id]["model"]):
 			_add(file, path + ".model", "file not found: %s" % data[id]["model"])
+		if data[id].get("talk") is Dictionary:
+			var talk: Dictionary = data[id]["talk"]
+			var tpath := path + ".talk"
+			if _fields(file, tpath, talk, { "dialogue": ["string", true], "range": ["number", true], "wary_seconds": ["number", true] }):
+				if talk.get("dialogue") is String and _files.has("dialogue.json") and not _dict(_files["dialogue.json"]).has(talk["dialogue"]):
+					_add(file, tpath + ".dialogue", "unknown conversation \"%s\"" % talk["dialogue"])
+				if _is_type(talk.get("range"), "number") and _is_type(data[id].get("attack_range"), "number") and (talk["range"] <= data[id]["attack_range"] or talk["range"] > Player.INTERACT_DISTANCE):
+					_add(file, tpath + ".range", "must be more than attack_range and at most the player's reach (%s)" % Player.INTERACT_DISTANCE)
 		var drops: Array = _array(data[id].get("drops"))
 		for i in drops.size():
 			var dpath := "%s.drops[%d]" % [path, i]

@@ -20,6 +20,7 @@
 		"ambient_life": true,
 		"weather": true,
 		"sneaking": true,
+		"enemy_talk": true,
 		"stamina": true,
 		"crafting_parts": true,
 		"crafting_skill": true,

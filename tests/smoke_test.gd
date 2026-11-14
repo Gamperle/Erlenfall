@@ -246,6 +246,14 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 				steepest_wall = maxf(steepest_wall, _slope_degrees(terrain, x, z))
 	_check(steepest_wall < 45.0, "the mountain walls east of the village can be climbed (steepest %.1f degrees)" % steepest_wall)
 
+	# The river's west valley sides stay climbable far from the river too, where the land lies high (#340).
+	var steepest_west := 0.0
+	for x in range(-480, -199, 4):
+		for z in range(150, 421, 4):
+			if Vector2(x, z).length() < 480.0 and not terrain.is_on_landslide(x, z):
+				steepest_west = maxf(steepest_west, _slope_degrees(terrain, x, z))
+	_check(steepest_west < 45.0, "the river's west valley sides can be climbed (steepest %.1f degrees)" % steepest_west)
+
 	_check(terrain.building_sites.size() == 2, "the assembly building and the fort each have a site")
 	for site: Dictionary in terrain.building_sites:
 		_test_building_site(terrain, site)

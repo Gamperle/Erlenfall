@@ -50,17 +50,35 @@
 			"nodes": { "roof": { "text": "DLG_HEDDA_ROOF" } }
 		},
 		{
-			"when": { "quest_done": "first_nails" },
+			"when": { "quest_done": "first_nails", "not_flag": "hedda_proud_told" },
 			"start": "proud",
 			"nodes": {
 				"proud": {
 					"text": "DLG_HEDDA_PROUD",
+					"choices_of": "more",
+					"effects": [{ "type": "set_flag", "flag": "hedda_proud_told" }]
+				},
+				"family": { "text": "DLG_HEDDA_FAMILY", "next": "more" },
+				"village": { "text": "DLG_HEDDA_VILLAGE", "next": "more" },
+				"grandfather": { "text": "DLG_HEDDA_GRANDFATHER_STORY", "next": "more" },
+				"more": {
+					"text": "DLG_HEDDA_MORE",
 					"choices": [
 						{ "text": "DLG_HEDDA_ASK_FAMILY", "next": "family" },
 						{ "text": "DLG_HEDDA_ASK_VILLAGE", "next": "village" },
 						{ "text": "DLG_HEDDA_ASK_GRANDFATHER", "next": "grandfather" },
 						{ "text": "DLG_HEDDA_CHOICE_BYE" }
 					]
+				}
+			}
+		},
+		{
+			"when": { "quest_done": "first_nails" },
+			"start": "hello",
+			"nodes": {
+				"hello": {
+					"text": "DLG_HEDDA_GREETING",
+					"choices_of": "more"
 				},
 				"family": { "text": "DLG_HEDDA_FAMILY", "next": "more" },
 				"village": { "text": "DLG_HEDDA_VILLAGE", "next": "more" },
@@ -141,17 +159,35 @@
 			"nodes": { "ladder": { "text": "DLG_BERTRAM_LADDER" } }
 		},
 		{
-			"when": { "quest_done": "first_nails" },
+			"when": { "quest_done": "first_nails", "not_flag": "bertram_after_told" },
 			"start": "after",
 			"nodes": {
 				"after": {
 					"text": "DLG_BERTRAM_AFTER",
+					"choices_of": "more",
+					"effects": [{ "type": "set_flag", "flag": "bertram_after_told" }]
+				},
+				"forge": { "text": "DLG_BERTRAM_FORGE", "next": "more" },
+				"grandfather": { "text": "DLG_BERTRAM_GRANDFATHER", "next": "more" },
+				"mine": { "text": "DLG_BERTRAM_MINE", "next": "more" },
+				"more": {
+					"text": "DLG_BERTRAM_MORE",
 					"choices": [
 						{ "text": "DLG_BERTRAM_ASK_FORGE", "next": "forge" },
 						{ "text": "DLG_BERTRAM_ASK_GRANDFATHER", "next": "grandfather" },
 						{ "text": "DLG_BERTRAM_ASK_MINE", "next": "mine" },
 						{ "text": "DLG_BERTRAM_CHOICE_BYE" }
 					]
+				}
+			}
+		},
+		{
+			"when": { "quest_done": "first_nails" },
+			"start": "hello",
+			"nodes": {
+				"hello": {
+					"text": "DLG_BERTRAM_GREETING",
+					"choices_of": "more"
 				},
 				"forge": { "text": "DLG_BERTRAM_FORGE", "next": "more" },
 				"grandfather": { "text": "DLG_BERTRAM_GRANDFATHER", "next": "more" },
@@ -217,17 +253,35 @@
 			"nodes": { "roof": { "text": "DLG_MIRA_ROOF" } }
 		},
 		{
-			"when": { "quest_done": "first_nails" },
+			"when": { "quest_done": "first_nails", "not_flag": "mira_after_told" },
 			"start": "after",
 			"nodes": {
 				"after": {
 					"text": "DLG_MIRA_AFTER",
+					"choices_of": "more",
+					"effects": [{ "type": "set_flag", "flag": "mira_after_told" }]
+				},
+				"work": { "text": "DLG_MIRA_WORK", "next": "more" },
+				"stay": { "text": "DLG_MIRA_STAY", "next": "more" },
+				"father": { "text": "DLG_MIRA_FATHER", "next": "more" },
+				"more": {
+					"text": "DLG_MIRA_MORE",
 					"choices": [
 						{ "text": "DLG_MIRA_ASK_WORK", "next": "work" },
 						{ "text": "DLG_MIRA_ASK_STAY", "next": "stay" },
 						{ "text": "DLG_MIRA_ASK_FATHER", "next": "father" },
 						{ "text": "DLG_MIRA_CHOICE_BYE" }
 					]
+				}
+			}
+		},
+		{
+			"when": { "quest_done": "first_nails" },
+			"start": "hello",
+			"nodes": {
+				"hello": {
+					"text": "DLG_MIRA_GREETING",
+					"choices_of": "more"
 				},
 				"work": { "text": "DLG_MIRA_WORK", "next": "more" },
 				"stay": { "text": "DLG_MIRA_STAY", "next": "more" },
@@ -250,17 +304,35 @@
 	],
 	"greta": [
 		{
-			"when": { "flag": "inn_roof_repaired" },
+			"when": { "flag": "inn_roof_repaired", "not_flag": "greta_thanked" },
 			"start": "grateful",
 			"nodes": {
 				"grateful": {
 					"text": "DLG_GRETA_GRATEFUL",
+					"choices_of": "more",
+					"effects": [{ "type": "set_flag", "flag": "greta_thanked" }]
+				},
+				"guests": { "text": "DLG_GRETA_GUESTS", "next": "more" },
+				"jakob": { "text": "DLG_GRETA_JAKOB", "next": "more" },
+				"inn": { "text": "DLG_GRETA_INN", "next": "more" },
+				"more": {
+					"text": "DLG_GRETA_MORE",
 					"choices": [
 						{ "text": "DLG_GRETA_ASK_GUESTS", "next": "guests" },
 						{ "text": "DLG_GRETA_ASK_BEFORE", "next": "jakob" },
 						{ "text": "DLG_GRETA_ASK_INN", "next": "inn" },
 						{ "text": "DLG_GRETA_CHOICE_BYE" }
 					]
+				}
+			}
+		},
+		{
+			"when": { "flag": "inn_roof_repaired" },
+			"start": "hello",
+			"nodes": {
+				"hello": {
+					"text": "DLG_GRETA_GREETING",
+					"choices_of": "more"
 				},
 				"guests": { "text": "DLG_GRETA_GUESTS", "next": "more" },
 				"jakob": { "text": "DLG_GRETA_JAKOB", "next": "more" },
@@ -349,16 +421,12 @@
 				"rules": { "text": "DLG_BRANDT_RULES", "next": "more" },
 				"more": {
 					"text": "DLG_BRANDT_MORE",
-					"choices": [
-						{ "text": "DLG_BRANDT_ASK_MINE", "next": "mine" },
-						{ "text": "DLG_BRANDT_ASK_RULES", "next": "rules" },
-						{ "text": "DLG_BRANDT_CHOICE_BYE" }
-					]
+					"choices_of": "dry"
 				}
 			}
 		},
 		{
-			"when": { "flag": "mayor_respected" },
+			"when": { "flag": "mayor_respected", "not_flag": "inn_roof_repaired" },
 			"start": "warm",
 			"nodes": { "warm": { "text": "DLG_BRANDT_WARM" } }
 		},
@@ -431,12 +499,7 @@
 				"inn": { "text": "DLG_MAREK_INN", "next": "more" },
 				"more": {
 					"text": "DLG_MAREK_MORE",
-					"choices": [
-						{ "text": "DLG_MAREK_ASK_NEWS", "next": "news" },
-						{ "text": "DLG_MAREK_ASK_WARES", "next": "wares" },
-						{ "text": "DLG_MAREK_ASK_INN", "next": "inn" },
-						{ "text": "DLG_MAREK_CHOICE_BYE" }
-					]
+					"choices_of": "arrive"
 				}
 			}
 		}

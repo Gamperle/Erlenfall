@@ -1428,6 +1428,8 @@ func _test_story(scene: Node, player: Player) -> void:
 	var cold := DialogueRunner.new("brandt", player)
 	_check(cold.text_key() == "DLG_BRANDT_COLD", "the mayor reacts to the choice")
 	_check(DialogueRunner.new("hedda", player).text_key() == "DLG_HEDDA_PROUD", "grandmother reacts to the finished quest")
+	_check(DialogueRunner.new("hedda", player).text_key() == "DLG_HEDDA_GREETING", "grandmother says her one-time line only once")
+	_check(DialogueRunner.new("greta", player).text_key() == "DLG_GRETA_GREETING" and not DialogueRunner.new("greta", player).choice_keys().is_empty(), "later visits still offer topics")
 	var topics := DialogueRunner.new("bertram", player)
 	topics.advance(0)
 	var answered := topics.text_key()

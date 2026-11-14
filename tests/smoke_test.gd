@@ -1628,7 +1628,44 @@ func _test_enemy_talk(scene: Node, player: Player) -> void:
 	runner.advance(pay)
 	_check(talk.is_calm() and goblin.state == Enemy.State.IDLE and player.inventory.count("iron_scrap") == 0, "paying calms the goblin and costs the scrap")
 	_check(not talk.is_available(), "a calmed goblin is not talked to again")
+	# The calm is saved with the game, in an optional key, and old saves load without it (#329).
+	var calm_data := goblin.to_data()
+	_check(calm_data.has("calm_left") and calm_data["calm_left"] > 0.0, "a calmed goblin saves its remaining calm")
+	var calm_before: float = talk.calm_left()
 	talk.break_calm()
+	goblin.load_data(calm_data)
+	_check(talk.is_calm() and absf(talk.calm_left() - calm_before) < 0.5 and goblin.state == Enemy.State.IDLE, "loading restores a goblin's calm")
+	var old_save := calm_data.duplicate()
+	old_save.erase("calm_left")
+	goblin.load_data(old_save)
+	_check(goblin.state == Enemy.State.IDLE, "a save without a calm still loads")
+	talk.restore_calm(calm_before)
+	talk._process(0.0)
+	var look_key := Settings.colour_vision
+	var look_high := Settings.high_contrast
+	_check(talk.cue() == "calm" and talk._cue.visible and talk._cue.text.contains("~") and talk._cue.text.contains(goblin.tr("TALK_CUE_CALM")), "a calmed goblin shows a calm cue with a shape and a word")
+	var normal_color: Color = talk._cue.modulate
+	Settings.colour_vision = "deuteranopia"
+	talk._process(0.0)
+	_check(talk._cue.modulate != normal_color, "the cue follows the colour vision mode")
+	Settings.colour_vision = "off"
+	Settings.high_contrast = true
+	talk._process(0.0)
+	_check(talk._cue.modulate == Color.WHITE and talk._cue.outline_size > 8, "the cue is plain white with a thick outline in high contrast")
+	Settings.colour_vision = look_key
+	Settings.high_contrast = look_high
+	talk._process(0.0)
+	talk.break_calm()
+	talk._process(0.0)
+	_check(talk.cue() == "" and not talk._cue.visible, "no cue shows once the calm is broken")
+	goblin.state = Enemy.State.CHASE
+	talk._reset()
+	talk.holds_back(10.0, 0.1)
+	talk.holds_back(3.0, 0.1)
+	talk._process(0.0)
+	_check(talk.cue() == "wait" and talk._cue.text.contains("?"), "a goblin waiting to be spoken to shows a cue")
+	talk.break_calm()
+	talk._reset()
 	_check(not talk.is_calm(), "hitting a calmed goblin ends the calm")
 
 	# A bluff that works sometimes: a low roll calms, a high roll starts the fight.

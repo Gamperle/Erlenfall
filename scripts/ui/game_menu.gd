@@ -165,7 +165,12 @@ func _open_slots(title_key: String) -> void:
 
 
 func _add_slot_button(index: int) -> Button:
-	var state := SaveGame.saved_at_text(slot_paths[index]) if SaveGame.exists(slot_paths[index]) else tr("UI_SLOT_EMPTY")
+	var path := slot_paths[index]
+	var state := tr("UI_SLOT_EMPTY")
+	if SaveGame.is_damaged(path):
+		state = tr("UI_SLOT_DAMAGED_BACKUP") if SaveGame.has_backup(path) else tr("UI_SLOT_DAMAGED")
+	elif SaveGame.exists(path):
+		state = SaveGame.saved_at_text(path)
 	var button := Button.new()
 	button.text = tr("UI_SLOT") % [index + 1, state]
 	_buttons.add_child(button)

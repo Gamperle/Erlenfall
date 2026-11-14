@@ -1,11 +1,15 @@
 class_name SaveGame
 extends RefCounted
-## Writes and reads progress as JSON. A missing or damaged file counts as no save.
+## Writes and reads progress as JSON. Each write goes to a temporary file first and the previous
+## save is kept as a ".bak" file, so a crash mid-write never destroys the only copy. A damaged
+## file counts as no save unless its backup is still good.
 
 const BELOW_GROUND_MARGIN := 1.5
 const DEFAULT_PATH := "user://save.json"
 const VERSION := 1
 const SLOTS := 3
+const BACKUP_SUFFIX := ".bak"
+const TEMP_SUFFIX := ".tmp"
 
 
 ## The save files in slot order. The first is the file from before slots existed.
@@ -33,8 +37,19 @@ static func saved_at_text(path: String) -> String:
 	return Time.get_datetime_string_from_unix_time(local_time, true).left(16)
 
 
+## True if this slot holds a save that can be loaded, either itself or through its backup.
 static func exists(path: String) -> bool:
-	return not _read(path).is_empty()
+	return not _read(path).is_empty() or not _read(path + BACKUP_SUFFIX).is_empty()
+
+
+## True if the file is there but can't be read, so loading it would fall back to the backup (or fail).
+static func is_damaged(path: String) -> bool:
+	return FileAccess.file_exists(path) and _read(path).is_empty()
+
+
+## True if the previous save of this slot is still readable.
+static func has_backup(path: String) -> bool:
+	return not _read(path + BACKUP_SUFFIX).is_empty()
 
 
 static func write(path: String, player: Player, day_night: DayNight, village: Village) -> void:
@@ -53,18 +68,32 @@ static func write(path: String, player: Player, day_night: DayNight, village: Vi
 		"hour": day_night.hour,
 		"world": village.to_data(),
 	}
-	var file := FileAccess.open(path, FileAccess.WRITE)
+	var temp_path := path + TEMP_SUFFIX
+	var file := FileAccess.open(temp_path, FileAccess.WRITE)
 	if file == null:
 		push_error("Could not save the game: %s" % error_string(FileAccess.get_open_error()))
 		return
 	file.store_string(JSON.stringify(data, "\t"))
+	file.close()
+	# An unreadable file must not replace a good backup.
+	if not _read(path).is_empty():
+		DirAccess.copy_absolute(path, path + BACKUP_SUFFIX)
+	var error := DirAccess.rename_absolute(temp_path, path)
+	if error != OK:
+		push_error("Could not save the game: %s" % error_string(error))
+		DirAccess.remove_absolute(temp_path)
 
 
 ## Applies a saved game and reports whether there was one to apply.
 static func apply(path: String, player: Player, day_night: DayNight, village: Village) -> bool:
 	var data := _read(path)
 	if data.is_empty():
-		return false
+		data = _read(path + BACKUP_SUFFIX)
+		if data.is_empty():
+			return false
+		push_warning("The save %s is damaged. Loaded its backup." % path)
+		# Make the backup the slot again, so the next save doesn't treat the damage as current.
+		DirAccess.copy_absolute(path + BACKUP_SUFFIX, path)
 	var saved_position: Array = data["position"]
 	player.position = Vector3(saved_position[0], saved_position[1], saved_position[2])
 	# Saves can come from before the land changed shape.

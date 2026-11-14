@@ -19,6 +19,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	DirAccess.remove_absolute(TEST_SAVE)
+	DirAccess.remove_absolute(TEST_SAVE + SaveGame.BACKUP_SUFFIX)
 	DirAccess.remove_absolute(TEST_SETTINGS)
 	Settings.path = TEST_SETTINGS
 	var scene: Node = load("res://scenes/main.tscn").instantiate()
@@ -1791,11 +1792,45 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	_check(enemy.state != Enemy.State.DEAD, "older saves leave enemies alone")
 	scene._playing = true
 
+	DirAccess.remove_absolute(TEST_SAVE + SaveGame.BACKUP_SUFFIX)
 	var damaged := FileAccess.open(TEST_SAVE, FileAccess.WRITE)
 	damaged.store_string("{ not json")
 	damaged.close()
 	_check(not SaveGame.exists(TEST_SAVE), "a damaged save is ignored")
+	_check(SaveGame.is_damaged(TEST_SAVE) and not SaveGame.has_backup(TEST_SAVE), "a damaged save without a backup is reported")
 	_check(not SaveGame.apply(TEST_SAVE, player, day_night, village), "a damaged save doesn't load")
+
+	# Saving twice keeps the first save as the backup and leaves no temporary file.
+	player.health.current = 77.0
+	SaveGame.write(TEST_SAVE, player, day_night, village)
+	player.health.current = 66.0
+	SaveGame.write(TEST_SAVE, player, day_night, village)
+	_check(not FileAccess.file_exists(TEST_SAVE + SaveGame.TEMP_SUFFIX), "saving leaves no temporary file")
+	_check(SaveGame.has_backup(TEST_SAVE), "saving keeps the previous save as a backup")
+	# A truncated slot is reported and the backup is loaded and restored.
+	var good_text := FileAccess.get_file_as_string(TEST_SAVE)
+	var truncated := FileAccess.open(TEST_SAVE, FileAccess.WRITE)
+	truncated.store_string(good_text.left(good_text.length() / 2))
+	truncated.close()
+	_check(SaveGame.is_damaged(TEST_SAVE) and SaveGame.exists(TEST_SAVE), "a truncated save is reported and its backup offered")
+	_check(SaveGame.apply(TEST_SAVE, player, day_night, village), "a truncated save loads its backup")
+	_check(is_equal_approx(player.health.current, 77.0), "the backup holds the previous save")
+	_check(not SaveGame.is_damaged(TEST_SAVE), "loading the backup repairs the slot")
+	# A damaged slot never replaces a good backup.
+	var garbage := FileAccess.open(TEST_SAVE, FileAccess.WRITE)
+	garbage.store_string("{")
+	garbage.close()
+	SaveGame.write(TEST_SAVE, player, day_night, village)
+	_check(SaveGame.has_backup(TEST_SAVE) and not SaveGame.is_damaged(TEST_SAVE), "a damaged save doesn't overwrite the backup")
+	# The load menu says so.
+	var broken := FileAccess.open(TEST_SAVE, FileAccess.WRITE)
+	broken.store_string("{")
+	broken.close()
+	menu.slot_paths = [TEST_SAVE, TEST_SLOT_2, TEST_SLOT_3]
+	menu._open_load_slots()
+	_check((menu._buttons.get_child(0) as Button).text.contains(tr("UI_SLOT_DAMAGED_BACKUP")), "the load menu shows a damaged slot")
+	_check(not (menu._buttons.get_child(0) as Button).disabled, "a damaged slot with a backup can be loaded")
+	SaveGame.write(TEST_SAVE, player, day_night, village)
 
 	player.health.current = 50.0
 	day_night.hour = 22.0
@@ -1809,7 +1844,9 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	_check(not menu.is_open() and not player.is_busy() and not paused, "resuming unpauses the game")
 	menu.slot_paths = [TEST_SAVE, TEST_SLOT_2, TEST_SLOT_3]
 	DirAccess.remove_absolute(TEST_SLOT_2)
+	DirAccess.remove_absolute(TEST_SLOT_2 + SaveGame.BACKUP_SUFFIX)
 	DirAccess.remove_absolute(TEST_SLOT_3)
+	DirAccess.remove_absolute(TEST_SLOT_3 + SaveGame.BACKUP_SUFFIX)
 	scene.save_game()
 	menu.open_title()
 	_check(menu._asset_note.is_visible_in_tree(), "the title menu notes AI-generated assets")
@@ -1862,7 +1899,9 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	_check(SaveGame.latest(menu.slot_paths) == TEST_SLOT_2 and SaveGame.exists(TEST_SAVE), "saving goes to the current slot and leaves the others")
 	scene.save_path = TEST_SAVE
 	DirAccess.remove_absolute(TEST_SAVE)
+	DirAccess.remove_absolute(TEST_SAVE + SaveGame.BACKUP_SUFFIX)
 	DirAccess.remove_absolute(TEST_SLOT_2)
+	DirAccess.remove_absolute(TEST_SLOT_2 + SaveGame.BACKUP_SUFFIX)
 	menu.open_title()
 	_check(not menu._asset_note.get_parent() == null and menu._buttons.get_child_count() == 3, "with no saves, the title offers new game, settings, and quit")
 	started[0] = ""
@@ -1874,6 +1913,7 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	menu.continue_chosen.connect(scene_continue)
 	menu.close()
 	DirAccess.remove_absolute(TEST_SAVE)
+	DirAccess.remove_absolute(TEST_SAVE + SaveGame.BACKUP_SUFFIX)
 
 
 func _talk(ui: DialogueUI, npc_id: String, player: Player, answers: Array) -> void:
@@ -2140,6 +2180,7 @@ func _test_player_fixes(scene: Node, player: Player) -> void:
 	await _physics_frames(30)
 	_check(not _under_ground(terrain, player), "a save from inside the ground loads on top of it")
 	DirAccess.remove_absolute(TEST_SAVE)
+	DirAccess.remove_absolute(TEST_SAVE + SaveGame.BACKUP_SUFFIX)
 
 	# A roof overhead never lifts anyone, buried or not.
 	var roof := Node3D.new()

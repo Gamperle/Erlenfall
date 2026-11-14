@@ -64,8 +64,13 @@ func _ready() -> void:
 	_apply_graphics()
 	_menu.graphics_changed.connect(_apply_graphics)
 	_menu.bindings_changed.connect(_set_translated_text)
+	var device := InputDevice.new()
+	add_child(device)
+	device.changed.connect(_on_input_device_changed)
 	_menu.text_size_changed.connect(_apply_text_size)
+	_menu.accessibility_changed.connect(_ui.refresh_accessibility)
 	_apply_text_size()
+	_ui.refresh_accessibility()
 	_welcome_label.modulate.a = 0.0
 	_set_translated_text()
 	_compass.visible = FeatureFlags.enabled("compass")
@@ -147,6 +152,11 @@ func _notification(what: int) -> void:
 		_update_quest_label()
 
 
+func _on_input_device_changed(_kind: String) -> void:
+	_set_translated_text()
+	_update_prompt()
+
+
 func _set_translated_text() -> void:
 	_welcome_label.text = tr("UI_WELCOME")
 	_controls_label.text = KeyBindings.controls_hint()
@@ -180,7 +190,7 @@ func _apply_graphics() -> void:
 
 func save_game() -> void:
 	_since_save = 0.0
-	SaveGame.write(save_path, _player, _day_night, _village)
+	SaveGame.write(save_path, _player, _day_night, _village, _map.data)
 
 
 func open_pause_menu() -> void:
@@ -228,7 +238,7 @@ func _start_new_game() -> void:
 func _continue_game() -> void:
 	# A finished story was already announced when it was first completed.
 	_ending_shown = true
-	if SaveGame.apply(save_path, _player, _day_night, _village):
+	if SaveGame.apply(save_path, _player, _day_night, _village, _map.data):
 		_begin_playing()
 	else:
 		_ending_shown = false

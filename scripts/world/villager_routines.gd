@@ -8,6 +8,9 @@ extends Node
 ## the vertical axis, as for a building's rotation). A stop with no place is the villager's home,
 ## where the layout file puts them. A stop can also list "via" places ([x, z] pairs) to walk through
 ## on the way to it, so the walk goes around buildings and water rather than straight at it (#222).
+## "activity" is what they do there: "sleep" (lie down), "sit", "sweep", "hammer" or "tend" (see
+## Npc.ACTIVITIES). "indoors": true sends them out of sight at the place, as through a door, until
+## their next stop, since interiors do not exist yet (#39, #223).
 ##
 ## To keep it cheap, this checks the clock a couple of times a second, and a villager only does
 ## any work while walking.
@@ -22,6 +25,7 @@ var _villagers: Dictionary = {}
 var _day_night: DayNight
 var _last_hour := -1.0
 var _tick_left := 0.0
+var _tick_seconds := 0.5
 
 
 func _ready() -> void:
@@ -71,6 +75,8 @@ static func problems(routines: Dictionary, npc_ids: Array) -> Array[String]:
 			if from < 0.0 or from >= 24.0 or from <= previous:
 				found.append("%s: stops must start at increasing hours from 0 to 24" % id)
 			previous = from
+			if stop.has("activity") and not Npc.ACTIVITIES.has(stop["activity"]):
+				found.append("%s: unknown activity %s" % [id, stop["activity"]])
 			if stop.has("x") != stop.has("z"):
 				found.append("%s: a stop needs both x and z, or neither" % id)
 			for point: Variant in stop.get("via", []) as Array:
@@ -87,7 +93,8 @@ func _process(delta: float) -> void:
 	_tick_left -= delta
 	if _tick_left > 0.0:
 		return
-	_tick_left = FeatureFlags.value("villager_routine_tick_seconds", 0.5)
+	_tick_seconds = FeatureFlags.value("villager_routine_tick_seconds", 0.5)
+	_tick_left = _tick_seconds
 	if _day_night == null:
 		_day_night = get_tree().get_first_node_in_group(DayNight.GROUP)
 		if _day_night == null:
@@ -112,7 +119,10 @@ func update(hour: float) -> void:
 			continue
 		var spot := Vector2(stop["x"], stop["z"]) if stop.has("x") else npc.home
 		var facing := deg_to_rad(stop["facing"]) if stop.has("facing") else NAN
+		var activity: String = stop.get("activity", "")
+		var indoors: bool = stop.get("indoors", false)
 		if jumped:
-			npc.place_at(spot, facing)
+			npc.place_at(spot, facing, activity, indoors)
 		else:
-			npc.go_to(spot, facing, route_of(stop))
+			npc.go_to(spot, facing, route_of(stop), activity, indoors)
+		npc.activity_tick(_tick_seconds)

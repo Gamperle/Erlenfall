@@ -5,6 +5,18 @@ extends Interactable
 const UI_GROUP := "dialogue_ui"
 const BODY_RADIUS := 0.35
 const BODY_HEIGHT := 1.75
+## What a villager can be doing at a stop of their routine (#223). A "loop" animation replaces their
+## idle one. A "shot" animation plays again every so many seconds. "sleep" has no animation: they lie
+## down. The names are those of scripts/world/character_animations.gd's library.
+const ACTIVITIES := {
+	"sleep": {},
+	"sit": { "loop": &"Sitting_Idle" },
+	"sweep": { "loop": &"Push" },
+	"hammer": { "shot": &"Punch_Jab", "every": 1.6 },
+	"tend": { "shot": &"Fixing_Kneeling", "every": 5.0 },
+}
+## Lying down: how far the body is raised so it rests on the ground, rather than in it.
+const LYING_HEIGHT := 0.22
 
 var npc_id := ""
 ## The story flag that brings this villager to the village. Empty means they are always there.
@@ -21,6 +33,14 @@ var _route: Array[Vector2] = []
 var _goal_facing := NAN
 var _body: Node3D
 var _dialogue_ui: Node
+var _arrived := true
+## What they are doing where they stand, one of ACTIVITIES or empty.
+var _activity := ""
+## They have gone through a door, out of sight until their next stop.
+var _indoors := false
+var _goal_activity := ""
+var _goal_indoors := false
+var _shot_left := 0.0
 
 
 func setup(data: Dictionary) -> void:
@@ -63,17 +83,31 @@ func setup(data: Dictionary) -> void:
 func apply_flags(flags: Dictionary) -> void:
 	if arrival_flag.is_empty():
 		return
-	var here := flags.has(arrival_flag)
-	visible = here
-	if not here:
+	_arrived = flags.has(arrival_flag)
+	if not _arrived:
 		set_process(false)
-	for child in get_children():
-		if child is CollisionShape3D:
-			(child as CollisionShape3D).set_deferred("disabled", not here)
+	_refresh_presence()
 
 
 func is_available() -> bool:
-	return arrival_flag.is_empty() or visible
+	return _arrived
+
+
+## Whether they are inside a building, out of sight.
+func is_indoors() -> bool:
+	return _indoors
+
+
+func activity() -> String:
+	return _activity
+
+
+func _refresh_presence() -> void:
+	var here := _arrived and not _indoors
+	visible = here
+	for child in get_children():
+		if child is CollisionShape3D:
+			(child as CollisionShape3D).set_deferred("disabled", not here)
 
 
 func _ready() -> void:
@@ -100,18 +134,25 @@ func interact(player: Player) -> void:
 
 ## Starts walking to a place. Does nothing if they are already there or heading there.
 ## A facing (radians around the vertical axis) is taken up on arrival. `via` lists places to walk
-## through first, so the walk goes around buildings and water (#222).
-func go_to(spot: Vector2, facing := NAN, via: Array[Vector2] = []) -> void:
-	if _is_at(spot) or (is_processing() and _goal.is_equal_approx(spot)):
+## through first, so the walk goes around buildings and water (#222). On arrival they take up an
+## activity (one of ACTIVITIES), or go indoors, out of sight, if `indoors` is set (#223).
+func go_to(spot: Vector2, facing := NAN, via: Array[Vector2] = [], what := "", indoors := false) -> void:
+	if _is_at(spot):
+		_settle(what, indoors)
 		return
+	if is_processing() and _goal.is_equal_approx(spot):
+		return
+	_settle("", false)
 	_goal = spot
 	_route = via.duplicate()
 	_goal_facing = facing
+	_goal_activity = what
+	_goal_indoors = indoors
 	set_process(true)
 
 
 ## Puts them at a place at once.
-func place_at(spot: Vector2, facing := NAN) -> void:
+func place_at(spot: Vector2, facing := NAN, what := "", indoors := false) -> void:
 	set_process(false)
 	_route.clear()
 	_body.animate(0.0, 0.0)
@@ -120,6 +161,41 @@ func place_at(spot: Vector2, facing := NAN) -> void:
 	_snap_to_ground()
 	if not is_nan(facing):
 		rotation.y = facing
+	_settle(what, indoors)
+
+
+## Takes up an activity where they stand, after stopping the one before. Cheap when nothing changes.
+func _settle(what: String, indoors: bool) -> void:
+	if what == _activity and indoors == _indoors:
+		return
+	_activity = what
+	_indoors = indoors
+	_shot_left = 0.0
+	_body.rotation.x = PI / 2.0 if what == "sleep" else 0.0
+	_body.position.y = LYING_HEIGHT if what == "sleep" else 0.0
+	var model := _body as CharacterModel
+	if model != null:
+		var loop: StringName = ACTIVITIES.get(what, {}).get("loop", &"")
+		model.idle_override = loop if CharacterAnimations.library().has_animation(loop) else &""
+		model.animate(0.0, 0.0)
+	_refresh_presence()
+
+
+## Called a couple of times a second while they stand still: keeps a work animation going.
+func activity_tick(seconds: float) -> void:
+	if _activity.is_empty() or _indoors or _activity == "sleep":
+		return
+	var model := _body as CharacterModel
+	if model == null:
+		return
+	var shot: StringName = ACTIVITIES[_activity].get("shot", &"")
+	if not shot.is_empty() and CharacterAnimations.library().has_animation(shot):
+		_shot_left -= seconds
+		if _shot_left <= 0.0:
+			_shot_left = ACTIVITIES[_activity]["every"] * randf_range(0.8, 1.4)
+			model.play_action(shot)
+	# Lets a finished action go back to the idle animation.
+	model.animate(0.0, seconds)
 
 
 func _is_at(spot: Vector2) -> bool:
@@ -144,7 +220,7 @@ func _process(delta: float) -> void:
 		_route.remove_at(0)
 	var to_go := (_route[0] if not _route.is_empty() else _goal) - Vector2(position.x, position.z)
 	if _route.is_empty() and to_go.length() <= step:
-		place_at(_goal, _goal_facing)
+		place_at(_goal, _goal_facing, _goal_activity, _goal_indoors)
 		return
 	var heading := to_go.normalized()
 	position.x += heading.x * step

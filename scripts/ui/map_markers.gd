@@ -15,7 +15,7 @@ static func draw_player(canvas: CanvasItem, at: Vector2, heading: float, size: f
 	var forward := Vector2(sin(angle), -cos(angle))
 	var side := Vector2(-forward.y, forward.x)
 	var points := PackedVector2Array([at + forward * size, at - forward * size * 0.7 + side * size * 0.7, at - forward * size * 0.3, at - forward * size * 0.7 - side * size * 0.7])
-	canvas.draw_colored_polygon(points, PLAYER_COLOR)
+	canvas.draw_colored_polygon(points, Accessibility.color("player"))
 	points.append(points[0])
 	canvas.draw_polyline(points, OUTLINE_COLOR, OUTLINE_WIDTH, true)
 
@@ -23,14 +23,24 @@ static func draw_player(canvas: CanvasItem, at: Vector2, heading: float, size: f
 ## The diamond the compass uses for an objective.
 static func draw_objective(canvas: CanvasItem, at: Vector2, size: float) -> void:
 	var diamond := PackedVector2Array([at + Vector2(0.0, -size), at + Vector2(size, 0.0), at + Vector2(0.0, size), at + Vector2(-size, 0.0)])
-	canvas.draw_colored_polygon(diamond, OBJECTIVE_COLOR)
+	canvas.draw_colored_polygon(diamond, Accessibility.color("objective"))
 	diamond.append(diamond[0])
 	canvas.draw_polyline(diamond, OUTLINE_COLOR, OUTLINE_WIDTH, true)
+	if BarPattern.wanted():
+		draw_objective_mark(canvas, at, size)
+
+
+## A dark exclamation mark inside an objective, so it differs from other markers by more than color.
+static func draw_objective_mark(canvas: CanvasItem, at: Vector2, size: float) -> void:
+	canvas.draw_line(at + Vector2(0.0, -size * 0.5), at + Vector2(0.0, size * 0.15), OUTLINE_COLOR, maxf(size * 0.28, 1.5))
+	canvas.draw_circle(at + Vector2(0.0, size * 0.5), maxf(size * 0.16, 1.0), OUTLINE_COLOR)
 
 
 static func draw_place(canvas: CanvasItem, at: Vector2, size: float) -> void:
 	canvas.draw_circle(at, size + OUTLINE_WIDTH, OUTLINE_COLOR)
 	canvas.draw_circle(at, size, PLACE_COLOR)
+	if BarPattern.wanted():
+		canvas.draw_circle(at, size * 0.45, OUTLINE_COLOR)
 
 
 ## Pulls a point that lies outside the rectangle back to its edge, along the line from the center, so a

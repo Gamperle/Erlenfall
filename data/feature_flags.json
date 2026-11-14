@@ -8,6 +8,7 @@
 		"journal": true,
 		"compass_objectives": true,
 		"compass_landmarks": true,
+		"device_prompts": true,
 		"realistic_villagers": true,
 		"realistic_enemies": true,
 		"realistic_player": true,

@@ -142,6 +142,27 @@ static func weapon_damage(item_id: String, quality_id: String, variant: String =
 	return damage
 
 
+## How much this bow (or arrow, or flask) scales the damage of what it shoots, from its own strength, quality, and parts.
+## Items with no "ranged_damage_multiplier" still scale by quality and parts.
+static func ranged_multiplier(item_id: String, quality_id: String = "", variant: String = "") -> float:
+	var multiplier := float(_get_data()["items"].get(item_id, {}).get("ranged_damage_multiplier", 1.0))
+	for option_id: String in variant_choices(item_id, variant).values():
+		multiplier *= float(_option(option_id).get("damage_multiplier", 1.0))
+	for quality: Dictionary in _get_data()["qualities"]:
+		if quality["id"] == quality_id:
+			return multiplier * float(quality["damage_multiplier"])
+	return multiplier
+
+
+## The items that can fire this projectile type, such as every bow for "arrow". Items name it in "fires".
+static func launchers(projectile_id: String) -> Array[String]:
+	var found: Array[String] = []
+	for item_id: String in _get_data()["items"]:
+		if _get_data()["items"][item_id].get("fires", "") == projectile_id:
+			found.append(item_id)
+	return found
+
+
 ## Returns the id of the best quality tier this score reaches.
 static func quality_for_score(score: float) -> String:
 	var best := ""

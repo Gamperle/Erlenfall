@@ -75,10 +75,12 @@ func _draw() -> void:
 			var major := bearing % 90 == 0
 			var font_size := MAJOR_FONT_SIZE if major else FONT_SIZE
 			var color := NORTH_COLOR if bearing == 0 else TICK_COLOR
+			if Settings.high_contrast:
+				color = Accessibility.HC_TEXT_COLOR
 			color.a = fade
 			var text := tr(POINTS[bearing])
 			var at := Vector2(x - font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x / 2.0, size.y / 2.0 + font_size * 0.36)
-			draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, OUTLINE_SIZE, Color(0.0, 0.0, 0.0, fade * 0.8))
+			draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, OUTLINE_SIZE + (2 if Settings.high_contrast else 0), Color(0.0, 0.0, 0.0, fade if Settings.high_contrast else fade * 0.8))
 			draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
 		else:
 			var tick := TICK_COLOR
@@ -100,9 +102,11 @@ func _draw() -> void:
 			Vector2(x, size.y / 2.0 + OBJECTIVE_SIZE),
 			Vector2(x - OBJECTIVE_SIZE, size.y / 2.0),
 		])
-		draw_colored_polygon(diamond, OBJECTIVE_COLOR)
+		draw_colored_polygon(diamond, Accessibility.color("objective"))
 		diamond.append(diamond[0])
 		draw_polyline(diamond, OBJECTIVE_OUTLINE_COLOR, OBJECTIVE_OUTLINE, true)
+		if BarPattern.wanted():
+			MapMarkers.draw_objective_mark(self, Vector2(x, size.y / 2.0), OBJECTIVE_SIZE)
 	var middle := size.x / 2.0
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(middle - CENTER_MARK_SIZE, size.y + CENTER_MARK_SIZE),

@@ -22,6 +22,9 @@ var places: Array[Dictionary] = []
 var texture: ImageTexture
 
 var _image: Image
+## Ids of the discovered places, kept apart from `places` because the places are only made when the
+## picture is drawn. A loaded game fills this first and `make_texture` applies it.
+var _known: Dictionary = {}
 
 
 ## Meters from the world's center to its edge.
@@ -78,6 +81,7 @@ func render(terrain: Terrain, layout: Dictionary) -> void:
 ## Turns the drawn picture into a texture. Call it on the main thread once `render` is done.
 func make_texture() -> void:
 	texture = ImageTexture.create_from_image(_image)
+	_apply_known()
 
 
 ## Marks the places within `radius` of the player as discovered. Returns whether any was new.
@@ -86,8 +90,32 @@ func discover_near(position: Vector2, radius: float) -> bool:
 	for place in places:
 		if not place["discovered"] and position.distance_to(place["position"]) <= radius:
 			place["discovered"] = true
+			_known[place["id"]] = true
 			found = true
 	return found
+
+
+## The ids of the discovered places, for the save file.
+func discovered_ids() -> Array:
+	return _known.keys()
+
+
+## Restores the discovered places from a save. Ids of places that no longer exist are kept harmlessly.
+## Safe before the picture is drawn: the places then pick it up in `make_texture`.
+func load_discovered(ids: Array) -> void:
+	_known.clear()
+	for id: Variant in ids:
+		if id is String:
+			_known[id] = true
+	if texture != null:
+		for place in places:
+			place["discovered"] = _known.has(place["id"])
+
+
+func _apply_known() -> void:
+	for place in places:
+		if _known.has(place["id"]):
+			place["discovered"] = true
 
 
 func discovered_count() -> int:

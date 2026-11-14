@@ -147,6 +147,7 @@ func _run() -> void:
 	await _test_hud(scene, player)
 	await _test_map(scene, player)
 	await _test_journal(scene, player)
+	await _test_readables(scene, player)
 	_test_character_models(player)
 	_test_generated_props()
 	_test_feature_flags()
@@ -218,7 +219,7 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 	_check(downhill, "the river only flows downhill")
 
 	var misplaced := PackedStringArray()
-	for list in ["buildings", "fields", "npcs", "enemies", "repair_sites", "beds", "stations", "resources"]:
+	for list in ["buildings", "fields", "npcs", "enemies", "repair_sites", "beds", "stations", "resources", "readables"]:
 		for spot: Dictionary in layout[list]:
 			if terrain.river_clearance(spot["x"], spot["z"]) < 2.0 or _slope_degrees(terrain, spot["x"], spot["z"]) > 12.0:
 				misplaced.append("%s (%s, %s)" % [list, spot["x"], spot["z"]])
@@ -246,6 +247,14 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 			if Vector2(x, z).length() < 480.0 and not terrain.is_on_landslide(x, z):
 				steepest_wall = maxf(steepest_wall, _slope_degrees(terrain, x, z))
 	_check(steepest_wall < 45.0, "the mountain walls east of the village can be climbed (steepest %.1f degrees)" % steepest_wall)
+
+	# The river's west valley sides stay climbable far from the river too, where the land lies high (#340).
+	var steepest_west := 0.0
+	for x in range(-480, -199, 4):
+		for z in range(150, 421, 4):
+			if Vector2(x, z).length() < 480.0 and not terrain.is_on_landslide(x, z):
+				steepest_west = maxf(steepest_west, _slope_degrees(terrain, x, z))
+	_check(steepest_west < 45.0, "the river's west valley sides can be climbed (steepest %.1f degrees)" % steepest_west)
 
 	_check(terrain.building_sites.size() == 2, "the assembly building and the fort each have a site")
 	for site: Dictionary in terrain.building_sites:
@@ -931,6 +940,50 @@ func _test_torch(player: Player) -> void:
 	DirAccess.remove_absolute(TEST_FLAGS_B)
 
 
+func _test_cooking(scene: Node, player: Player, ui: CraftingUI) -> void:
+	var village: Village = scene.get_node("Village")
+	var campfire := village.get_node_or_null("campfire") as CraftingStation
+	_check(campfire != null and campfire.station_id == "campfire", "the village has a campfire station")
+	_check(campfire.find_children("*", "CampfireFire", true, false).size() == 1, "the campfire has a flame")
+	_check(CraftingData.skill_ids().has("cooking") and CraftingData.skill_name("cooking") != "SKILL_COOKING", "cooking is a skill with a name")
+	_check(CraftingData.heal_amount("cooked_meat") > CraftingData.heal_amount("meat"), "cooked meat heals more than raw meat")
+	player.inventory.add("meat", 2)
+	player.inventory.add("berries", 5)
+	player.inventory.add("healing_herb")
+	var xp_before: int = player.skill_xp.get("cooking", 0)
+	ui.open_station("campfire", "Campfire", player)
+	ui.add_material("meat")
+	ui.craft()
+	_check(player.inventory.count("cooked_meat") == 1 and player.inventory.count("meat") == 1, "meat is cooked at the campfire")
+	ui.add_material("berries")
+	ui.add_material("berries")
+	ui.add_material("berries")
+	ui.craft()
+	_check(player.inventory.count("berry_compote") == 1, "three berries make a compote")
+	ui.add_material("meat")
+	ui.add_material("berries")
+	ui.add_material("berries")
+	ui.add_material("healing_herb")
+	ui.craft()
+	_check(player.inventory.count("hearty_stew") == 1, "meat, berries, and a herb make a stew")
+	_check(player.skill_xp.get("cooking", 0) > xp_before, "cooking gives practice")
+	ui.close()
+	player.health.damage(80.0)
+	ui.open_inventory(player)
+	ui.use_item("hearty_stew")
+	_check(is_equal_approx(player.health.current, 80.0), "a stew heals")
+	ui.close()
+	player.health.restore()
+	for item_id in ["cooked_meat", "berry_compote"]:
+		player.inventory.remove(item_id)
+	player.inventory.remove("berries", player.inventory.count("berries"))
+	_write_flags(TEST_FLAGS_A, { "flags": { "cooking": false } })
+	FeatureFlags.load_layers([TEST_FLAGS_A])
+	_check(CraftingData.recipes_for("campfire").is_empty(), "cooking can be switched off")
+	FeatureFlags.load_layers()
+	DirAccess.remove_absolute(TEST_FLAGS_A)
+
+
 func _test_healing(player: Player, ui: CraftingUI) -> void:
 	player.inventory.add("healing_herb", 2)
 	ui.open_station("furnace", "Furnace", player)
@@ -1034,6 +1087,7 @@ func _test_crafting(scene: Node, player: Player) -> void:
 	ui.close()
 	_check(not ui.is_open(), "crafting screen closes")
 	_test_healing(player, ui)
+	_test_cooking(scene, player, ui)
 
 	ui.open_station("anvil", "Anvil", player)
 	ui.add_material("iron_ingot")
@@ -1410,7 +1464,7 @@ func _test_combat(scene: Node, player: Player) -> void:
 
 	# Goblins that wait to be spoken to would throw off the fights below, so only the talking test has it on.
 	FeatureFlags._flags["enemy_talk"] = false
-	await _test_sneaking(player, enemy)
+	await _test_sneaking(scene, player, enemy)
 	FeatureFlags._flags["enemy_talk"] = true
 	await _test_enemy_talk(scene, player)
 	FeatureFlags._flags["enemy_talk"] = false
@@ -1610,6 +1664,43 @@ func _test_heavy_swing(player: Player) -> void:
 	FeatureFlags._flags["heavy_swing"] = true
 	player._charge = -1.0
 	player.notice.disconnect(listen)
+	# A heavy swing lands later and recovers slower than a tap, and the charge shows while held.
+	player._attack_cooldown = 0.0
+	player.stamina = Player.MAX_STAMINA
+	player.attack(true)
+	_check(player._attack_windup == HeavySwing.windup_seconds() and HeavySwing.windup_seconds() > Player.ATTACK_WINDUP and is_equal_approx(player._attack_cooldown, Player.ATTACK_COOLDOWN * HeavySwing.recovery_factor()), "a heavy swing has a longer windup and recovery than a tap")
+	player._attack_cooldown = 0.0
+	player._attack_windup = 0.0
+	player.attack(false)
+	_check(player._attack_windup == Player.ATTACK_WINDUP and player._attack_cooldown == Player.ATTACK_COOLDOWN, "a tap keeps its short windup")
+	player._attack_windup = 0.0
+	var shown: Array[float] = []
+	var watch := func(fraction: float): shown.append(fraction)
+	player.charge_changed.connect(watch)
+	Input.action_press("attack")
+	player._charge = 0.0
+	player._update_charge(HeavySwing.pose_delay_seconds() * 0.5)
+	_check(shown.is_empty(), "a short press shows no charge")
+	player._update_charge(HeavySwing.pose_delay_seconds())
+	_check(shown.size() == 1 and shown[0] > 0.0 and shown[0] < 1.0, "a held button shows a growing charge")
+	player._update_charge(HeavySwing.charge_seconds())
+	_check(shown.back() == 1.0 and player._glow_left > 0.0, "a full charge shows full and flashes the body")
+	Input.action_release("attack")
+	player._update_charge(0.1)
+	_check(shown.back() == -1.0 and player._charge < 0.0, "letting go clears the charge")
+	player.charge_changed.disconnect(watch)
+	var indicator := ChargeIndicator.new()
+	indicator.set_charge(0.5)
+	_check(indicator.visible and not indicator.full and is_equal_approx(indicator.fraction, 0.5), "the charge bar shows part of the charge")
+	indicator.set_charge(1.0)
+	_check(indicator.full, "the charge bar marks a full charge with a shape")
+	indicator.set_charge(-1.0)
+	_check(not indicator.visible, "the charge bar hides when nothing charges")
+	indicator.free()
+	player._attack_cooldown = 0.0
+	player._attack_windup = 0.0
+	player._glow_left = 0.0
+	player._body_mesh.set_glow(Color.WHITE, 0.0)
 	for key in ["UI_TOO_TIRED_HEAVY"]:
 		TranslationServer.set_locale("de")
 		var german := tr(key)
@@ -1621,19 +1712,23 @@ func _test_heavy_swing(player: Player) -> void:
 	player.stamina = Player.MAX_STAMINA
 
 
-func _test_sneaking(player: Player, enemy: Enemy) -> void:
+func _test_sneaking(scene: Node, player: Player, enemy: Enemy) -> void:
 	enemy.revive()
 	var normal_range := float(enemy._stats["aggro_range"])
 	player.position = enemy.position + Vector3(0.0, 0.3, 8.0)
+	# In daylight, in front of the enemy, so only the stance counts here (see _test_noticing_rules).
+	var day_night := player.get_tree().get_first_node_in_group(DayNight.GROUP) as DayNight
+	day_night.hour = 12.0
+	enemy.rotation.y = PI
 	Input.action_press("sneak")
 	await _physics_frames(5)
 	_check(player.is_sneaking(), "holding the sneak key sneaks")
-	_check(is_equal_approx(enemy.notice_range(player), normal_range * float(FeatureFlags.value("sneak_notice_factor"))), "sneaking shortens the range goblins notice at")
+	_check(is_equal_approx(enemy.notice_range(player), normal_range * float(FeatureFlags.value("sneak_notice_factor")) * float(FeatureFlags.value("still_notice_factor"))), "sneaking shortens the range goblins notice at")
 	_check(enemy.state == Enemy.State.IDLE, "goblins don't notice a sneaking player at 8 m")
 	var sneak_speed := Vector2(player.velocity.x, player.velocity.z).length()
 	Input.action_release("sneak")
 	await _physics_frames(5)
-	_check(not player.is_sneaking() and enemy.notice_range(player) == normal_range, "letting go of the key ends sneaking")
+	_check(not player.is_sneaking() and is_equal_approx(enemy.notice_range(player), normal_range * float(FeatureFlags.value("still_notice_factor"))), "letting go of the key ends sneaking")
 	_check(enemy.state != Enemy.State.IDLE, "goblins notice the same player at 8 m when not sneaking")
 	_check(sneak_speed <= Player.WALK_SPEED * float(FeatureFlags.value("sneak_speed_factor")) + 0.01, "sneaking is slower than walking")
 
@@ -1644,6 +1739,7 @@ func _test_sneaking(player: Player, enemy: Enemy) -> void:
 	_check(not player.is_sneaking(), "the sneaking flag turns sneaking off")
 	Input.action_release("sneak")
 	FeatureFlags._flags["sneaking"] = true
+	await _test_noticing_rules(scene, player, enemy, day_night)
 	# Back to the start of the fight the next checks expect.
 	enemy.revive()
 	player.health.restore()
@@ -3817,17 +3913,127 @@ func _test_data_validation() -> void:
 	broken["projectiles.json"]["arrow"]["ammo_item"] = "arrows"
 	broken["crafting.json"]["items"]["berries"]["use"]["heal"] = 0
 	broken["village_layout.json"]["walls"][0]["kind"] = "hedge"
+	broken["notes.json"]["village_sign"]["type"] = "scroll"
+	broken["notes.json"]["mine_notice"].erase("text")
+	broken["village_layout.json"]["readables"][0]["note"] = "lost_note"
+	broken["village_layout.json"]["readables"][1]["model"] = "tombstone"
 	var found := DataValidator.new().validate_files(broken)
 	for expected in [
 		"crafting.json: recipes[forge_axe]", "crafting.json: items[torch]: missing \"name\"", "quests.json: [arrival].objectives[see_grandmother].marker: unknown marker place \"nobody\"",
 		"dialogue.json: hedda[0].when.objective", "dialogue.json: hedda[0].nodes[send].effects[0].quest: unknown quest \"no_quest\"",
 		"dialogue.json: hedda[0].nodes[how_bad].next", "dialogue.json: [stranger]: unknown villager", "enemies.json: [goblin].drops[0].item: unknown item \"gold\"",
 		"enemies.json: [goblin].health", "village_layout.json: enemies[0].type", "village_layout.json: mine: missing \"opening_width\"", "villager_routines.json: [bertram][1]: a stop needs both", "projectiles.json: [arrow].ammo_item",
-		"crafting.json: items[berries].use.heal", "village_layout.json: walls[0].kind",
+		"crafting.json: items[berries].use.heal", "notes.json: [village_sign].type", "notes.json: [mine_notice]: missing \"text\"",
+		"village_layout.json: readables[lost_note].note: unknown text \"lost_note\"", "village_layout.json: readables[notice_board].model",
+		"village_layout.json: walls[0].kind",
 	]:
 		_check(found.any(func(line: String) -> bool: return line.begins_with(expected) or line.contains(expected)), "the validator reports: %s" % expected + ("" if found.any(func(line: String) -> bool: return line.contains(expected)) else " (got %s)" % [found]))
 	var empty := DataValidator.new().validate_files({ "quests.json": [] })
 	_check(not empty.is_empty(), "a data file of the wrong kind is reported")
+
+
+## Signs, notes, and books in the world (#268): data, placement, the reading panel, and the journal.
+func _test_readables(scene: Node, player: Player) -> void:
+	var village: Village = scene.get_node("Village")
+	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Village.LAYOUT_PATH))
+	var texts := Readables.all()
+	_check(FeatureFlags.enabled("readables") and texts.size() >= 5, "there are at least five readable texts")
+	var placed := {}
+	var every_text_has_both_languages := true
+	var types_known := true
+	for note_id: String in texts:
+		var entry: Dictionary = texts[note_id]
+		types_known = types_known and Readables.TYPES.has(entry["type"])
+		for key: String in [entry["title"], entry["text"]]:
+			TranslationServer.set_locale("en")
+			var english := TranslationServer.translate(key)
+			TranslationServer.set_locale("de")
+			var german := TranslationServer.translate(key)
+			every_text_has_both_languages = every_text_has_both_languages and english != key and german != key and english != german
+	TranslationServer.set_locale("en")
+	_check(every_text_has_both_languages and types_known, "every readable has a title and text in English and German, and a known kind")
+	for spot: Dictionary in layout["readables"]:
+		placed[spot["note"]] = true
+		var node := village.get_node_or_null(String(spot["note"])) as Readable
+		_check(node != null and node.note_id == spot["note"] and node.is_in_group(Interactable.GROUP), "the readable %s stands in the world and can be used" % spot["note"])
+	_check(placed.size() == texts.size() and placed.size() >= 5, "every text is placed in the village")
+	_check(placed.has("grandfather_letter") and placed.has("notice_board") and placed.has("village_sign") and placed.has("mine_notice"), "the first set includes the village sign, the notice board, the mine note, and Grandfather's letter")
+	var types := {}
+	for note_id: String in texts:
+		types[texts[note_id]["type"]] = true
+	_check(types.size() == 3, "there are signs, notes, and books")
+	var sign_node: Readable = village.get_node("village_sign")
+	_check(sign_node.prompt() == "Read the sign" and (village.get_node("grandfather_letter") as Readable).prompt() == "Read the note" and (village.get_node("village_chronicle") as Readable).prompt() == "Read the book", "each kind of readable has its own prompt")
+	_check(sign_node.find_children("*", "MeshInstance3D", true, false).size() == 1 and sign_node.find_children("*", "CollisionShape3D", true, false).size() == 1, "a readable is built in code as one mesh with a collision shape")
+	for model: String in ModelBuilder.READABLE_MODELS:
+		var built := ModelBuilder.readable(model, Village.READABLE_SIZES[model])
+		_check(built.find_children("*", "MeshInstance3D", true, false).size() >= 1, "the %s model is built" % model)
+		built.free()
+
+	# Reading.
+	var ui: ReadingUI = scene.get_node("ReadingUI")
+	var saved_text_size := Settings.text_size
+	player.notes.load_data([])
+	player.quests.flags.erase("read_grandfather_letter")
+	_check(ui != null and not ui.is_open(), "the reading panel starts closed")
+	(village.get_node("grandfather_letter") as Readable).interact(player)
+	await process_frame
+	_check(ui.is_open() and player.is_busy() and scene.get_tree().paused, "using a letter opens the reading panel and pauses the game")
+	_check(_all_text(ui).contains("Anselm") and _all_text(ui).contains(tr("NOTE_GRANDFATHER_LETTER_TITLE")), "the panel shows the title and the text")
+	_check(ui.get_viewport().gui_get_focus_owner() != null and ui.is_ancestor_of(ui.get_viewport().gui_get_focus_owner()), "the close button has the focus, so a controller can close the panel")
+	_check(player.notes.has("grandfather_letter") and player.notes.count() == 1, "the first reading adds the text to the journal's notes")
+	_check(player.quests.flags.has("read_grandfather_letter"), "a text can set a story flag")
+	var down := InputEventAction.new()
+	down.action = "ui_down"
+	down.pressed = true
+	ui._input(down)
+	var read_again := InputEventAction.new()
+	read_again.action = "interact"
+	read_again.pressed = true
+	ui._input(read_again)
+	_check(not ui.is_open() and not player.is_busy() and not scene.get_tree().paused, "the interact key closes the panel and resumes the game")
+	(village.get_node("grandfather_letter") as Readable).interact(player)
+	_check(ui.is_open() and player.notes.count() == 1, "reading again doesn't add the note twice")
+	var cancel := InputEventAction.new()
+	cancel.action = "ui_cancel"
+	cancel.pressed = true
+	ui._input(cancel)
+	_check(not ui.is_open() and not scene.get_tree().paused, "cancel closes the panel")
+	ui.open_note("village_sign", player)
+	ui._close_button.pressed.emit()
+	_check(not ui.is_open() and player.notes.count() == 2, "the close button closes the panel, and a sign is noted too")
+	ui.open_note("no_such_text", player)
+	_check(not ui.is_open() and not player.is_busy(), "an unknown text opens nothing")
+
+	# Text size and high contrast follow the settings.
+	Settings.text_size = 1.5
+	ui.open_note("notice_board", player)
+	_check(ui._title.get_theme_font_size("font_size") == Settings.scaled_font_size(ReadingUI.TITLE_FONT_SIZE), "the panel follows the text size setting")
+	ui.close()
+	Settings.text_size = saved_text_size
+	var saved_contrast := Settings.high_contrast
+	Settings.high_contrast = true
+	Accessibility.apply_theme()
+	ui.open_note("notice_board", player)
+	_check(ui._text.theme_type_variation == &"InkLabel" and ui._text.get_theme_color("font_color").get_luminance() < 0.2, "high contrast draws the text in plain black ink on the page")
+	ui.close()
+	Settings.high_contrast = saved_contrast
+	Accessibility.apply_theme()
+
+	# The journal shows what was read, in the language chosen, and it survives a save.
+	var journal: Journal = scene.get_node("Journal")
+	journal.open()
+	journal.select_tab(Journal.TAB_NOTES)
+	_check(_all_text(journal).contains(tr("NOTE_VILLAGE_SIGN_TITLE")) and _all_text(journal).contains(tr("NOTE_GRANDFATHER_LETTER_TITLE")), "the journal's notes tab lists what was read")
+	journal.close()
+	var restored := JournalNotes.new()
+	restored.load_data(JSON.parse_string(JSON.stringify(player.notes.to_data())))
+	_check(restored.count() == player.notes.count() and restored.has("grandfather_letter"), "read texts survive a save")
+	TranslationServer.set_locale("de")
+	_check(restored.entries().any(func(note: Dictionary) -> bool: return note["title"] == "Ein Brief von Großvater"), "a read text shows in German when the language changes")
+	TranslationServer.set_locale("en")
+	player.notes.load_data([])
+	player.quests.flags.erase("read_grandfather_letter")
 
 
 func _test_rain_cover(scene: Node, weather: Weather) -> void:
@@ -3889,6 +4095,17 @@ func _test_rain_roofs(scene: Node, weather: Weather) -> void:
 	village.apply_flags({})
 	weather.refresh_roofs()
 	_check(weather.roof_height_at(25.0, -14.0) == RoofMap.NONE, "the map follows the roof back to broken")
+	# The mine's mouth and the goblin tents keep the rain off too (#337).
+	var mine: Mine = village.find_children("*", "Mine", true, false)[0]
+	var mine_cover := mine.roof_cover()
+	var mouth: Vector2 = mine_cover["center"]
+	_check(village.roof_covers.has(mine_cover) and weather.roof_height_at(mouth.x, mouth.y) > float(mine_cover["base"]) - 0.01, "rain stops over the mine mouth")
+	_check(weather.roof_height_at(mouth.x, mouth.y + 12.0) == RoofMap.NONE, "the plaza in front of the mine is open sky")
+	var tent_covers := village.roof_covers.filter(func(cover: Dictionary) -> bool: return cover["shape"] == "ridge" and cover["rise"] > 0.0 and not cover.has("repaired_by_flag") and (cover["center"] as Vector2).distance_to(Vector2(117.0, -152.0)) < 20.0)
+	_check(tent_covers.size() == 2, "the goblin tents are in the rain map")
+	for cover: Dictionary in tent_covers:
+		var tent: Vector2 = cover["center"]
+		_check(weather.roof_height_at(tent.x, tent.y) > cover["base"], "rain stops at a goblin tent")
 	var drop_material: ShaderMaterial = weather.rain_particles().draw_pass_1.material
 	_check(drop_material.get_shader_parameter("roof_size") == weather._roof_map.size, "the rain shader gets the roof map")
 
@@ -3989,3 +4206,99 @@ func _test_enemy_accessibility(scene: Node) -> void:
 		_check(Accessibility.PALETTES[mode]["warning"] != Accessibility.PALETTES[mode]["enemy"], "the %s palette tells the wind-up warning from the enemy bar" % mode)
 	enemy.free()
 	await process_frame
+
+
+## The noticing rules, the sneak look, and the visibility indicator (#207).
+func _test_noticing_rules(scene: Node, player: Player, enemy: Enemy, day_night: DayNight) -> void:
+	var base := float(enemy._stats["aggro_range"])
+	enemy.revive()
+	player.position = enemy.position + Vector3(0.0, 0.3, 8.0)
+	enemy.rotation.y = PI
+	day_night.hour = 12.0
+	await _physics_frames(3)
+	enemy.state = Enemy.State.IDLE
+	var standing := Noticing.player_factor(player)
+	_check(is_equal_approx(standing, float(FeatureFlags.value("still_notice_factor"))), "standing still in daylight is noticed from the still share of the range")
+	_check(is_equal_approx(Noticing.facing_factor(Vector3.FORWARD, Vector3.FORWARD), 1.0), "an enemy facing the player notices in full")
+	_check(is_equal_approx(Noticing.facing_factor(Vector3.FORWARD, Vector3.BACK), float(FeatureFlags.value("notice_back_factor"))), "from behind an enemy notices less far")
+	_check(Noticing.facing_factor(Vector3.FORWARD, Vector3(1.0, 0.0, -0.2)) == 1.0, "the side of the front cone still counts as seen")
+
+	# Looking away: noticed from less far, so not at 8 m.
+	enemy.rotation.y = 0.0
+	_check(is_equal_approx(enemy.notice_range(player), base * standing * float(FeatureFlags.value("notice_back_factor"))), "an enemy facing away notices a standing player from less far")
+	_check(enemy.notice_range(player) < 8.0, "a goblin facing away doesn't notice a player 8 m behind it")
+	# Right next to it, it hears them whichever way it faces.
+	player.position = enemy.position + Vector3(0.0, 0.3, 2.0)
+	_check(is_equal_approx(Noticing.enemy_factor(enemy, player), 1.0), "closer than the close range an enemy notices from any side")
+	player.position = enemy.position + Vector3(0.0, 0.3, 8.0)
+	enemy.rotation.y = PI
+
+	# Something solid in the way.
+	var wall := StaticBody3D.new()
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(6.0, 10.0, 0.5)
+	shape.shape = box
+	wall.add_child(shape)
+	wall.collision_layer = 1
+	enemy.get_parent().add_child(wall)
+	wall.global_position = enemy.global_position + Vector3(0.0, 1.0, 4.0)
+	await _physics_frames(2)
+	_check(Noticing.is_blocked(enemy, player), "a wall between them blocks the view")
+	_check(is_equal_approx(Noticing.enemy_factor(enemy, player), float(FeatureFlags.value("notice_blocked_factor"))), "a blocked view shortens the noticing range")
+	wall.queue_free()
+	await _physics_frames(2)
+	_check(not Noticing.is_blocked(enemy, player), "the view is clear again without the wall")
+
+	# Light: dark at night, and a lit torch shows.
+	day_night.hour = 1.0
+	var dark := Noticing.light_factor(player)
+	player.torch_lit = true
+	var lit := Noticing.light_factor(player)
+	player.torch_lit = false
+	day_night.hour = 12.0
+	_check(is_equal_approx(dark, float(FeatureFlags.value("night_notice_factor"))), "the night makes the player harder to see")
+	_check(lit > dark and lit > 1.0 - 0.001, "a lit torch makes the player easier to see at night")
+	player.torch_lit = true
+	_check(Noticing.light_factor(player) < lit, "a torch shows less in daylight")
+	player.torch_lit = false
+
+	# The indicator and the sneak look.
+	Input.action_press("sneak")
+	await _physics_frames(5)
+	var indicator := (scene.get_node("UI") as HudLayout).visibility_indicator
+	_check(indicator != null and indicator.visible, "the visibility indicator shows while sneaking")
+	_check(Noticing.level(player) == 0, "a standing sneaking player in daylight is hidden")
+	Input.action_press("move_forward")
+	await _physics_frames(30)
+	_check(Noticing.level(player) == 1, "a sneaking player on the move is cautious")
+	if player._body_mesh is CharacterModel:
+		var model := player._body_mesh as CharacterModel
+		_check(model.crouched and model._player.current_animation == CharacterModel.CROUCH_WALK, "sneaking walks in a crouch")
+		_check(model._player.speed_scale < 1.0, "the crouch walk cycle is slower")
+	Input.action_release("move_forward")
+	await _physics_frames(30)
+	if player._body_mesh is CharacterModel:
+		_check((player._body_mesh as CharacterModel)._player.current_animation == CharacterModel.CROUCH_IDLE, "a standing sneaking player crouches")
+	Input.action_release("sneak")
+	await _physics_frames(5)
+	_check(not indicator.visible, "the visibility indicator hides when not sneaking")
+	for new_level in 3:
+		indicator.update_from(new_level, 0.5)
+		for high_contrast in [false, true]:
+			Settings.high_contrast = high_contrast
+			indicator.queue_redraw()
+			await _physics_frames(1)
+	Settings.high_contrast = false
+	_check(tr("UI_SNEAK_SEEN") != "UI_SNEAK_SEEN", "the indicator words are translated")
+	_check(indicator.level_color(0) != indicator.level_color(2), "the indicator levels differ in colour")
+	Settings.colour_vision = "deuteranopia"
+	_check(indicator.level_color(0) != indicator.level_color(2), "the indicator levels differ in colour for colour vision modes")
+	Settings.colour_vision = "off"
+
+	# The rules turn off, leaving only the sneak factor.
+	FeatureFlags._flags["noticing_rules"] = false
+	enemy.rotation.y = 0.0
+	_check(is_equal_approx(enemy.notice_range(player), base), "with the rules off, a standing player is noticed from the full range")
+	FeatureFlags._flags["noticing_rules"] = true
+	enemy.rotation.y = PI

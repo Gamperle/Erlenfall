@@ -5,6 +5,8 @@ extends Humanoid
 const IDLE := &"Idle"
 const WALK := &"Walk"
 const RUN := &"Sprint"
+const CROUCH_IDLE := &"Crouch_Idle"
+const CROUCH_WALK := &"Crouch_Fwd"
 const WALK_SPEED_LIMIT := 4.5
 const MOVING_SPEED := 0.2
 const BLEND_SECONDS := 0.15
@@ -15,6 +17,9 @@ const DETAIL_RANGE := 20.0
 
 ## Replaces the idle animation, for example while holding a torch up or blocking.
 var idle_override: StringName = &""
+## Sneaking: crouches while standing, and walks in a crouch at `crouch_speed` times the usual pace.
+var crouched := false
+var crouch_speed := 0.8
 ## Straightens the back, neck, and shoulders.
 var posture: PostureModifier
 ## How strongly the model glows is applied to a copy of each material.
@@ -57,6 +62,7 @@ func left_hand() -> Node3D:
 func play_action(animation_name: StringName, duration := 0.0, start := 0.0) -> void:
 	var length := _player.get_animation(animation_name).length
 	var seconds := duration if duration > 0.0 else length
+	_player.speed_scale = 1.0
 	_player.play(animation_name, BLEND_SECONDS, length * (1.0 - start) / seconds)
 	_player.seek(length * start)
 	_action_left = seconds
@@ -71,6 +77,10 @@ func animate(speed: float, delta: float) -> void:
 		wanted = RUN
 	elif speed > MOVING_SPEED:
 		wanted = WALK
+	var crouching := crouched and wanted != RUN and _player.has_animation(CROUCH_IDLE) and _player.has_animation(CROUCH_WALK)
+	if crouching:
+		wanted = CROUCH_WALK if speed > MOVING_SPEED else CROUCH_IDLE
+	_player.speed_scale = crouch_speed if crouching and wanted == CROUCH_WALK else 1.0
 	if _player.current_animation != wanted:
 		_player.play(wanted, BLEND_SECONDS)
 

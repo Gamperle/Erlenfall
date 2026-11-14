@@ -19,6 +19,8 @@ const PROMPT_GAP := 12.0
 
 ## The corner map, when there is one. The map controller sets it.
 var minimap: Minimap
+## How visible the sneaking player is, above the prompt.
+var visibility_indicator: VisibilityIndicator
 
 @onready var _compass: Control = $Compass
 @onready var _health_bar: Control = $HealthBar
@@ -34,6 +36,9 @@ func _ready() -> void:
 	_controls.minimum_size_changed.connect(_place_prompt)
 	_add_bar_pattern(_health_bar, BarPattern.Kind.STRIPES)
 	_add_bar_pattern(_stamina_bar, BarPattern.Kind.DOTS)
+	visibility_indicator = VisibilityIndicator.new()
+	visibility_indicator.name = "VisibilityIndicator"
+	add_child(visibility_indicator)
 	arrange()
 	refresh_accessibility()
 
@@ -49,6 +54,7 @@ func refresh_accessibility() -> void:
 		var pattern := bar.get_node("Frame/Pattern") as BarPattern
 		pattern.refresh()
 	_compass.queue_redraw()
+	visibility_indicator.queue_redraw()
 	if minimap != null:
 		minimap.queue_redraw()
 
@@ -108,3 +114,16 @@ func _place_prompt() -> void:
 	var height := _controls.get_combined_minimum_size().y + absf(_controls.offset_bottom) + PROMPT_GAP
 	_prompt.offset_bottom = -maxf(PROMPT_BOTTOM, height)
 	_prompt.offset_top = _prompt.offset_bottom - _prompt.get_combined_minimum_size().y
+	_place_visibility_indicator()
+
+
+## Centered above the prompt line.
+func _place_visibility_indicator() -> void:
+	if visibility_indicator == null:
+		return
+	visibility_indicator.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	var box := VisibilityIndicator.SIZE
+	visibility_indicator.offset_left = -box.x / 2.0
+	visibility_indicator.offset_right = box.x / 2.0
+	visibility_indicator.offset_bottom = _prompt.offset_top - PROMPT_GAP
+	visibility_indicator.offset_top = visibility_indicator.offset_bottom - box.y

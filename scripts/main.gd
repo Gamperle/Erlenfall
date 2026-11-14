@@ -82,6 +82,7 @@ func _ready() -> void:
 	add_child(_map)
 	_map.setup(_terrain, _village, _player, _ui)
 	_journal = Journal.create(self, _player, _ui, _map.world_map)
+	ReadingUI.create(self)
 
 	_player.quests.changed.connect(_on_quests_changed)
 	_player.inventory.changed.connect(_update_quest_label)
@@ -89,6 +90,10 @@ func _ready() -> void:
 	_player.health.died.connect(_on_player_died)
 	_stamina_bar.visible = FeatureFlags.enabled("stamina")
 	_player.stamina_changed.connect(_update_stamina_bar)
+	var charge_indicator := ChargeIndicator.new()
+	charge_indicator.name = "ChargeIndicator"
+	_ui.add_child(charge_indicator)
+	_player.charge_changed.connect(charge_indicator.set_charge)
 	_player.notice.connect(_show_message)
 	_player.busy_changed.connect(_update_prompt)
 	_player.hurt.connect(_flash_hurt)

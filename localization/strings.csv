@@ -148,6 +148,7 @@ UI_COLOUR_VISION_DEUTERANOPIA,Deuteranopia (red-green),Deuteranopie (Rot-Grün)
 UI_COLOUR_VISION_PROTANOPIA,Protanopia (red-green),Protanopie (Rot-Grün)
 UI_COLOUR_VISION_TRITANOPIA,Tritanopia (blue-yellow),Tritanopie (Blau-Gelb)
 UI_HIGH_CONTRAST,High contrast,Hoher Kontrast
+UI_REDUCE_MOTION,Reduce motion,Weniger Bewegung
 UI_DIALOGUE_OPACITY,Dialogue panel opacity,Deckkraft des Dialogfelds
 UI_VOLUME_MASTER,Master volume,Gesamtlautstärke
 UI_VOLUME_MUSIC,Music volume,Musiklautstärke

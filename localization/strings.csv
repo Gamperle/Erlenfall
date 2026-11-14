@@ -65,6 +65,7 @@ UI_METRICS,"%d FPS, slowest frame %.1f ms
 %d Draw Calls, %.0fk Dreiecke
 %.0f MB Videospeicher"
 UI_NO_TORCH,You have no torch.,Du hast keine Fackel.
+UI_BLOCK_BROKEN,Your guard breaks!,Deine Deckung bricht!
 UI_TORCH_BURNED_OUT,Your torch has burned out.,Deine Fackel ist abgebrannt.
 QUALITY_CRUDE,Crude,Grob
 QUALITY_COMMON,Common,Gewöhnlich

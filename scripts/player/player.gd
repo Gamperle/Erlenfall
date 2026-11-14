@@ -7,6 +7,8 @@ signal notice(text_key: String)
 signal busy_changed
 signal hurt
 signal stamina_changed
+## How full the heavy swing's charge is, from 0 to 1, or -1 when nothing is charging.
+signal charge_changed(fraction: float)
 
 const WALK_SPEED := 3.5
 const SPRINT_SPEED := 6.5
@@ -33,6 +35,9 @@ const REGEN_DELAY := 8.0
 const UNARMED_DAMAGE := 5.0
 const ATTACK_WINDUP := 0.15
 const ATTACK_COOLDOWN := 0.55
+## How long the body glows when a heavy swing is full or lands.
+const CHARGE_FULL_GLOW_SECONDS := 0.2
+const HEAVY_GLOW_SECONDS := 0.35
 const ATTACK_RANGE := 2.4
 const ATTACK_FACING := 0.4
 const BLOCK_SPEED_FACTOR := 0.4
@@ -119,6 +124,8 @@ var _attack_windup := 0.0
 ## How long the attack button has been held, or -1 when it isn't (see HeavySwing).
 var _charge := -1.0
 var _swing_heavy := false
+var _charge_shown := -1.0
+var _glow_left := 0.0
 var _ranged_cooldown := 0.0
 var _dodge_time := 0.0
 var _dodge_cooldown := 0.0
@@ -348,8 +355,10 @@ func attack(heavy := false) -> bool:
 		if _swing_heavy and not spend_stamina(HeavySwing.stamina_cost()):
 			_swing_heavy = false
 			notice.emit("UI_TOO_TIRED_HEAVY")
-		_attack_cooldown = ATTACK_COOLDOWN
-		_attack_windup = ATTACK_WINDUP
+		_attack_cooldown = ATTACK_COOLDOWN * (HeavySwing.recovery_factor() if _swing_heavy else 1.0)
+		_attack_windup = HeavySwing.windup_seconds() if _swing_heavy else ATTACK_WINDUP
+		if _swing_heavy:
+			_flash(HEAVY_GLOW_SECONDS)
 		_body_mesh.play_action(ATTACK_ANIMATION)
 		_body_mesh.rotation.y = _pivot.rotation.y
 	return ready_to_swing
@@ -521,6 +530,31 @@ func _update_stamina(delta: float) -> void:
 		_winded = false
 
 
+## Tracks the held attack button, and shows the charge as a raised sword, a bar, and a flash when full.
+func _update_charge(delta: float) -> void:
+	if _glow_left > 0.0:
+		_glow_left -= delta
+		_body_mesh.set_glow(Accessibility.color("warning"), maxf(_glow_left, 0.0) / HEAVY_GLOW_SECONDS * 2.0)
+	var was_full := _charge >= HeavySwing.charge_seconds()
+	if _charge >= 0.0:
+		_charge = _charge + delta if Input.is_action_pressed("attack") else -1.0
+	var shown := -1.0
+	if _charge >= HeavySwing.pose_delay_seconds():
+		shown = HeavySwing.charge_fraction(_charge)
+	if _charge >= HeavySwing.charge_seconds() and not was_full:
+		_flash(CHARGE_FULL_GLOW_SECONDS)
+	if shown != _charge_shown:
+		_charge_shown = shown
+		charge_changed.emit(shown)
+	if _body_mesh is CharacterModel:
+		_hand_pose.winding = shown >= 0.0 and not is_blocking()
+
+
+## Makes the body glow briefly, as a cue.
+func _flash(seconds: float) -> void:
+	_glow_left = seconds
+
+
 func _update_combat(delta: float) -> void:
 	_attack_cooldown = maxf(_attack_cooldown - delta, 0.0)
 	_ranged_cooldown = maxf(_ranged_cooldown - delta, 0.0)
@@ -528,8 +562,7 @@ func _update_combat(delta: float) -> void:
 	_dodge_cooldown = maxf(_dodge_cooldown - delta, 0.0)
 	_block_broken = maxf(_block_broken - delta, 0.0)
 	_update_stamina(delta)
-	if _charge >= 0.0:
-		_charge = _charge + delta if Input.is_action_pressed("attack") else -1.0
+	_update_charge(delta)
 	if _tool_seconds > 0.0:
 		_tool_seconds -= delta
 		if _tool_seconds <= 0.0:
@@ -557,7 +590,7 @@ func _update_combat(delta: float) -> void:
 			return
 
 	# Swing the placeholder weapon while the cooldown runs, and raise it to block.
-	var swing := _attack_cooldown / ATTACK_COOLDOWN
+	var swing := minf(maxf(_attack_cooldown / ATTACK_COOLDOWN, maxf(_charge_shown, 0.0)), 1.0)
 	var rest_angle := WEAPON_FIRST_PERSON_REST_ANGLE if first_person else WEAPON_REST_ANGLE
 	var swing_angle := WEAPON_FIRST_PERSON_SWING_ANGLE if first_person else WEAPON_SWING_ANGLE
 	_weapon.rotation.x = lerpf(rest_angle, swing_angle, swing)

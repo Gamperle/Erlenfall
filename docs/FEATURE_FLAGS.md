@@ -126,6 +126,11 @@ Holding the attack button charges a heavier hit, released on letting go ([#295](
 | `heavy_swing_charge_seconds` | `0.6` | How long the button must be held for a heavy swing |
 | `heavy_swing_damage_factor` | `2.0` | How many times the normal damage a heavy swing does |
 | `heavy_swing_stamina_cost` | `30.0` | The stamina a heavy swing costs |
+| `heavy_swing_pose_delay_seconds` | `0.15` | How long the button is held before the sword rises and the charge bar shows, so a tap shows neither |
+| `heavy_swing_windup_seconds` | `0.3` | How long a heavy swing takes to land after release. A tap takes 0.15, so heavy hits come slower ([#332](https://github.com/Gamperle/Erlenfall/issues/332)) |
+| `heavy_swing_recovery_factor` | `1.4` | How many times the normal recovery after a swing a heavy swing takes |
+
+While the button is held, the sword arm rises (or the first-person weapon lifts) and a small bar below the screen centre fills. It has tick marks, and a diamond at each end when the charge is full, so it reads without colour. A full charge also flashes the character, and the heavy swing glows as it lands. There is no sound yet, because the game has no audio.
 
 ## Talking to enemies
 

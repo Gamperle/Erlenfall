@@ -62,6 +62,8 @@ func _run() -> void:
 	_check(same_wall.mesh.get_faces() == wall_parts[0].mesh.get_faces(), "the same seed builds the same wall")
 	var palisade := ModelBuilder.palisade(6.0, 3.0, 1).find_children("*", "MeshInstance3D", true, false)
 	_check(palisade.size() == 1 and absf(palisade[0].mesh.get_aabb().size.x - 6.0) < 0.1, "a code-built palisade is one mesh of the size asked for")
+	var log_material: ShaderMaterial = palisade[0].mesh.surface_get_material(0)
+	_check(log_material.get_shader_parameter("turn_first_photo") == true, "palisade logs turn the wood photo so the grain runs upright")
 	stone_wall.free()
 	same_wall.get_parent().get_parent().free()
 	palisade[0].get_parent().get_parent().free()

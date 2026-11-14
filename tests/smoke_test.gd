@@ -1663,6 +1663,43 @@ func _test_heavy_swing(player: Player) -> void:
 	FeatureFlags._flags["heavy_swing"] = true
 	player._charge = -1.0
 	player.notice.disconnect(listen)
+	# A heavy swing lands later and recovers slower than a tap, and the charge shows while held.
+	player._attack_cooldown = 0.0
+	player.stamina = Player.MAX_STAMINA
+	player.attack(true)
+	_check(player._attack_windup == HeavySwing.windup_seconds() and HeavySwing.windup_seconds() > Player.ATTACK_WINDUP and is_equal_approx(player._attack_cooldown, Player.ATTACK_COOLDOWN * HeavySwing.recovery_factor()), "a heavy swing has a longer windup and recovery than a tap")
+	player._attack_cooldown = 0.0
+	player._attack_windup = 0.0
+	player.attack(false)
+	_check(player._attack_windup == Player.ATTACK_WINDUP and player._attack_cooldown == Player.ATTACK_COOLDOWN, "a tap keeps its short windup")
+	player._attack_windup = 0.0
+	var shown: Array[float] = []
+	var watch := func(fraction: float): shown.append(fraction)
+	player.charge_changed.connect(watch)
+	Input.action_press("attack")
+	player._charge = 0.0
+	player._update_charge(HeavySwing.pose_delay_seconds() * 0.5)
+	_check(shown.is_empty(), "a short press shows no charge")
+	player._update_charge(HeavySwing.pose_delay_seconds())
+	_check(shown.size() == 1 and shown[0] > 0.0 and shown[0] < 1.0, "a held button shows a growing charge")
+	player._update_charge(HeavySwing.charge_seconds())
+	_check(shown.back() == 1.0 and player._glow_left > 0.0, "a full charge shows full and flashes the body")
+	Input.action_release("attack")
+	player._update_charge(0.1)
+	_check(shown.back() == -1.0 and player._charge < 0.0, "letting go clears the charge")
+	player.charge_changed.disconnect(watch)
+	var indicator := ChargeIndicator.new()
+	indicator.set_charge(0.5)
+	_check(indicator.visible and not indicator.full and is_equal_approx(indicator.fraction, 0.5), "the charge bar shows part of the charge")
+	indicator.set_charge(1.0)
+	_check(indicator.full, "the charge bar marks a full charge with a shape")
+	indicator.set_charge(-1.0)
+	_check(not indicator.visible, "the charge bar hides when nothing charges")
+	indicator.free()
+	player._attack_cooldown = 0.0
+	player._attack_windup = 0.0
+	player._glow_left = 0.0
+	player._body_mesh.set_glow(Color.WHITE, 0.0)
 	for key in ["UI_TOO_TIRED_HEAVY"]:
 		TranslationServer.set_locale("de")
 		var german := tr(key)

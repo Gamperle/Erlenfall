@@ -7,6 +7,11 @@ const GUARD_SPEED := 10.0
 const UPPER_ARM_GUARD := Vector3(-0.35, -0.65, 0.65)
 const LOWER_ARM_GUARD := Vector3(0.4, 0.2, 0.9)
 const BLADE_GUARD := Vector3(0.55, 0.8, 0.2)
+## The raised arm while a heavy swing charges: the sword held up and back, ready to come down.
+const WIND_SPEED := 8.0
+const UPPER_ARM_WIND := Vector3(-0.55, 0.75, -0.3)
+const LOWER_ARM_WIND := Vector3(0.1, 0.85, -0.45)
+const BLADE_WIND := Vector3(0.1, 0.55, -0.8)
 const FINGERS: Array[String] = ["index", "middle", "ring", "pinky"]
 const FINGER_CURL: Array[float] = [1.3, 1.5, 1.1]
 const THUMB_CURL: Array[float] = [0.35, 0.6, 0.7]
@@ -17,39 +22,46 @@ const LEFT_BEND := 1.0
 var grip_right := true
 var grip_left := false
 var guarding := false
+## Holds the sword arm raised, for a heavy swing that is charging.
+var winding := false
 ## The direction of the held blade, in the hand bone's axes.
 var blade_in_hand := Vector3.UP
 
 var _guard := 0.0
+var _wind := 0.0
 
 
 func _process_modification_with_delta(delta: float) -> void:
 	var skeleton := get_skeleton()
 	_guard = move_toward(_guard, 1.0 if guarding else 0.0, GUARD_SPEED * delta)
+	_wind = move_toward(_wind, 1.0 if winding else 0.0, WIND_SPEED * delta)
 	if _guard > 0.0:
-		_aim_bone(skeleton, skeleton.find_bone(&"RightUpperArm"), skeleton.find_bone(&"RightLowerArm"), UPPER_ARM_GUARD)
-		_aim_bone(skeleton, skeleton.find_bone(&"RightLowerArm"), skeleton.find_bone(&"RightHand"), LOWER_ARM_GUARD)
-		_aim_blade(skeleton)
+		_raise_arm(skeleton, UPPER_ARM_GUARD, LOWER_ARM_GUARD, BLADE_GUARD, _guard)
+	if _wind > 0.0:
+		_raise_arm(skeleton, UPPER_ARM_WIND, LOWER_ARM_WIND, BLADE_WIND, _wind)
 	if grip_right:
 		_close_hand(skeleton, "r", RIGHT_BEND)
 	if grip_left:
 		_close_hand(skeleton, "l", LEFT_BEND)
 
 
-func _aim_bone(skeleton: Skeleton3D, bone: int, child: int, direction: Vector3) -> void:
-	var current := skeleton.get_bone_global_pose(child).origin - skeleton.get_bone_global_pose(bone).origin
-	_turn_bone(skeleton, bone, Quaternion(current.normalized(), direction.normalized()))
-
-
-func _aim_blade(skeleton: Skeleton3D) -> void:
+## Turns the sword arm towards a pose, by the given share of the way.
+func _raise_arm(skeleton: Skeleton3D, upper: Vector3, lower: Vector3, blade: Vector3, amount: float) -> void:
+	_aim_bone(skeleton, skeleton.find_bone(&"RightUpperArm"), skeleton.find_bone(&"RightLowerArm"), upper, amount)
+	_aim_bone(skeleton, skeleton.find_bone(&"RightLowerArm"), skeleton.find_bone(&"RightHand"), lower, amount)
 	var hand := skeleton.find_bone(&"RightHand")
 	var current := skeleton.get_bone_global_pose(hand).basis.get_rotation_quaternion() * blade_in_hand
-	_turn_bone(skeleton, hand, Quaternion(current.normalized(), BLADE_GUARD.normalized()))
+	_turn_bone(skeleton, hand, Quaternion(current.normalized(), blade.normalized()), amount)
 
 
-func _turn_bone(skeleton: Skeleton3D, bone: int, turn: Quaternion) -> void:
+func _aim_bone(skeleton: Skeleton3D, bone: int, child: int, direction: Vector3, amount: float) -> void:
+	var current := skeleton.get_bone_global_pose(child).origin - skeleton.get_bone_global_pose(bone).origin
+	_turn_bone(skeleton, bone, Quaternion(current.normalized(), direction.normalized()), amount)
+
+
+func _turn_bone(skeleton: Skeleton3D, bone: int, turn: Quaternion, amount: float) -> void:
 	var rotation_now := skeleton.get_bone_global_pose(bone).basis.get_rotation_quaternion()
-	var wanted := Quaternion.IDENTITY.slerp(turn, _guard) * rotation_now
+	var wanted := Quaternion.IDENTITY.slerp(turn, amount) * rotation_now
 	var parent := skeleton.get_bone_global_pose(skeleton.get_bone_parent(bone)).basis.get_rotation_quaternion()
 	skeleton.set_bone_pose_rotation(bone, (parent.inverse() * wanted).normalized())
 

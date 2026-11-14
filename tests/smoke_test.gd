@@ -178,6 +178,7 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 	_check(terrain.get_node("Water").mesh.get_surface_count() == 1, "the river has water")
 	_check(terrain.river_clearance(0.0, 5.0) < 0.0, "the river runs through the village")
 	_check(terrain.height_at(0.0, 5.0) < terrain.water_height(0.0, 5.0), "the river bed lies under the water")
+	_check_water_ripples(terrain, player)
 	var downhill := true
 	for i in range(1, terrain.river.heights.size()):
 		downhill = downhill and terrain.river.heights[i] <= terrain.river.heights[i - 1]
@@ -2122,6 +2123,23 @@ func _has_joypad(kinds: Dictionary) -> bool:
 func _physics_frames(count: int) -> void:
 	for i in count:
 		await physics_frame
+
+
+func _check_water_ripples(terrain: Terrain, player: Player) -> void:
+	var material := terrain.get_node("Water").material_override as ShaderMaterial
+	var before := player.global_position
+	var saved_graphics := Settings.graphics
+	Settings.graphics = "high"
+	player.global_position = Vector3(0.0, terrain.water_height(0.0, 5.0) - 0.4, 5.0)
+	_check(terrain._stir_water() == 1, "someone wading in the river ripples the water")
+	_check(material.get_shader_parameter("wader_count") == 1, "the water shader is told about the wader")
+	player.global_position = Vector3(300.0, terrain.height_at(300.0, 300.0) + 1.0, 300.0)
+	_check(terrain._stir_water() == 0, "someone on dry land leaves the water still")
+	Settings.graphics = "low"
+	player.global_position = Vector3(0.0, terrain.water_height(0.0, 5.0) - 0.4, 5.0)
+	_check(terrain._stir_water() == 0, "low graphics skips the ripples")
+	Settings.graphics = saved_graphics
+	player.global_position = before
 
 
 func _check(condition: bool, label: String) -> void:

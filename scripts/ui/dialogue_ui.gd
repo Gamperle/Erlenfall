@@ -13,7 +13,7 @@ var _panel: FittedPanel
 var _speaker: Label
 var _text: Label
 var _choices: VBoxContainer
-var _hint: Label
+var _hint: PromptLine
 
 
 func _ready() -> void:
@@ -43,6 +43,8 @@ func open_conversation(npc_id: String, speaker: String, player: Player, talker: 
 ## Applies the text size and panel opacity settings.
 func refresh_style() -> void:
 	_speaker.add_theme_font_size_override("font_size", Settings.scaled_font_size(SPEAKER_FONT_SIZE))
+	if _hint.get_child_count() > 0:
+		_hint.rebuild()
 	_panel.self_modulate.a = Settings.dialogue_opacity
 
 
@@ -59,7 +61,7 @@ func choose(index: int) -> void:
 
 ## Shows the choose hint with the inputs of the device in use.
 func refresh_prompts() -> void:
-	_hint.text = tr("UI_DIALOGUE_HINT") % KeyBindings.label_for("interact")
+	_hint.set_template(tr("UI_DIALOGUE_HINT"), [KeyBindings.segments_for("interact")])
 
 
 func _input(event: InputEvent) -> void:
@@ -121,6 +123,6 @@ func _build() -> void:
 	_choices.add_theme_constant_override("separation", 6)
 	column.add_child(_choices)
 
-	_hint = Label.new()
+	_hint = PromptLine.new()
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	column.add_child(_hint)

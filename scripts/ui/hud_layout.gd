@@ -41,8 +41,10 @@ func _ready() -> void:
 ## Makes the HUD follow the colour vision and high-contrast settings.
 func refresh_accessibility() -> void:
 	for label: Control in [_quest, _prompt, _controls, _overlay, get_node_or_null("MessageLabel")]:
-		if label is Label:
+		if label is Label or label is PromptLine:
 			Accessibility.apply_label_settings(label.label_settings)
+	for line: PromptLine in [_prompt, _controls]:
+		line.rebuild()
 	for bar: Control in [_health_bar, _stamina_bar]:
 		var pattern := bar.get_node("Frame/Pattern") as BarPattern
 		pattern.refresh()

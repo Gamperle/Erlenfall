@@ -97,6 +97,7 @@ var known_recipes: Dictionary = {}
 ## Practice in each craft, by skill id.
 var skill_xp: Dictionary = {}
 var quests := QuestLog.new()
+var notes := JournalNotes.new()
 ## What pressing the use button would act on right now, if anything.
 var interact_target: Interactable
 var torch_lit := false

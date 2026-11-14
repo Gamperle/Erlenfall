@@ -328,6 +328,7 @@ UI_HINT_TIME,speed up time,Zeit vorspulen
 UI_HINT_SHOOT,shoot bow,Bogen schießen
 UI_HINT_THROW,throw flask,Flasche werfen
 UI_HINT_MAP,map,Karte
+UI_HINT_JOURNAL,journal,Tagebuch
 UI_HINT_MENU,menu,Menü
 ACTION_MOVE_FORWARD,Move forward,Vorwärts gehen
 ACTION_MOVE_BACK,Move back,Rückwärts gehen
@@ -351,6 +352,7 @@ ACTION_TOGGLE_TORCH,Torch,Fackel
 ACTION_TOGGLE_CAMERA,Switch camera,Kamera wechseln
 ACTION_FAST_FORWARD_TIME,Speed up time,Zeit vorspulen
 ACTION_MAP,Map,Karte
+ACTION_JOURNAL,Journal,Tagebuch
 ACTION_PAUSE,Menu,Menü
 ITEM_HEALING_HERB,Healing herb,Heilkraut
 ITEM_BERRIES,Berries,Beeren
@@ -360,6 +362,18 @@ PROMPT_PICK_HERBS,Pick healing herbs,Heilkraut pflücken
 UI_USE_ITEM,Use %s (%d),%s benutzen (%d)
 UI_USED_ITEM,You used %s.,Du hast %s benutzt.
 UI_HEALTH_FULL,Your health is already full.,Deine Gesundheit ist bereits voll.
+UI_JOURNAL,Journal,Tagebuch
+UI_JOURNAL_QUESTS,Quests,Aufgaben
+UI_JOURNAL_MAP,Map,Karte
+UI_JOURNAL_NOTES,Notes,Notizen
+UI_JOURNAL_COMPLETED,Completed,Abgeschlossen
+UI_JOURNAL_TRACKED,tracked,verfolgt
+UI_JOURNAL_NO_QUESTS,You have no quests yet.,Du hast noch keine Aufgaben.
+UI_JOURNAL_NO_NOTES,You have not found any notes yet. Notes you read in the world are kept here.,Du hast noch keine Notizen gefunden. Notizen aus der Welt werden hier gesammelt.
+UI_JOURNAL_NO_MAP,The map is not available.,Die Karte ist nicht verfügbar.
+UI_JOURNAL_HINT,Arrow keys / d-pad: choose a tab   Enter / A: select   J / Esc / B: close,Pfeiltasten / Steuerkreuz: Reiter wählen   Eingabe / A: auswählen   J / Esc / B: schließen
+UI_JOURNAL_HINT_QUESTS,Select an active quest to track it and select it again to stop. Only the tracked quest shows on the compass and the map.   J / Esc / B: close,Wähle eine aktive Aufgabe, um sie zu verfolgen, und wähle sie erneut zum Beenden. Nur die verfolgte Aufgabe erscheint auf Kompass und Karte.   J / Esc / B: schließen
+UI_JOURNAL_MAP_HINT,WASD / left stick: move the map   Mouse wheel / + and - / LB and RB: zoom   Esc / B: close,WASD / linker Stick: Karte verschieben   Mausrad / + und - / LB und RB: zoomen   Esc / B: schließen
 UI_FORGE_STOP_KEYBOARD,Esc,Esc
 UI_FORGE_STOP_GAMEPAD,B,B
 UI_DIALOGUE_HINT,%s: choose,%s: auswählen

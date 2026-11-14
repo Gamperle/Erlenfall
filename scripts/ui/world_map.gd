@@ -32,6 +32,8 @@ var _canvas: Control
 var _center := Vector2.ZERO
 var _zoom := START_ZOOM
 var _dragging := false
+## True when the journal shows the map inside its own page, instead of the full-screen map.
+var _embedded := false
 
 
 func _init() -> void:
@@ -53,14 +55,39 @@ func setup(player: Player) -> void:
 	_player = player
 
 
+## Moves the picture into `host`, for the journal's Map tab, centered on the player. It then has no
+## title and doesn't pause the game or react to the map key; the journal does that.
+func embed(host: Control) -> void:
+	_embedded = true
+	_dragging = false
+	_canvas.reparent(host, false)
+	_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_center = player_position
+	_zoom = START_ZOOM
+	_clamp_center()
+	_canvas.queue_redraw()
+
+
+## Gives the picture back to the full-screen map.
+func release() -> void:
+	if _embedded:
+		_embedded = false
+		_dragging = false
+		_canvas.reparent(self, false)
+
+
 ## Draws the map again, after a change in what it shows.
 func refresh() -> void:
-	if _canvas != null and visible:
+	if _canvas != null and _is_active():
 		_canvas.queue_redraw()
 
 
 func is_open() -> bool:
 	return visible
+
+
+func _is_active() -> bool:
+	return true if _embedded else visible
 
 
 func open() -> void:
@@ -111,6 +138,9 @@ func _notification(what: int) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if _embedded:
+		_input_embedded(event)
+		return
 	if not visible:
 		if event.is_action_pressed("map") and can_open.call():
 			open()
@@ -129,8 +159,26 @@ func _input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 
+## The embedded map only zooms and drags; the journal handles keys that open and close it.
+func _input_embedded(event: InputEvent) -> void:
+	if not _embedded:
+		return
+	if event.is_action_pressed("map_zoom_in"):
+		zoom_by(ZOOM_STEP)
+	elif event.is_action_pressed("map_zoom_out"):
+		zoom_by(1.0 / ZOOM_STEP)
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		_dragging = event.pressed and _map_rect().has_point(_canvas.get_local_mouse_position())
+		return
+	elif event is InputEventMouseMotion and _dragging:
+		pan(-event.relative / _map_rect().size.x * span())
+	else:
+		return
+	get_viewport().set_input_as_handled()
+
+
 func _process(delta: float) -> void:
-	if not visible:
+	if not _is_active():
 		return
 	var direction := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	if direction != Vector2.ZERO:
@@ -145,15 +193,19 @@ func _clamp_center() -> void:
 ## The square the picture fills, leaving room for the title above and the keys below.
 func _map_rect() -> Rect2:
 	var size := _canvas.size
-	var top := MARGIN + Settings.scaled_font_size(TITLE_FONT_SIZE) * 1.4
+	var top := MARGIN * 0.5 if _embedded else MARGIN + Settings.scaled_font_size(TITLE_FONT_SIZE) * 1.4
 	var bottom := _footer_height(size.x)
 	var side := maxf(minf(size.x - MARGIN * 2.0, size.y - top - bottom - MARGIN), 64.0)
 	return Rect2(Vector2((size.x - side) / 2.0, top), Vector2(side, side))
 
 
+func _hint_key() -> String:
+	return "UI_JOURNAL_MAP_HINT" if _embedded else "UI_MAP_HINT"
+
+
 func _footer_height(width: float) -> float:
 	var font := _canvas.get_theme_default_font()
-	var hint := font.get_multiline_string_size(tr("UI_MAP_HINT"), HORIZONTAL_ALIGNMENT_CENTER, width - MARGIN * 2.0, Settings.scaled_font_size(HINT_FONT_SIZE))
+	var hint := font.get_multiline_string_size(tr(_hint_key()), HORIZONTAL_ALIGNMENT_CENTER, width - MARGIN * 2.0, Settings.scaled_font_size(HINT_FONT_SIZE))
 	return hint.y + Settings.scaled_font_size(LABEL_FONT_SIZE) * 1.6 + MARGIN * 0.5
 
 
@@ -164,11 +216,11 @@ func to_screen(world: Vector2, rect: Rect2) -> Vector2:
 
 func _draw_map() -> void:
 	var canvas_size := _canvas.size
-	_canvas.draw_rect(Rect2(Vector2.ZERO, canvas_size), DIM_COLOR)
 	var font := _canvas.get_theme_default_font()
-	var title := tr("UI_MAP")
-	var title_size := Settings.scaled_font_size(TITLE_FONT_SIZE)
-	_text(font, Vector2(canvas_size.x / 2.0, MARGIN + title_size), title, title_size, true)
+	if not _embedded:
+		_canvas.draw_rect(Rect2(Vector2.ZERO, canvas_size), DIM_COLOR)
+		var title_size := Settings.scaled_font_size(TITLE_FONT_SIZE)
+		_text(font, Vector2(canvas_size.x / 2.0, MARGIN + title_size), tr("UI_MAP"), title_size, true)
 	var rect := _map_rect()
 	if map != null and map.texture != null:
 		var half := Vector2.ONE * span() / 2.0
@@ -231,7 +283,7 @@ func _draw_footer(font: Font, canvas_size: Vector2, rect: Rect2) -> void:
 	_legend_text(font, Vector2(x, y), tr("UI_MAP_PLACE"), label_size)
 	var hint_size := Settings.scaled_font_size(HINT_FONT_SIZE)
 	var hint_top := y + label_size * 0.6
-	_canvas.draw_multiline_string(font, Vector2(MARGIN, hint_top + hint_size), tr("UI_MAP_HINT"), HORIZONTAL_ALIGNMENT_CENTER, canvas_size.x - MARGIN * 2.0, hint_size, -1, TEXT_COLOR)
+	_canvas.draw_multiline_string(font, Vector2(MARGIN, hint_top + hint_size), tr(_hint_key()), HORIZONTAL_ALIGNMENT_CENTER, canvas_size.x - MARGIN * 2.0, hint_size, -1, TEXT_COLOR)
 
 
 ## Draws a legend entry and returns where it ends.

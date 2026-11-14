@@ -72,6 +72,7 @@ static func write(path: String, player: Player, day_night: DayNight, village: Vi
 		"torch_lit": player.torch_lit,
 		"torch_burned_seconds": player.torch_burned_seconds,
 		"quests": player.quests.to_data(),
+		"notes": player.notes.to_data(),
 		"hour": day_night.hour,
 		"weather": _weather_of(day_night).to_data() if _weather_of(day_night) else {},
 		"world": village.to_data(),
@@ -136,6 +137,8 @@ static func apply(path: String, player: Player, day_night: DayNight, village: Vi
 	# Games saved before enemies and gathering spots were saved don't have this.
 	if data.has("world"):
 		village.load_data(data["world"])
+	# Games saved before the journal don't have notes.
+	player.notes.load_data(data.get("notes", []))
 	# Games saved before the map remembered places don't have this.
 	if map != null:
 		map.load_discovered(data.get("discovered_places", []))

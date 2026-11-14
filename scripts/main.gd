@@ -42,6 +42,7 @@ var _hurt_tween: Tween
 @onready var _prompt_label: Label = $UI/PromptLabel
 @onready var _quest_label: Label = $UI/QuestLabel
 @onready var _health_bar: ProgressBar = $UI/HealthBar
+@onready var _stamina_bar: ProgressBar = $UI/StaminaBar
 @onready var _message_label: Label = $UI/MessageLabel
 @onready var _compass: Compass = $UI/Compass
 @onready var _performance_overlay: PerformanceOverlay = $UI/PerformanceOverlay
@@ -60,6 +61,7 @@ func _ready() -> void:
 	_fit_interface()
 	_apply_graphics()
 	_menu.graphics_changed.connect(_apply_graphics)
+	_menu.bindings_changed.connect(_set_translated_text)
 	_menu.text_size_changed.connect(_apply_text_size)
 	_apply_text_size()
 	_welcome_label.modulate.a = 0.0
@@ -73,6 +75,8 @@ func _ready() -> void:
 	_player.inventory.changed.connect(_update_quest_label)
 	_player.health.changed.connect(_update_health_bar)
 	_player.health.died.connect(_on_player_died)
+	_stamina_bar.visible = FeatureFlags.enabled("stamina")
+	_player.stamina_changed.connect(_update_stamina_bar)
 	_player.notice.connect(_show_message)
 	_player.busy_changed.connect(_update_prompt)
 	_player.hurt.connect(_flash_hurt)
@@ -117,7 +121,7 @@ func _update_prompt() -> void:
 	var target := _player.interact_target
 	_prompt_label.visible = target != null and not _player.is_busy()
 	if _prompt_label.visible:
-		_prompt_label.text = tr("UI_INTERACT_PROMPT") % target.prompt()
+		_prompt_label.text = tr("UI_INTERACT_PROMPT") % [KeyBindings.label_for("interact"), target.prompt()]
 
 
 func _notification(what: int) -> void:
@@ -130,7 +134,7 @@ func _notification(what: int) -> void:
 
 func _set_translated_text() -> void:
 	_welcome_label.text = tr("UI_WELCOME")
-	_controls_label.text = tr("UI_CONTROLS")
+	_controls_label.text = KeyBindings.controls_hint()
 
 
 func _fit_interface() -> void:
@@ -154,6 +158,7 @@ func _apply_graphics() -> void:
 	var world_environment: WorldEnvironment = $WorldEnvironment
 	world_environment.environment.ssao_enabled = Settings.ambient_occlusion()
 	($SkyDome as SkyDome).set_quality(Settings.graphics)
+	$Weather.set_quality(Settings.graphics)
 	var grass: GrassField = _village.get_node("Grass")
 	grass.set_draw_scale(Settings.grass_draw_scale())
 
@@ -254,6 +259,10 @@ func _update_quest_label() -> void:
 
 func _update_health_bar() -> void:
 	_health_bar.value = _player.health.fraction() * 100.0
+
+
+func _update_stamina_bar() -> void:
+	_stamina_bar.value = _player.stamina / Player.MAX_STAMINA * 100.0
 
 
 func _on_player_died() -> void:

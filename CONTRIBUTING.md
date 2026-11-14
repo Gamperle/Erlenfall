@@ -8,6 +8,18 @@ Contributions are welcome. For anything larger than a small fix, please open an 
 2. Make your change, run the game to confirm it works, and run the smoke test: `godot --headless --path . --script res://tests/smoke_test.gd`.
 3. Open a pull request that describes what changed and how you tested it.
 
+## Performance check
+
+`godot --headless --path . --script res://tests/perf_check.gd` flies a fixed camera path through the village and compares the result with the budgets in `tests/perf_budgets.json`. CI runs it after the smoke test, and it takes about a minute.
+
+Headless Godot has no real renderer, so draw calls, primitives, and frame time read zero there. The headless run instead counts what produces them, and these counts are exact and repeat from run to run: nodes, mesh instances, mesh surfaces (each is a draw call, and another for its shadow), MultiMesh nodes and instances, triangles, and the grass tufts within drawing distance of each camera point. (The grass itself grows on worker threads and varies, so its tufts are counted from the same seeded growth the game uses.) Each is gated against its budget.
+
+With a display, the check also renders the path and reports real draw calls, primitives, and the average and 99th-percentile frame time: `DISPLAY=:0 godot --path . --script res://tests/perf_check.gd`. Draw calls and primitives are gated against the `rendered` budgets. Frame time depends on the machine, so it is only printed, unless you add `--gate-frame-time`. Rendered runs vary a little, so their budgets have more headroom, and the CI does not run them.
+
+The results are printed as JSON. Add `--out=PATH` after `--` to also save them to a file, and compare two files with `diff` to see what a change did.
+
+If a change fails the check on purpose (more buildings, a denser forest), look first for a cheaper way, such as joining meshes or using a MultiMesh. If the cost is worth it, update the budgets with `-- --update-budgets`. This adds headroom to the measured values (10% headless, 25% rendered), and only updates the mode you ran, so run it once headless and once with a display, and say in the pull request why the budgets grew.
+
 ## After pulling
 
 Godot only registers new `class_name` scripts in `.godot/global_script_class_cache.cfg` when the editor or an import runs. If the game fails after a pull with `Identifier "..." not declared in the current scope`, rebuild the cache once:

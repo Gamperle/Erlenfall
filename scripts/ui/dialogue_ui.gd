@@ -13,10 +13,12 @@ var _panel: FittedPanel
 var _speaker: Label
 var _text: Label
 var _choices: VBoxContainer
+var _hint: Label
 
 
 func _ready() -> void:
 	add_to_group(Npc.UI_GROUP)
+	add_to_group(InputDevice.PROMPT_GROUP)
 	_build()
 	_panel.visible = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -33,6 +35,7 @@ func open_conversation(npc_id: String, speaker: String, player: Player) -> void:
 	refresh_style()
 	_panel.visible = true
 	_player.set_busy(true)
+	refresh_prompts()
 	_show_line()
 
 
@@ -51,6 +54,11 @@ func choose(index: int) -> void:
 		_player.end_conversation()
 	else:
 		_show_line()
+
+
+## Shows the choose hint with the inputs of the device in use.
+func refresh_prompts() -> void:
+	_hint.text = tr("UI_DIALOGUE_HINT") % KeyBindings.label_for("interact")
 
 
 func _input(event: InputEvent) -> void:
@@ -111,3 +119,7 @@ func _build() -> void:
 	_choices = VBoxContainer.new()
 	_choices.add_theme_constant_override("separation", 6)
 	column.add_child(_choices)
+
+	_hint = Label.new()
+	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	column.add_child(_hint)

@@ -3786,6 +3786,17 @@ func _test_rain_roofs(scene: Node, weather: Weather) -> void:
 	village.apply_flags({})
 	weather.refresh_roofs()
 	_check(weather.roof_height_at(25.0, -14.0) == RoofMap.NONE, "the map follows the roof back to broken")
+	# The mine's mouth and the goblin tents keep the rain off too (#337).
+	var mine: Mine = village.find_children("*", "Mine", true, false)[0]
+	var mine_cover := mine.roof_cover()
+	var mouth: Vector2 = mine_cover["center"]
+	_check(village.roof_covers.has(mine_cover) and weather.roof_height_at(mouth.x, mouth.y) > float(mine_cover["base"]) - 0.01, "rain stops over the mine mouth")
+	_check(weather.roof_height_at(mouth.x, mouth.y + 12.0) == RoofMap.NONE, "the plaza in front of the mine is open sky")
+	var tent_covers := village.roof_covers.filter(func(cover: Dictionary) -> bool: return cover["shape"] == "ridge" and cover["rise"] > 0.0 and not cover.has("repaired_by_flag") and (cover["center"] as Vector2).distance_to(Vector2(117.0, -152.0)) < 20.0)
+	_check(tent_covers.size() == 2, "the goblin tents are in the rain map")
+	for cover: Dictionary in tent_covers:
+		var tent: Vector2 = cover["center"]
+		_check(weather.roof_height_at(tent.x, tent.y) > cover["base"], "rain stops at a goblin tent")
 	var drop_material: ShaderMaterial = weather.rain_particles().draw_pass_1.material
 	_check(drop_material.get_shader_parameter("roof_size") == weather._roof_map.size, "the rain shader gets the roof map")
 

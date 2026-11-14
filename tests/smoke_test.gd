@@ -171,6 +171,7 @@ func _run() -> void:
 	await _test_story(scene, player)
 	await _test_villager_routines(scene)
 	await _test_combat(scene, player)
+	await _test_enemy_types(scene, player)
 	await _test_enemy_navigation(scene, player)
 	await _test_enemy_crowds_and_bridges(scene, player)
 	await _test_enemies_make_way(player)
@@ -186,6 +187,7 @@ func _run() -> void:
 	_test_grass_cell_edge(scene)
 	await _test_settings(scene, player)
 	_test_translations()
+	await _test_key_bindings(scene)
 	_test_dialogue_data()
 	_test_dialogue_conditions()
 	_test_data_validation()
@@ -723,6 +725,58 @@ func _test_torch(player: Player) -> void:
 	DirAccess.remove_absolute(TEST_FLAGS_B)
 
 
+func _test_healing(player: Player, ui: CraftingUI) -> void:
+	player.inventory.add("healing_herb", 2)
+	ui.open_station("furnace", "Furnace", player)
+	ui.add_material("healing_herb")
+	ui.add_material("healing_herb")
+	ui.craft()
+	_check(player.inventory.count("healing_potion") == 1 and player.inventory.count("healing_herb") == 0, "two herbs brew a healing potion")
+	ui.close()
+
+	player.inventory.add("berries")
+	ui.open_inventory(player)
+	_check(ui._use_row.get_child_count() == 2, "the inventory offers a button for each usable item")
+	ui.use_item("healing_potion")
+	_check(player.inventory.count("healing_potion") == 1, "a healing item isn't used up at full health")
+	player.health.damage(80.0)
+	ui.use_item("healing_potion")
+	_check(is_equal_approx(player.health.current, 70.0) and player.inventory.count("healing_potion") == 0, "a healing potion heals and is used up")
+	ui.use_item("berries")
+	_check(is_equal_approx(player.health.current, 85.0) and player.inventory.count("berries") == 0, "berries heal when eaten")
+	ui.use_item("berries")
+	_check(is_equal_approx(player.health.current, 85.0), "an item that isn't carried does nothing")
+	_check(ui._use_row.get_child_count() == 0, "used-up items lose their button")
+	player.inventory.add("iron_ore")
+	_check(not Healing.use_item(player, "iron_ore"), "an item without a use action can't be used")
+	ui.close()
+
+	FeatureFlags.load_layers()
+	player.health.restore()
+	player.health.damage(50.0)
+	var before := player.health.current
+	player._since_hit = 1000.0
+	player._update_combat(1.0)
+	_check(player.health.current > before, "health regenerates out of combat")
+	player.health.damage(1.0)
+	player._since_hit = 0.0
+	before = player.health.current
+	player._update_combat(1.0)
+	_check(is_equal_approx(player.health.current, before), "health doesn't regenerate right after a hit")
+	_write_flags(TEST_FLAGS_A, { "flags": { "health_regen": false, "healing_items": false } })
+	FeatureFlags.load_layers([TEST_FLAGS_A])
+	player._since_hit = 1000.0
+	player._update_combat(1.0)
+	_check(is_equal_approx(player.health.current, before), "regeneration can be switched off")
+	player.inventory.add("berries")
+	_check(not Healing.use_item(player, "berries"), "healing items can be switched off")
+	FeatureFlags.load_layers()
+	DirAccess.remove_absolute(TEST_FLAGS_A)
+	player.inventory.remove("berries")
+	player.inventory.remove("iron_ore")
+	player.health.restore()
+
+
 func _write_flags(path: String, data: Dictionary) -> void:
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	file.store_string(JSON.stringify(data))
@@ -773,6 +827,7 @@ func _test_crafting(scene: Node, player: Player) -> void:
 	_check(player.known_recipes.has("smelt_iron"), "smelting is discovered")
 	ui.close()
 	_check(not ui.is_open(), "crafting screen closes")
+	_test_healing(player, ui)
 
 	ui.open_station("anvil", "Anvil", player)
 	ui.add_material("iron_ingot")
@@ -1064,6 +1119,7 @@ func _test_combat(scene: Node, player: Player) -> void:
 	_check(enemy.state != Enemy.State.IDLE, "goblins notice a nearby player")
 
 	await _test_sneaking(player, enemy)
+	await _test_stamina_costs(scene, player)
 
 	# Hold block through the goblin's attack.
 	Input.action_press("block")
@@ -1164,6 +1220,70 @@ func _test_combat(scene: Node, player: Player) -> void:
 	await _physics_frames(1)
 
 
+func _test_stamina_costs(scene: Node, player: Player) -> void:
+	await _physics_frames(20)
+	var bar: ProgressBar = scene.get_node("UI/StaminaBar")
+	_check(bar.visible, "the HUD shows a stamina bar")
+	var from := player.global_position + Vector3(0.0, 0.0, -5.0)
+	player.stamina = Player.MAX_STAMINA
+	_check(player.spend_stamina(Player.DODGE_STAMINA_COST) and player.stamina == Player.MAX_STAMINA - Player.DODGE_STAMINA_COST, "spending stamina lowers it")
+	_check(not player.spend_stamina(Player.MAX_STAMINA), "stamina can't be spent below zero")
+	player._stamina_pause = 0.0
+	player._update_stamina(1.0)
+	_check(player.stamina > Player.MAX_STAMINA - Player.DODGE_STAMINA_COST, "stamina refills when idle")
+
+	# A dodge needs stamina.
+	player._dodge_cooldown = 0.0
+	player.stamina = Player.DODGE_STAMINA_COST - 1.0
+	player.dodge()
+	_check(not player.is_dodging(), "a dodge fails without enough stamina")
+	player.stamina = Player.MAX_STAMINA
+	player.dodge()
+	_check(player.is_dodging() and player.stamina == Player.MAX_STAMINA - Player.DODGE_STAMINA_COST, "a dodge costs stamina")
+	player._dodge_time = 0.0
+	player._dodge_cooldown = 0.0
+
+	# Blocking a hit costs stamina, and a hit that is too strong breaks the block.
+	Input.action_press("block")
+	player.stamina = Player.MAX_STAMINA
+	player.health.restore()
+	player.take_hit(10.0, from)
+	_check(player.stamina == Player.MAX_STAMINA - 10.0 * Player.BLOCK_STAMINA_PER_DAMAGE and player.health.current == 100.0 - 10.0 * Player.BLOCK_DAMAGE_FACTOR, "a blocked hit drains stamina")
+	player.stamina = 5.0
+	player.health.restore()
+	player.take_hit(10.0, from)
+	_check(player.stamina == 0.0 and not player.is_blocking() and player.health.current == 90.0, "with no stamina left the block breaks and the hit lands in full")
+	player._block_broken = 0.0
+	Input.action_release("block")
+
+	# Sprinting drains stamina until the player is winded, and walking pace returns.
+	Input.action_press("sprint")
+	Input.action_press("move_forward")
+	player.velocity = Vector3(0.0, 0.0, -Player.SPRINT_SPEED)
+	player.stamina = 0.1
+	player._stamina_pause = 0.0
+	player._update_stamina(0.1)
+	_check(player.stamina == 0.0 and not player.is_sprinting(), "running dry stops the sprint")
+	Input.action_release("sprint")
+	Input.action_release("move_forward")
+	player.velocity = Vector3.ZERO
+	player._update_stamina(1.0)
+	player._stamina_pause = 0.0
+	player._update_stamina(1.0)
+	_check(player.stamina > Player.SPRINT_RESUME_STAMINA, "stamina comes back after a rest")
+	_check(not player._winded, "sprinting works again after a rest")
+
+	# Without the flag nothing costs stamina.
+	FeatureFlags._flags["stamina"] = false
+	player.stamina = 0.0
+	_check(player.spend_stamina(1000.0), "nothing costs stamina when the flag is off")
+	player._update_stamina(0.1)
+	_check(player.stamina == Player.MAX_STAMINA, "stamina stays full when the flag is off")
+	FeatureFlags._flags["stamina"] = true
+	player.stamina = Player.MAX_STAMINA
+	player.health.restore()
+
+
 func _test_sneaking(player: Player, enemy: Enemy) -> void:
 	enemy.revive()
 	var normal_range := float(enemy._stats["aggro_range"])
@@ -1192,6 +1312,51 @@ func _test_sneaking(player: Player, enemy: Enemy) -> void:
 	player.health.restore()
 	player.position = enemy.position + Vector3(0.0, 0.3, 1.5)
 	await _physics_frames(5)
+
+
+func _test_enemy_types(scene: Node, player: Player) -> void:
+	var terrain := root.get_tree().get_first_node_in_group(Terrain.GROUP) as Terrain
+	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Enemy.DATA_PATH))
+	_check(data.has("wolf") and data.has("goblin_brute"), "a wolf and a goblin brute exist")
+	_check(float(data["wolf"]["speed"]) > float(data["goblin"]["speed"]) and float(data["wolf"]["health"]) < float(data["goblin"]["health"]), "wolves are fast and fragile")
+	_check(float(data["goblin_brute"]["health"]) > float(data["goblin"]["health"]) and float(data["goblin_brute"]["damage"]) > float(data["goblin"]["damage"]), "goblin brutes are tougher than goblins")
+	for type: String in data:
+		var enemy: Enemy = null
+		for node: Enemy in root.get_tree().get_nodes_in_group(Enemy.GROUP):
+			if node.enemy_type == type:
+				enemy = node
+				break
+		_check(enemy != null, "%s spawns in the world" % type)
+		if enemy == null:
+			continue
+		_check(enemy.state == Enemy.State.IDLE and terrain.wading_factor(enemy.position) == 1.0, "%s waits on dry land" % type)
+		enemy.take_hit(100000.0)
+		_check(enemy.state == Enemy.State.DEAD and not enemy.visible, "%s can be defeated" % type)
+		var saved := enemy.to_data()
+		enemy.revive()
+		enemy.load_data(saved)
+		_check(enemy.state == Enemy.State.DEAD, "a defeated %s stays defeated after loading" % type)
+		enemy.revive()
+		var real_drops: Array = enemy._stats["drops"]
+		var forced: Array = []
+		for drop: Dictionary in real_drops:
+			var always: Dictionary = drop.duplicate()
+			always["chance"] = 1.0
+			forced.append(always)
+		enemy._stats["drops"] = forced
+		var before := {}
+		for drop: Dictionary in forced:
+			before[drop["item"]] = player.inventory.count(drop["item"])
+		enemy._give_drops()
+		enemy._stats["drops"] = real_drops
+		for drop: Dictionary in forced:
+			_check(player.inventory.count(drop["item"]) > before[drop["item"]], "%s drops %s" % [type, drop["item"]])
+	var wolf: Enemy = null
+	for node: Enemy in root.get_tree().get_nodes_in_group(Enemy.GROUP):
+		if node.enemy_type == "wolf":
+			wolf = node
+	_check(wolf._body is BeastModel, "wolves use a built animal model")
+	_check(wolf.global_position.distance_to(player.global_position) > float(data["wolf"]["aggro_range"]), "wolves don't start next to the player")
 
 
 func _test_enemy_navigation(scene: Node, player: Player) -> void:
@@ -1279,7 +1444,7 @@ func _test_enemy_navigation(scene: Node, player: Player) -> void:
 
 ## Uses the camp's goblins away from their camp: one chases, and another stands still in a gap.
 func _test_enemy_crowds_and_bridges(scene: Node, player: Player) -> void:
-	var enemies := root.get_tree().get_nodes_in_group(Enemy.GROUP)
+	var enemies := _goblins()
 	var enemy: Enemy = enemies[0]
 	var blocker: Enemy = enemies[1]
 	var home := enemy._home
@@ -1424,7 +1589,7 @@ func _test_enemy_crowds_and_bridges(scene: Node, player: Player) -> void:
 ## The camp's three goblins walk side by side at a wall with one 1.2 m gap, and let each other through
 ## rather than push (#140).
 func _test_enemies_make_way(player: Player) -> void:
-	var enemies := root.get_tree().get_nodes_in_group(Enemy.GROUP)
+	var enemies := _goblins()
 	var home: Vector3 = enemies[0]._home
 	var homes: Array[Vector3] = []
 	var site := Vector3(home.x + 12.0, home.y, home.z + 12.0)
@@ -1472,7 +1637,7 @@ func _test_enemies_make_way(player: Player) -> void:
 ## a player 2 m past its far end. The first attacks from the end, and the others take the way around
 ## the outside of the walls, about 20 m longer (#149).
 func _test_enemies_go_around_a_corridor(player: Player) -> void:
-	var enemies := root.get_tree().get_nodes_in_group(Enemy.GROUP)
+	var enemies := _goblins()
 	var home: Vector3 = enemies[0]._home
 	var homes: Array[Vector3] = []
 	var site := Vector3(home.x + 12.0, home.y, home.z + 12.0)
@@ -2043,13 +2208,13 @@ func _test_settings(scene: Node, player: Player) -> void:
 	TranslationServer.set_locale("en")
 	menu.open_pause()
 	menu._buttons.get_child(1).pressed.emit()
-	_check(menu._settings_open and menu._buttons.get_child_count() == 6, "the pause menu opens the settings")
+	_check(menu._settings_open and menu._buttons.get_child_count() == 7, "the pause menu opens the settings")
 
 	menu._choose_language(2)
 	await process_frame
 	await process_frame
 	_check(TranslationServer.get_locale() == "de" and menu._title.text == "Einstellungen", "choosing a language changes the menu")
-	_check(scene.get_node("UI/ControlsLabel").text == tr("UI_CONTROLS") and hedda._label.text == tr(hedda.prompt_key), "choosing a language changes text already on screen")
+	_check(scene.get_node("UI/ControlsLabel").text == KeyBindings.controls_hint() and hedda._label.text == tr(hedda.prompt_key), "choosing a language changes text already on screen")
 
 	menu._choose_graphics(0)
 	var sun: DirectionalLight3D = scene.get_node("Sun")
@@ -2090,6 +2255,119 @@ func _test_settings(scene: Node, player: Player) -> void:
 	Settings.path = Settings.DEFAULT_PATH
 	DirAccess.remove_absolute(TEST_SETTINGS)
 	TranslationServer.set_locale("en")
+
+
+## Remapped controls take effect, ask before taking an input that is in use, are saved, and fall back when damaged.
+func _test_key_bindings(scene: Node) -> void:
+	Settings.path = TEST_SETTINGS
+	TranslationServer.set_locale("en")
+	KeyBindings.reset()
+	var default_hint := KeyBindings.controls_hint()
+	_check(default_hint.begins_with("WASD / Left stick: walk") and default_hint.contains("E / X: use") and default_hint.contains("Left click / RT: attack"), "the controls hint shows the default bindings (%s)" % default_hint)
+	var missing := PackedStringArray()
+	for action in KeyBindings.ACTIONS:
+		if not InputMap.has_action(action):
+			missing.append(action)
+		for key in ["ACTION_" + action.to_upper()]:
+			if tr(key) == key:
+				missing.append(key)
+	_check(missing.is_empty(), "every remappable action exists and has a name (%s)" % ", ".join(missing))
+
+	var menu: GameMenu = scene.get_node("GameMenu")
+	menu.open_pause()
+	menu._buttons.get_child(1).pressed.emit()
+	menu._buttons.get_child(5).pressed.emit()
+	await process_frame
+	var page: ControlsMenu = menu._controls
+	_check(menu._title.text == tr("UI_CONTROLS_TITLE") and page != null, "the settings open the Controls page")
+	_check(page.get_child_count() == KeyBindings.ACTIONS.size() + 3, "the Controls page lists every action, reset, and back")
+
+	var key_u := InputEventKey.new()
+	key_u.physical_keycode = KEY_U
+	key_u.pressed = true
+	page.listen("interact", KeyBindings.KEYBOARD)
+	_check(page.offer(key_u) and KeyBindings.event_for("interact", KeyBindings.KEYBOARD).physical_keycode == KEY_U, "an input pressed while listening is bound")
+	var press := InputEventKey.new()
+	press.physical_keycode = KEY_U
+	press.pressed = true
+	_check(InputMap.action_get_events("interact").size() == 2, "the Input Map holds the new binding")
+	_check(InputMap.event_is_action(press, "interact") and not InputMap.event_is_action(press, "inventory"), "the new key triggers its action")
+	var old_key := InputEventKey.new()
+	old_key.physical_keycode = KEY_E
+	_check(not InputMap.event_is_action(old_key, "interact"), "the old key no longer triggers it")
+	_check(KeyBindings.label_for("interact") == "U / X" and KeyBindings.controls_hint().contains("U / X: use"), "the controls hint shows the new binding")
+
+	# Binding an input that another action uses asks first.
+	var key_i := InputEventKey.new()
+	key_i.physical_keycode = KEY_I
+	key_i.pressed = true
+	page.listen("jump", KeyBindings.KEYBOARD)
+	page.offer(key_i)
+	_check(page.is_asking() and KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_SPACE, "an input in use asks before changing anything")
+	page.answer_conflict(false)
+	_check(not page.is_asking() and KeyBindings.event_for("inventory", KeyBindings.KEYBOARD).physical_keycode == KEY_I, "cancelling keeps both bindings")
+	page.listen("jump", KeyBindings.KEYBOARD)
+	page.offer(key_i)
+	page.answer_conflict(true)
+	_check(KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_I and KeyBindings.event_for("inventory", KeyBindings.KEYBOARD).physical_keycode == KEY_SPACE, "swapping gives each action the other's input")
+
+	# Gamepad inputs go in the gamepad slot.
+	var pad_button := InputEventJoypadButton.new()
+	pad_button.button_index = JOY_BUTTON_Y
+	pad_button.pressed = true
+	page.listen("attack", KeyBindings.GAMEPAD)
+	page.offer(key_u)
+	_check(KeyBindings.event_for("attack", KeyBindings.GAMEPAD) is InputEventJoypadMotion, "a key does not replace a gamepad input")
+	page.offer(pad_button)
+	_check(page.is_asking(), "a gamepad input in use asks too")
+	page.answer_conflict(true)
+	_check(KeyBindings.event_for("attack", KeyBindings.GAMEPAD) is InputEventJoypadButton and KeyBindings.event_for("toggle_camera", KeyBindings.GAMEPAD) is InputEventJoypadMotion, "gamepad inputs swap")
+	var escape := InputEventKey.new()
+	escape.physical_keycode = KEY_ESCAPE
+	escape.pressed = true
+	page.listen("block", KeyBindings.KEYBOARD)
+	page.offer(escape)
+	_check(not page.is_listening(), "Esc stops listening")
+
+	# Saved, loaded, and reset.
+	Settings.save()
+	KeyBindings.reset()
+	_check(KeyBindings.label_for("interact") == "E / X", "reset restores the default bindings")
+	Settings.load_saved()
+	_check(KeyBindings.label_for("interact") == "U / X" and KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_I and KeyBindings.event_for("attack", KeyBindings.GAMEPAD) is InputEventJoypadButton, "bindings are remembered")
+	page.reset_to_defaults()
+	_check(KeyBindings.controls_hint() == default_hint and KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_SPACE, "the reset button restores the defaults")
+
+	# Damaged bindings fall back to the defaults, one input at a time where possible.
+	var saved: Dictionary = KeyBindings.to_data()
+	saved["interact"][KeyBindings.KEYBOARD] = { "type": "key", "code": "nonsense" }
+	saved["jump"][KeyBindings.GAMEPAD] = { "type": "pad_button", "button": 999 }
+	saved["sprint"] = "broken"
+	saved["dodge"][KeyBindings.KEYBOARD] = { "type": "key", "code": KEY_N }
+	saved["unknown_action"] = { "keyboard": { "type": "key", "code": KEY_N } }
+	var damaged := FileAccess.open(TEST_SETTINGS, FileAccess.WRITE)
+	damaged.store_string(JSON.stringify({ "graphics": "high", "bindings": saved }))
+	damaged.close()
+	Settings.load_saved()
+	_check(KeyBindings.event_for("interact", KeyBindings.KEYBOARD).physical_keycode == KEY_E and KeyBindings.event_for("jump", KeyBindings.GAMEPAD) is InputEventJoypadButton and KeyBindings.event_for("sprint", KeyBindings.KEYBOARD).physical_keycode == KEY_SHIFT, "damaged bindings fall back to their defaults")
+	_check(KeyBindings.event_for("dodge", KeyBindings.KEYBOARD).physical_keycode == KEY_N, "valid bindings next to damaged ones are kept")
+	saved = KeyBindings.to_data()
+	saved["jump"][KeyBindings.KEYBOARD] = saved["interact"][KeyBindings.KEYBOARD]
+	damaged = FileAccess.open(TEST_SETTINGS, FileAccess.WRITE)
+	damaged.store_string(JSON.stringify({ "bindings": saved }))
+	damaged.close()
+	Settings.load_saved()
+	_check(KeyBindings.event_for("dodge", KeyBindings.KEYBOARD).physical_keycode == KEY_C, "bindings that share an input fall back to the defaults")
+	damaged = FileAccess.open(TEST_SETTINGS, FileAccess.WRITE)
+	damaged.store_string(JSON.stringify({ "bindings": [1, 2] }))
+	damaged.close()
+	Settings.load_saved()
+	_check(KeyBindings.controls_hint() == default_hint, "bindings that aren't a dictionary fall back to the defaults")
+
+	menu.close()
+	Settings.path = Settings.DEFAULT_PATH
+	DirAccess.remove_absolute(TEST_SETTINGS)
+	KeyBindings.reset()
 
 
 ## Every story, item, and villager name key must exist in both languages.
@@ -2509,7 +2787,7 @@ func _test_data_validation() -> void:
 	for file in DataValidator.FILES:
 		files[file] = JSON.parse_string(FileAccess.get_file_as_string("res://data/" + file))
 	var broken := files.duplicate(true)
-	broken["crafting.json"]["recipes"][5]["inputs"]["iron_ingott"] = 1
+	broken["crafting.json"]["recipes"][6]["inputs"]["iron_ingott"] = 1
 	broken["crafting.json"]["items"]["torch"].erase("name")
 	broken["quests.json"]["arrival"]["objectives"][0]["marker"] = "nobody"
 	broken["dialogue.json"]["hedda"][0]["when"]["objective"] = ["arrival", "see_nobody"]
@@ -2521,12 +2799,14 @@ func _test_data_validation() -> void:
 	broken["village_layout.json"]["enemies"][0]["type"] = "dragon"
 	broken["villager_routines.json"]["bertram"][1].erase("z")
 	broken["projectiles.json"]["arrow"]["ammo_item"] = "arrows"
+	broken["crafting.json"]["items"]["berries"]["use"]["heal"] = 0
 	var found := DataValidator.new().validate_files(broken)
 	for expected in [
 		"crafting.json: recipes[forge_axe]", "crafting.json: items[torch]: missing \"name\"", "quests.json: [arrival].objectives[see_grandmother].marker: unknown marker place \"nobody\"",
 		"dialogue.json: hedda[0].when.objective", "dialogue.json: hedda[0].nodes[send].effects[0].quest: unknown quest \"no_quest\"",
 		"dialogue.json: hedda[0].nodes[how_bad].next", "dialogue.json: [stranger]: unknown villager", "enemies.json: [goblin].drops[0].item: unknown item \"gold\"",
 		"enemies.json: [goblin].health", "village_layout.json: enemies[0].type", "villager_routines.json: [bertram][1]: a stop needs both", "projectiles.json: [arrow].ammo_item",
+		"crafting.json: items[berries].use.heal",
 	]:
 		_check(found.any(func(line: String) -> bool: return line.begins_with(expected) or line.contains(expected)), "the validator reports: %s" % expected + ("" if found.any(func(line: String) -> bool: return line.contains(expected)) else " (got %s)" % [found]))
 	var empty := DataValidator.new().validate_files({ "quests.json": [] })
@@ -2590,3 +2870,12 @@ func _test_weather(scene: Node, day_night: DayNight) -> void:
 	weather.set_state("clear")
 	day_night.hour = saved_hour
 	day_night._apply()
+
+
+## The camp's goblins, which the movement tests use. Other enemy types live elsewhere.
+func _goblins() -> Array[Node]:
+	var result: Array[Node] = []
+	for node in root.get_tree().get_nodes_in_group(Enemy.GROUP):
+		if node.enemy_type == "goblin":
+			result.append(node)
+	return result

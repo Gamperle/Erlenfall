@@ -144,6 +144,23 @@ anchor_bottom = 1.0
 mouse_filter = 2
 theme_type_variation = &"BarFrame"
 
+[node name="StaminaBar" type="ProgressBar" parent="UI"]
+offset_left = 16.0
+offset_top = 44.0
+offset_right = 196.0
+offset_bottom = 56.0
+value = 100.0
+show_percentage = false
+theme_type_variation = &"StaminaBar"
+
+[node name="Frame" type="Panel" parent="UI/StaminaBar"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_type_variation = &"BarFrame"
+
 [node name="MessageLabel" type="Label" parent="UI"]
 modulate = Color(1, 1, 1, 0)
 anchors_preset = 14

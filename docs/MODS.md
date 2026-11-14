@@ -2,6 +2,8 @@
 
 Mods are data only. The game reads their files and never runs their code. At the moment a mod can override [feature flags](FEATURE_FLAGS.md); items, recipes, and quests will follow ([#52](https://github.com/Gamperle/Erlenfall/issues/52)).
 
+[A small working example](example_mods/README.md) is in `docs/example_mods/`. Copy it to try the steps below.
+
 ## Where mods go
 
 Mods live in the `mods` folder of the game's user data folder (`user://mods`). On Linux that is `~/.local/share/godot/app_userdata/<project name>/mods`.
@@ -21,13 +23,69 @@ mods/
 
 Each mod's `feature_flags.json` uses the [flag file format](FEATURE_FLAGS.md#file-format). The base file is applied first, then each mod in the order listed, so the last mod to set a flag or value wins.
 
+## Reference: what a mod can change
+
+Everything a mod can do today goes through two files. Nothing else in a mod folder is read.
+
+| File | Where | What it does |
+|---|---|---|
+| `load_order.json` | `user://mods/` | `{ "mods": ["name", ...] }`: the folders to load, first to last. Without it no mod loads |
+| `feature_flags.json` | `user://mods/<name>/` | `flags` and `values` that override [`data/feature_flags.json`](../data/feature_flags.json) |
+
+A flag file has two optional sections, and nothing else (other top-level keys are ignored with a note):
+
+- `flags`: a name set to `true`, `false`, another flag's name, or a rule (`{ "all": [...] }`, `{ "any": [...] }`, `{ "not": x }`, see [aggregates](FEATURE_FLAGS.md#aggregates)).
+- `values`: a name set to a number, text, or `true`/`false`. Lists and objects are not allowed.
+
+What overriding does:
+
+- The last mod in the load order to set a name wins, and it replaces that name entirely. Names it leaves out keep their earlier value.
+- Aggregates are worked out after every file is applied, so a mod changing `torches` changes `torch_recipe` too.
+- A mod may set names the game does not use. They are accepted and do nothing.
+- A mod can only change a number the game reads. The flags and values the game reads are listed in [FEATURE_FLAGS.md](FEATURE_FLAGS.md), and that is the full list of what a mod can tune.
+- Flags are read when the game starts and don't change during play, so restart after editing a mod.
+
+### Stable and internal
+
+- **Stable (meant for mods):** the two files above, their format, the load order rules, and the flag and value names documented in [FEATURE_FLAGS.md](FEATURE_FLAGS.md). If one is renamed or removed, it is noted in the pull request.
+- **Internal (do not rely on it):** everything else, including the files in `data/` (items, recipes, quests, dialogue, notes, villagers, layout), `localization/strings.csv`, scripts, and scenes. The loader does not read mod copies of them. Editing the game's own files is not modding: they change between versions and are checked at startup by the [data checker](#checking-data).
+- **Not possible yet:** adding items, recipes, quests, dialogue, readable texts, or translations, and running mod code. Mods cannot replace dialogue or readable texts: the loader reads only the flag file ([#52](https://github.com/Gamperle/Erlenfall/issues/52)).
+
+### Example
+
+`docs/example_mods/cozy_torches/feature_flags.json`:
+
+```json
+{
+	"flags": { "torch_burn_time_enabled": true, "minimap": false },
+	"values": { "torch_burn_seconds": 300, "health_regen_per_second": 4.0, "ambient_butterfly_count": 60 }
+}
+```
+
+The smoke test loads this mod and checks the values, then breaks a copy on purpose to check the errors in the next sections.
+
 ## Rules and errors
 
 - A mod is only loaded if it is listed. Folders not in the list are ignored.
 - Names must be plain folder names. Names with `/`, `\`, or `:`, or starting with `.`, are skipped.
-- A mod that is missing, has no `feature_flags.json`, or is listed twice is skipped, with an error in the log. The other mods still load.
-- A load order file that is not valid logs an error and no mods load.
 - Mods load once, when the game first reads a flag.
+
+## When a mod is broken
+
+A broken mod never stops the game or changes it halfway. Each listed mod gets a load result in `ModLoader.results`: `ok`, `skipped` (the mod was not loaded), or `error` (its file was unusable). Every problem names the mod, the file, and the reason.
+
+| Problem | What happens |
+|---|---|
+| `load_order.json` is not valid JSON or not an object with a `mods` list | `error`, no mods load |
+| A listed name is invalid, listed twice, has no folder, or has no `feature_flags.json` | `skipped`; the other mods still load |
+| `feature_flags.json` is not valid JSON (the message gives the line), is not an object, or `flags` or `values` is not an object | `error`; nothing from that file is applied |
+| An unknown top-level key (only `flags` and `values` exist) | ignored; the rest of the file applies |
+| A flag that is not `true`/`false`, a flag name, or a valid rule, or a value that is not a number, text, or `true`/`false` | that one entry is ignored; the rest of the file applies |
+
+Where you see the results:
+
+- **Log file:** errors are logged as errors and everything else as warnings, for example `Mod faster_torches (feature_flags.json): error, invalid JSON at line 3: ...`. Godot writes the log to `user://logs/godot.log` (on Linux `~/.local/share/godot/app_userdata/<project name>/logs`). On Windows and the Web, use the in-game list below.
+- **In game:** a short notice when the game starts says how many mod problems there are, and the settings screen lists each one under "Mod problems".
 
 The code is in `scripts/mod_loader.gd`.
 

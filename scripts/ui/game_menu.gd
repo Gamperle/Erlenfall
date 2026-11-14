@@ -150,6 +150,13 @@ func open_settings(leave: Callable) -> void:
 		volume.value_changed.connect(_choose_volume.bind(bus_name))
 		_add_setting("UI_VOLUME_" + bus_name.to_upper(), volume)
 
+	var mod_problems := ModLoader.problem_lines()
+	if not mod_problems.is_empty():
+		var mods_label := Label.new()
+		mods_label.text = tr("UI_MODS_TITLE") + ":\n" + "\n".join(mod_problems)
+		mods_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_buttons.add_child(mods_label)
+
 	_add_action("UI_CONTROLS_TITLE", open_controls)
 	_add_action("UI_BACK", _close_settings)
 	_show()

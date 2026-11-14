@@ -75,6 +75,9 @@ func _ready() -> void:
 	_welcome_label.modulate.a = 0.0
 	_set_translated_text()
 	_compass.visible = FeatureFlags.enabled("compass")
+	var mod_problems := ModLoader.problem_lines().size()
+	if mod_problems > 0:
+		_show_message_text(tr("UI_MODS_NOTICE") % mod_problems)
 	_performance_overlay.visible = FeatureFlags.enabled("performance_overlay")
 	_performance_overlay.set_process(_performance_overlay.visible)
 	_ui.arrange()
@@ -348,7 +351,11 @@ func _fade_controls_hint(delay: float) -> void:
 
 
 func _show_message(text_key: String) -> void:
-	_message_label.text = tr(text_key)
+	_show_message_text(tr(text_key))
+
+
+func _show_message_text(text: String) -> void:
+	_message_label.text = text
 	_message_label.modulate.a = 1.0
 	var tween := create_tween()
 	tween.tween_interval(MESSAGE_SECONDS)

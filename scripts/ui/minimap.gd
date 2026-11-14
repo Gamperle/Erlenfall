@@ -91,7 +91,7 @@ func _draw() -> void:
 	var box := Rect2(Vector2.ZERO, size)
 	draw_rect(box, BACKDROP_COLOR)
 	if map == null or map.texture == null:
-		draw_rect(box, FRAME_COLOR, false, FRAME_WIDTH * 2.0)
+		_draw_loading(box)
 		return
 	var region := visible_region()
 	draw_texture_rect_region(map.texture, box, region)
@@ -107,4 +107,18 @@ func _draw() -> void:
 	var at := Vector2(size.x / 2.0 - font.get_string_size(north, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x / 2.0, font_size + 3.0)
 	draw_string_outline(font, at, north, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Color(0.0, 0.0, 0.0, 0.8))
 	draw_string(font, at, north, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, NORTH_COLOR)
+	draw_rect(box, FRAME_COLOR, false, FRAME_WIDTH * 2.0)
+
+
+## Until the picture is drawn in the background (a few seconds after loading), says so instead of
+## showing an empty dark square.
+func _draw_loading(box: Rect2) -> void:
+	var font := get_theme_default_font()
+	var font_size := Settings.scaled_font_size(NORTH_FONT_SIZE)
+	var margin := EDGE_INSET
+	var width := size.x - margin * 2.0
+	var text := tr("UI_MAP_LOADING")
+	var height := font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, width, font_size).y
+	var at := Vector2(margin, (size.y - height) / 2.0 + font.get_ascent(font_size))
+	draw_multiline_string(font, at, text, HORIZONTAL_ALIGNMENT_CENTER, width, font_size, -1, Color(0.8, 0.8, 0.75, 0.8))
 	draw_rect(box, FRAME_COLOR, false, FRAME_WIDTH * 2.0)

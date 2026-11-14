@@ -910,12 +910,40 @@ func _test_mod_loader() -> void:
 	_write_flags(dir.path_join(ModLoader.LOAD_ORDER_FILE), { "mods": ["../escape", "/abs", ".hidden", "a\\b", "empty", "missing", "first", "first"] })
 	_check(ModLoader.flag_files(dir).size() == 1, "unsafe, missing, empty, and repeated mods are skipped")
 	_check(ModLoader.is_safe_name("my_mod") and not ModLoader.is_safe_name("") and not ModLoader.is_safe_name(3), "mod names must be plain folder names")
+	_test_broken_mods(dir)
 	FeatureFlags.load_layers()
+	ModLoader.results = []
 	for sub in ["first", "second", "empty"]:
 		DirAccess.remove_absolute(dir.path_join(sub).path_join("feature_flags.json"))
 		DirAccess.remove_absolute(dir.path_join(sub))
 	DirAccess.remove_absolute(dir.path_join(ModLoader.LOAD_ORDER_FILE))
 	DirAccess.remove_absolute(dir)
+
+
+func _test_broken_mods(dir: String) -> void:
+	var bad := { "bad_json": "{ not json", "wrong_type": "[1, 2]", "bad_section": "{\"flags\": 5}",
+		"partly_bad": "{\"extra\": 1, \"flags\": {\"compass\": 7, \"stamina\": false}, \"values\": {\"torch_burn_seconds\": 3, \"x\": [1]}}" }
+	for mod: String in bad:
+		DirAccess.make_dir_recursive_absolute(dir.path_join(mod))
+		var file := FileAccess.open(dir.path_join(mod).path_join("feature_flags.json"), FileAccess.WRITE)
+		file.store_string(bad[mod])
+		file.close()
+	var listed := bad.keys() + ["no_folder"]
+	_write_flags(dir.path_join(ModLoader.LOAD_ORDER_FILE), { "mods": listed })
+	FeatureFlags.load_layers(ModLoader.flag_files(dir))
+	var statuses := {}
+	for result in ModLoader.results:
+		statuses[result["mod"]] = result["status"]
+	_check(statuses.get("bad_json") == ModLoader.ERROR and statuses.get("wrong_type") == ModLoader.ERROR
+			and statuses.get("bad_section") == ModLoader.ERROR, "mods with bad JSON or wrong types get an error result")
+	_check(statuses.get("no_folder") == ModLoader.SKIPPED, "a listed mod with no folder is skipped")
+	_check(FeatureFlags.value("torch_burn_seconds") == 3 and not FeatureFlags.enabled("stamina") and FeatureFlags.enabled("compass"),
+			"a partly bad mod applies its good parts and ignores the rest")
+	var text := "\n".join(ModLoader.problem_lines())
+	_check(text.contains("bad_json") and text.contains("line") and text.contains("unknown key") and text.contains("\"compass\""), "problems name the mod, file, and part")
+	for mod: String in bad:
+		DirAccess.remove_absolute(dir.path_join(mod).path_join("feature_flags.json"))
+		DirAccess.remove_absolute(dir.path_join(mod))
 
 
 func _test_torch(player: Player) -> void:

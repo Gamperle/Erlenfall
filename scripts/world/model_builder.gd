@@ -24,6 +24,9 @@ const WALL_GAP := 0.03
 ## Blocks and logs take one of a few tints, since each color is a material of its own.
 const WALL_TINTS: Array[float] = [-0.1, 0.0, 0.1]
 const PALISADE_POST_WIDTH := 0.28
+const PALISADE_TIP := 0.3
+## Weathered logs, lighter than the timber frames, since the photo already darkens them.
+const PALISADE_COLOR := Color(0.4, 0.29, 0.19)
 const BRIDGE_SEGMENTS := 8
 const BRIDGE_DECK_THICKNESS := 0.25
 const BRIDGE_RAIL_HEIGHT := 1.0
@@ -154,8 +157,23 @@ static func palisade(length: float, height: float, seed_value: int) -> StaticBod
 	var step := length / count
 	for i in count:
 		var post_height := height * rng.randf_range(0.9, 1.0)
-		var at := Vector3(-length / 2.0 + (i + 0.5) * step, post_height / 2.0, 0.0)
-		fence.add_child(box(Vector3(step - 0.02, post_height, PALISADE_POST_WIDTH), Surfaces.Pattern.WOOD, TIMBER_COLOR.lightened(WALL_TINTS[rng.randi() % WALL_TINTS.size()]), at))
+		var x := -length / 2.0 + (i + 0.5) * step
+		var color := PALISADE_COLOR.lightened(WALL_TINTS[rng.randi() % WALL_TINTS.size()])
+		var shaft := post_height - PALISADE_TIP
+		fence.add_child(box(Vector3(step - 0.02, shaft, PALISADE_POST_WIDTH), Surfaces.Pattern.WOOD, color, Vector3(x, shaft / 2.0, 0.0)))
+		# Each log is sharpened to a point, a four-sided pyramid turned to sit on the log's square top.
+		var tip_mesh := CylinderMesh.new()
+		tip_mesh.top_radius = 0.0
+		tip_mesh.bottom_radius = minf(step - 0.02, PALISADE_POST_WIDTH) / 2.0 * sqrt(2.0)
+		tip_mesh.height = PALISADE_TIP
+		tip_mesh.radial_segments = 4
+		tip_mesh.rings = 1
+		tip_mesh.material = Surfaces.get_material(Surfaces.Pattern.WOOD, color)
+		var tip := MeshInstance3D.new()
+		tip.mesh = tip_mesh
+		tip.position = Vector3(x, shaft + PALISADE_TIP / 2.0, 0.0)
+		tip.rotation.y = PI / 4.0
+		fence.add_child(tip)
 	fence.add_child(box(Vector3(length, BEAM, 0.1), Surfaces.Pattern.WOOD, WOOD_COLOR, Vector3(0.0, height * 0.6, PALISADE_POST_WIDTH / 2.0 + 0.04)))
 	merged(fence)
 	return _solid(fence, Vector3(length, height, PALISADE_POST_WIDTH))

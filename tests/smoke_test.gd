@@ -128,6 +128,8 @@ func _run() -> void:
 	_check(dome.material_override.get_shader_parameter("cloud_offset") != cloud_before, "clouds drift")
 	dome.set_quality("low")
 	_check(dome.material_override.get_shader_parameter("cloud_octaves") < SkyDome.CLOUD_OCTAVES["high"], "low graphics draw simpler clouds")
+	var dome_source := FileAccess.get_file_as_string("res://shaders/sky_dome.gdshader")
+	_check(dome_source.count("cloud_density(") == 2, "the sky shader samples the cloud noise once per pixel (a shifted second sample drew a streak, and costs the laptop)")
 	dome.set_quality(Settings.graphics)
 	day_night.hour = 9.0
 	day_night._apply()

@@ -62,6 +62,8 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | Name | Default | Effect |
 |---|---|---|
 | `compass` | `true` | Shows the compass at the top of the screen |
+| `world_map` | `true` | Lets the player open a full-screen map with the map key (M, or the right stick button). It shows the terrain, river, roads, fields, buildings, the player, the current objectives, and the places the player has visited. The picture is drawn once in the background after loading |
+| `minimap` | `true` | Shows a small map of the surroundings below the health bar. It uses the same picture as the full map |
 | `villager_routines` | `true` | Villagers follow their daily routines from [`data/villager_routines.json`](../data/villager_routines.json), walking to a place at the hours it names. Off keeps everyone where the layout puts them |
 | `realistic_villagers` | `true` | Uses the MakeHuman models for villagers who have one, instead of the simple figures |
 | `realistic_enemies` | `true` | Uses rigged models for enemies who have one |
@@ -124,6 +126,8 @@ Bows and thrown flasks are the first slice of [#29](https://github.com/Gamperle/
 | `torch_burns_out` | aggregate | `torches` and `torch_burn_time_enabled` |
 | `torch_burn_seconds` | `600` | How long one torch burns when burn time is on |
 | `interface_min_scale` | `0.9` | The smallest size the interface shrinks to in a small window, as a share of its full size |
+| `minimap_radius` | `120` | How many meters from the player to the edge of the minimap |
+| `map_discover_radius` | `60` | How close the player must come to a building or other place for it to show on the maps |
 | `controls_hint_seconds` | `30` | How long the controls line stays on screen when play starts. It shows again in the pause menu. 0 keeps it on screen |
 
 ## Crafting skill flags and values

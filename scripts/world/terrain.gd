@@ -83,6 +83,8 @@ var river: TerrainPath
 var _water_material: ShaderMaterial
 ## The places kept free for future buildings, from the layout file.
 var building_sites: Array = []
+## The ground height on the mesh grid, row by row from the north-west corner, for the map to reuse.
+var height_grid := PackedFloat32Array()
 
 var _bank_width := 0.0
 var _bank_height := 0.0
@@ -124,6 +126,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	var count := int(SIZE / STEP) + 1
 	var heights := _sample_heights(count)
+	height_grid = heights
 	var fine_cells := _fine_cells(count)
 	var fine_faces := _build_mesh(heights, count, fine_cells)
 	_build_collision(heights, count, fine_cells, fine_faces)

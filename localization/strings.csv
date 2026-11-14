@@ -1,6 +1,6 @@
 keys,en,de
 UI_WELCOME,Welcome to Erlenfall,Willkommen in Erlenfall
-UI_CONTROLS,"WASD / left stick: walk   Mouse / right stick: look   Shift / LB: sprint   Ctrl / L3: sneak   Space / A: jump   Left click / RT: attack   Right click / LT: block   C / B: dodge   E / X: use   I / Back: inventory   V / Y: switch camera   F / D-pad up: torch   T / RB: speed up time   R / D-pad down: shoot bow   G / D-pad right: throw flask   Esc / Start: menu","WASD / linker Stick: gehen   Maus / rechter Stick: umsehen   Umschalt / LB: sprinten   Strg / L3: schleichen   Leertaste / A: springen   Linksklick / RT: angreifen   Rechtsklick / LT: blocken   C / B: ausweichen   E / X: benutzen   I / Back: Inventar   V / Y: Kamera wechseln   F / Steuerkreuz hoch: Fackel   T / RB: Zeit vorspulen   R / Steuerkreuz unten: Bogen schießen   G / Steuerkreuz rechts: Flasche werfen   Esc / Start: Menü"
+UI_CONTROLS,"WASD / left stick: walk   Mouse / right stick: look   Shift / LB: sprint   Ctrl / L3: sneak   Space / A: jump   Left click / RT: attack   Right click / LT: block   C / B: dodge   E / X: use   I / Back: inventory   M / R3: map   V / Y: switch camera   F / D-pad up: torch   T / RB: speed up time   R / D-pad down: shoot bow   G / D-pad right: throw flask   Esc / Start: menu","WASD / linker Stick: gehen   Maus / rechter Stick: umsehen   Umschalt / LB: sprinten   Strg / L3: schleichen   Leertaste / A: springen   Linksklick / RT: angreifen   Rechtsklick / LT: blocken   C / B: ausweichen   E / X: benutzen   I / Back: Inventar   M / R3: Karte   V / Y: Kamera wechseln   F / Steuerkreuz hoch: Fackel   T / RB: Zeit vorspulen   R / Steuerkreuz unten: Bogen schießen   G / Steuerkreuz rechts: Flasche werfen   Esc / Start: Menü"
 UI_INTERACT_PROMPT,E / X: %s,E / X: %s
 UI_INVENTORY,Inventory,Inventar
 UI_CARRYING,Carrying: %s,Dabei: %s
@@ -253,3 +253,21 @@ ITEM_FIRE_FLASK,Fire flask,Feuerflasche
 UI_NEED_SHORT_BOW,You have no bow.,Du hast keinen Bogen.
 UI_NO_ARROW,You have no arrows.,Du hast keine Pfeile.
 UI_NO_FIRE_FLASK,You have no fire flasks.,Du hast keine Feuerflaschen.
+UI_MAP,Map,Karte
+UI_MAP_LOADING,Drawing the map...,Die Karte wird gezeichnet ...
+UI_MAP_YOU,You,Du
+UI_MAP_OBJECTIVE,Objective,Ziel
+UI_MAP_PLACE,Place you have visited,Besuchter Ort
+UI_MAP_HINT,WASD / left stick: move the map   Mouse wheel / + and - / LB and RB: zoom   M / R3 / Esc: close,WASD / linker Stick: Karte verschieben   Mausrad / + und - / LB und RB: zoomen   M / R3 / Esc: schließen
+MAP_GRANDFATHER_HOUSE,Grandfather's house,Opas Haus
+MAP_FORGE,Forge,Schmiede
+MAP_TOWN_HALL,Town hall,Rathaus
+MAP_GRANDMOTHER_HOUSE,Grandmother's house,Omas Haus
+MAP_INN,Inn,Gasthaus
+MAP_ABANDONED_HOUSE_1,Abandoned house,Verlassenes Haus
+MAP_ABANDONED_HOUSE_2,Abandoned house,Verlassenes Haus
+MAP_ABANDONED_HOUSE_3,Abandoned house,Verlassenes Haus
+MAP_NORTH_FARM,North farm,Nordhof
+MAP_WEST_FARM,West farm,Westhof
+MAP_SOUTH_FARM,South farm,Südhof
+MAP_IRON_ORE,Iron ore,Eisenerz

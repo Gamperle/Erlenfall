@@ -1,0 +1,50 @@
+{
+	"schema": 1,
+	"asset": "assets/props/short_sword_2.glb",
+	"kind": "ai_prop",
+	"origin": "backfill",
+	"batch": "klein1",
+	"object": "short_sword",
+	"name": "short_sword_2",
+	"chosen_by": "Markus Gamperle",
+	"subject": "plain steel short sword with a straight broad blade, pointing straight down",
+	"prompt": "A single plain steel short sword with a straight broad blade, pointing straight down, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
+	"seed": 6172,
+	"stages": [
+		{
+			"step": "image",
+			"tool": "FLUX.2 klein 4B",
+			"versions": {},
+			"date": null,
+			"width": 1024,
+			"height": 1024,
+			"steps": 4,
+			"guidance": 1.0,
+			"candidate": 2
+		},
+		{
+			"step": "mesh",
+			"tool": "TRELLIS.2 (Comfy-Org int8 build)",
+			"versions": {
+				"ComfyUI": "0.43.0"
+			},
+			"helpers": [
+				"BiRefNet",
+				"DINOv3"
+			],
+			"date": null,
+			"faces": 1200
+		},
+		{
+			"step": "size",
+			"tool": "Blender",
+			"versions": {
+				"Blender": "5.2"
+			},
+			"date": null,
+			"meters": 0.7
+		}
+	],
+	"manual_edits": [],
+	"backfill_note": "Rebuilt from ASSETS.md and the batch file. Dates and tool versions it doesn't state are null."
+}

@@ -1,6 +1,6 @@
 # Assets
 
-Every third-party or AI-generated asset is listed here. For AI-generated assets, "Source" names the tool and version, and "Notes" records the prompt and any later manual edits.
+Every third-party or AI-generated asset is listed here. For AI-generated assets, "Source" names the tool and version, and "Notes" records the prompt and any later manual edits. The same facts, as data, are in [`provenance/`](provenance): one JSON record per generated asset, named after it (`provenance/props/anvil_2.json` for `assets/props/anvil_2.glb`). See [the asset pipeline](docs/ASSET_PIPELINE.md#provenance-records).
 
 | File | Source | Author | License | Notes |
 | --- | --- | --- | --- | --- |

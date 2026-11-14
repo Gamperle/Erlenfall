@@ -1,11 +1,14 @@
 """Scales a GLB so its largest size matches the real object in meters, and turns it to face Godot's front.
 
-Usage: blender -b -P size_glb.py -- in.glb out.glb meters [turn_degrees]
+Usage: blender -b -P size_glb.py -- in.glb out.glb meters [turn_degrees [provenance_folder]]
+
+With a provenance folder it adds a "size" stage to <folder>/<name>.json (see provenance.py).
 
 The turn is around the vertical axis and defaults to -90, for TripoSR models, which face +X. TRELLIS.2
 models usually already face +Z, as Godot expects, so they use 0.
 """
 import math
+import os
 import sys
 
 import bpy
@@ -31,4 +34,15 @@ high = Vector(max(p[i] for p in points) for i in range(3))
 obj.data.transform(Matrix.Translation(Vector(((low.x + high.x) / -2, (low.y + high.y) / -2, -low.z))))
 obj.data.update()
 bpy.ops.export_scene.gltf(filepath=target, export_format="GLB", use_selection=True)
+if len(args) > 4:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import provenance
+
+    name = os.path.splitext(os.path.basename(target))[0]
+    provenance.add_stage(
+        os.path.join(args[4], name + ".json"),
+        {"step": "size", "tool": "Blender", "versions": {"Blender": bpy.app.version_string}, "date": provenance.today(),
+         "meters": float(meters), "turn_degrees": turn, "script": "size_glb.py"},
+        kind="ai_prop", asset=f"assets/props/{name}.glb", name=name,
+    )
 print(f"SIZED {len(obj.data.polygons)} faces, {meters} m, turned {turn:g} degrees", flush=True)

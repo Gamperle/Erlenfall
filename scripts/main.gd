@@ -15,6 +15,7 @@ const HURT_COLOR := Color(0.6, 0.05, 0.02, 0.28)
 const HURT_FADE_SECONDS := 0.35
 const DEATH_BLACK_SECONDS := 0.5
 const DEATH_FADE_SECONDS := 1.5
+const HUD_FONT_SIZE := 16
 
 ## Tests turn the menu off and use their own save file.
 var show_menu := true
@@ -60,6 +61,8 @@ func _ready() -> void:
 	_apply_graphics()
 	_menu.graphics_changed.connect(_apply_graphics)
 	_menu.bindings_changed.connect(_set_translated_text)
+	_menu.text_size_changed.connect(_apply_text_size)
+	_apply_text_size()
 	_welcome_label.modulate.a = 0.0
 	_set_translated_text()
 	_compass.visible = FeatureFlags.enabled("compass")
@@ -138,6 +141,12 @@ func _fit_interface() -> void:
 	)
 
 
+## The HUD's text follows the text size setting. Menus and dialogue follow the theme.
+func _apply_text_size() -> void:
+	_quest_label.label_settings.font_size = Settings.scaled_font_size(HUD_FONT_SIZE)
+	_ui.arrange()
+
+
 func _apply_graphics() -> void:
 	get_viewport().scaling_3d_scale = Settings.render_scale()
 	var sun: DirectionalLight3D = $Sun
@@ -145,6 +154,7 @@ func _apply_graphics() -> void:
 	sun.directional_shadow_mode = Settings.shadow_splits()
 	var world_environment: WorldEnvironment = $WorldEnvironment
 	world_environment.environment.ssao_enabled = Settings.ambient_occlusion()
+	($SkyDome as SkyDome).set_quality(Settings.graphics)
 	var grass: GrassField = _village.get_node("Grass")
 	grass.set_draw_scale(Settings.grass_draw_scale())
 

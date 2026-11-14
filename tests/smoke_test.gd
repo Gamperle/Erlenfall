@@ -2,6 +2,7 @@ extends SceneTree
 ## Run with: godot --headless --path . --script res://tests/smoke_test.gd
 
 const TEST_SAVE := "user://smoke_test_save.json"
+const TEST_OLD_SAVE := "user://smoke_test_old_save.json"
 const TEST_SLOT_2 := "user://smoke_test_save_2.json"
 const TEST_SLOT_3 := "user://smoke_test_save_3.json"
 const TEST_SETTINGS := "user://smoke_test_settings.json"
@@ -107,6 +108,27 @@ func _run() -> void:
 	_check(morning.x > 0.9 and morning.y > 0.0, "the sun rises in the east")
 	_check(midday.y > 0.7 and midday.z > 0.5 and absf(midday.x) < 0.01, "the sun is high in the south at midday")
 	_check(evening.x < -0.9 and evening.y > 0.0, "the sun sets in the west")
+	var dome: SkyDome = scene.get_node("SkyDome")
+	var dome_param := func(hour: float, parameter: String) -> Variant:
+		day_night.hour = hour
+		day_night._apply()
+		return dome.material_override.get_shader_parameter(parameter)
+	_check(dome.material_override.shader != null and dome.material_override.shader.get_mode() == Shader.MODE_SPATIAL, "the sky dome has its shader")
+	_check(dome_param.call(1.0, "star_visibility") == 1.0 and dome_param.call(12.0, "star_visibility") == 0.0, "stars show at night and not by day")
+	_check(dome_param.call(19.0, "star_visibility") == 0.0 and dome_param.call(19.9, "star_visibility") > 0.0 and dome_param.call(21.0, "star_visibility") == 1.0, "stars fade in after sunset")
+	_check(dome_param.call(1.0, "moon_visibility") > 0.9 and dome_param.call(12.0, "moon_visibility") == 0.0, "the moon shows at night only")
+	var moon_dir: Vector3 = dome_param.call(0.0, "moon_direction")
+	day_night._apply()
+	_check(moon_dir.is_equal_approx(sun.basis.z), "the moon disc sits where the moonlight comes from")
+	var night_cloud: Color = dome_param.call(1.0, "cloud_light_color")
+	var day_cloud: Color = dome_param.call(12.0, "cloud_light_color")
+	_check(night_cloud.v < 0.4 and day_cloud.v > 0.9, "clouds are tinted by the time of day")
+	var cloud_before: Vector2 = dome_param.call(12.0, "cloud_offset")
+	dome._process(10.0)
+	_check(dome.material_override.get_shader_parameter("cloud_offset") != cloud_before, "clouds drift")
+	dome.set_quality("low")
+	_check(dome.material_override.get_shader_parameter("cloud_octaves") < SkyDome.CLOUD_OCTAVES["high"], "low graphics draw simpler clouds")
+	dome.set_quality(Settings.graphics)
 	day_night.hour = 9.0
 	day_night._apply()
 
@@ -157,6 +179,7 @@ func _run() -> void:
 	await _test_forest(scene, player)
 	await _test_player_fixes(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
+	await _test_ambient_life(scene, day_night)
 	await _test_grass_cost(scene)
 	_test_surface_relief(scene)
 	_test_grass_cell_edge(scene)
@@ -179,6 +202,7 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 	_check(terrain.get_node("Water").mesh.get_surface_count() == 1, "the river has water")
 	_check(terrain.river_clearance(0.0, 5.0) < 0.0, "the river runs through the village")
 	_check(terrain.height_at(0.0, 5.0) < terrain.water_height(0.0, 5.0), "the river bed lies under the water")
+	_check_water_ripples(terrain, player)
 	var downhill := true
 	for i in range(1, terrain.river.heights.size()):
 		downhill = downhill and terrain.river.heights[i] <= terrain.river.heights[i - 1]
@@ -1802,6 +1826,28 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	_check(SaveGame.is_damaged(TEST_SAVE) and not SaveGame.has_backup(TEST_SAVE), "a damaged save without a backup is reported")
 	_check(not SaveGame.apply(TEST_SAVE, player, day_night, village), "a damaged save doesn't load")
 
+	# A checked-in version 1 save is upgraded when loaded.
+	var fixture := FileAccess.get_file_as_string("res://tests/fixtures/save_v1.json")
+	var old_file := FileAccess.open(TEST_OLD_SAVE, FileAccess.WRITE)
+	old_file.store_string(fixture)
+	old_file.close()
+	_check(SaveGame.exists(TEST_OLD_SAVE) and not SaveGame.is_too_new(TEST_OLD_SAVE), "an old-format save counts as a save")
+	_check(SaveGame.apply(TEST_OLD_SAVE, player, day_night, village), "an old-format fixture save loads")
+	_check(is_equal_approx(player.health.current, 42.0) and player.inventory.count("coal") == 3, "the old-format fixture's contents are restored")
+	_check(is_equal_approx(day_night.hour, 9.5), "the old-format fixture's time is restored")
+	# A save from a newer build is reported, not loaded or lost.
+	var new_data: Dictionary = JSON.parse_string(fixture)
+	new_data["version"] = SaveGame.VERSION + 1
+	var new_file := FileAccess.open(TEST_OLD_SAVE, FileAccess.WRITE)
+	new_file.store_string(JSON.stringify(new_data))
+	new_file.close()
+	_check(SaveGame.is_too_new(TEST_OLD_SAVE) and not SaveGame.exists(TEST_OLD_SAVE), "a newer save is reported and not loaded")
+	_check(not SaveGame.apply(TEST_OLD_SAVE, player, day_night, village), "a newer save doesn't load")
+	menu.slot_paths = [TEST_OLD_SAVE, TEST_SLOT_2, TEST_SLOT_3]
+	menu._open_load_slots()
+	_check((menu._buttons.get_child(0) as Button).text.contains(tr("UI_SLOT_TOO_NEW")), "the load menu says a save is from a newer version")
+	DirAccess.remove_absolute(TEST_OLD_SAVE)
+
 	# Saving twice keeps the first save as the backup and leaves no temporary file.
 	player.health.current = 77.0
 	SaveGame.write(TEST_SAVE, player, day_night, village)
@@ -1997,7 +2043,7 @@ func _test_settings(scene: Node, player: Player) -> void:
 	TranslationServer.set_locale("en")
 	menu.open_pause()
 	menu._buttons.get_child(1).pressed.emit()
-	_check(menu._settings_open and menu._buttons.get_child_count() == 5, "the pause menu opens the settings")
+	_check(menu._settings_open and menu._buttons.get_child_count() == 7, "the pause menu opens the settings")
 
 	menu._choose_language(2)
 	await process_frame
@@ -2014,13 +2060,24 @@ func _test_settings(scene: Node, player: Player) -> void:
 	_check(sun.shadow_enabled and sun.directional_shadow_mode == DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS and root.scaling_3d_scale == 1.0, "high graphics take effect at once")
 
 	menu._choose_look_speed(2.0)
+	menu._choose_text_size(2)
+	menu._choose_dialogue_opacity(0.5)
+	var dialogue_ui: DialogueUI = scene.get_node("DialogueUI")
+	dialogue_ui.refresh_style()
+	_check(ThemeDB.get_project_theme().default_font_size == roundi(Settings.BASE_FONT_SIZE * 1.5), "a larger text size scales the interface text")
+	_check(dialogue_ui._speaker.get_theme_font_size("font_size") == roundi(DialogueUI.SPEAKER_FONT_SIZE * 1.5), "a larger text size scales the speaker's name")
+	_check(scene.get_node("UI/QuestLabel").label_settings.font_size == 24, "a larger text size scales the quest text")
+	_check(is_equal_approx(dialogue_ui._panel.self_modulate.a, 0.5), "the dialogue panel's opacity follows the setting")
 	menu._close_settings()
 	_check(menu.is_open() and menu._title.text == tr("UI_PAUSED"), "leaving the settings returns to the pause menu")
 	Settings.look_speed = 1.0
 	Settings.language = ""
 	Settings.graphics = "low"
+	Settings.text_size = 1.0
+	Settings.dialogue_opacity = 1.0
 	Settings.load_saved()
 	_check(Settings.language == "de" and Settings.look_speed == 2.0 and Settings.graphics == "high", "settings are remembered")
+	_check(Settings.text_size == 1.5 and is_equal_approx(Settings.dialogue_opacity, 0.5), "the text size and dialogue opacity are remembered")
 	menu.close()
 	player.set_busy(false)
 
@@ -2028,7 +2085,8 @@ func _test_settings(scene: Node, player: Player) -> void:
 	damaged.store_string("not json")
 	damaged.close()
 	Settings.load_saved()
-	_check(Settings.language == "" and Settings.look_speed == 1.0 and Settings.graphics == "high", "damaged settings fall back to defaults")
+	_check(Settings.language == "" and Settings.look_speed == 1.0 and Settings.graphics == "high" and Settings.text_size == 1.0 and Settings.dialogue_opacity == 1.0, "damaged settings fall back to defaults")
+	_check(ThemeDB.get_project_theme().default_font_size == Settings.BASE_FONT_SIZE, "default settings use the normal text size")
 	Settings.path = Settings.DEFAULT_PATH
 	DirAccess.remove_absolute(TEST_SETTINGS)
 	TranslationServer.set_locale("en")
@@ -2053,7 +2111,7 @@ func _test_key_bindings(scene: Node) -> void:
 	var menu: GameMenu = scene.get_node("GameMenu")
 	menu.open_pause()
 	menu._buttons.get_child(1).pressed.emit()
-	menu._buttons.get_child(3).pressed.emit()
+	menu._buttons.get_child(5).pressed.emit()
 	await process_frame
 	var page: ControlsMenu = menu._controls
 	_check(menu._title.text == tr("UI_CONTROLS_TITLE") and page != null, "the settings open the Controls page")
@@ -2236,6 +2294,23 @@ func _has_joypad(kinds: Dictionary) -> bool:
 func _physics_frames(count: int) -> void:
 	for i in count:
 		await physics_frame
+
+
+func _check_water_ripples(terrain: Terrain, player: Player) -> void:
+	var material := terrain.get_node("Water").material_override as ShaderMaterial
+	var before := player.global_position
+	var saved_graphics := Settings.graphics
+	Settings.graphics = "high"
+	player.global_position = Vector3(0.0, terrain.water_height(0.0, 5.0) - 0.4, 5.0)
+	_check(terrain._stir_water() == 1, "someone wading in the river ripples the water")
+	_check(material.get_shader_parameter("wader_count") == 1, "the water shader is told about the wader")
+	player.global_position = Vector3(300.0, terrain.height_at(300.0, 300.0) + 1.0, 300.0)
+	_check(terrain._stir_water() == 0, "someone on dry land leaves the water still")
+	Settings.graphics = "low"
+	player.global_position = Vector3(0.0, terrain.water_height(0.0, 5.0) - 0.4, 5.0)
+	_check(terrain._stir_water() == 0, "low graphics skips the ripples")
+	Settings.graphics = saved_graphics
+	player.global_position = before
 
 
 func _check(condition: bool, label: String) -> void:
@@ -2463,6 +2538,58 @@ func _blocked_above(terrain: Terrain, point: Vector3) -> bool:
 		if not space.intersect_ray(query).is_empty():
 			return true
 	return false
+
+
+func _test_ambient_life(scene: Node, day_night: DayNight) -> void:
+	var ambient: AmbientLife = scene.get_node_or_null("Village/AmbientLife")
+	_check(ambient != null, "ambient life is added when its flag is on")
+	if ambient == null:
+		return
+	var kinds := ambient.find_children("*", "MultiMeshInstance3D", false, false)
+	_check(kinds.size() == 3, "birds, butterflies, and fireflies are one MultiMesh each")
+	_check(ambient.find_children("*", "CollisionObject3D", true, false).is_empty() and kinds.all(func(kind): return kind.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF), "ambient life has no collision and casts no shadows")
+	var full := ambient.full_counts()
+	_check(full["birds"] + full["butterflies"] + full["fireflies"] <= 150, "ambient life stays within its count budget")
+	var player: Player = scene.get_node("Player")
+	var saved_hour := day_night.hour
+	var saved_graphics := Settings.graphics
+	day_night.hour = 12.0
+	ambient.update_around(player.global_position)
+	var by_day := ambient.drawn_counts()
+	_check(by_day["birds"] > 0 and by_day["butterflies"] > 0 and by_day["fireflies"] == 0, "birds and butterflies fly by day and fireflies sleep")
+	day_night.hour = 0.0
+	ambient.update_around(player.global_position)
+	var by_night := ambient.drawn_counts()
+	_check(by_night["birds"] == 0 and by_night["butterflies"] == 0 and by_night["fireflies"] > 0, "fireflies glow at night and the others sleep")
+	var terrain: Terrain = scene.get_node("Terrain")
+	var on_lush_ground := true
+	for index in ambient._fireflies.shown:
+		var home := ambient._fireflies.anchors[index]
+		if ambient._fireflies.settled[index] and terrain.river_clearance(home.x, home.z) < 0.0:
+			on_lush_ground = false
+	_check(on_lush_ground, "fireflies never settle in the river")
+	var lush := 0
+	var settled := 0
+	day_night.hour = 12.0
+	ambient.update_around(player.global_position)
+	for index in ambient._butterflies.shown:
+		if ambient._butterflies.settled[index]:
+			var home := ambient._butterflies.anchors[index]
+			settled += 1
+			if Surfaces.ground_dryness(home.x, home.z) <= AmbientLife.LUSH_DRYNESS:
+				lush += 1
+	_check(lush == settled, "butterflies stay over lush grass (%d of %d)" % [lush, settled])
+	Settings.graphics = "low"
+	await process_frame
+	ambient._process(0.0)
+	var low := ambient.drawn_counts()
+	Settings.graphics = "high"
+	ambient._process(0.0)
+	var high := ambient.drawn_counts()
+	_check(low["birds"] < high["birds"] and low["butterflies"] < high["butterflies"], "lower graphics show fewer creatures")
+	Settings.graphics = saved_graphics
+	ambient._process(0.0)
+	day_night.hour = saved_hour
 
 
 func _test_grass_cell_edge(scene: Node) -> void:

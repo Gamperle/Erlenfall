@@ -70,6 +70,9 @@ const CHUNK_CELLS := 32
 ## More vertices than any chunk has, so that each chunk can mark the ones it has used.
 const CHUNK_INDEX_RANGE := 1048576
 const GROUP := "terrain"
+## The most waders the water shader draws ripples for, and how near the player they must be.
+const WATER_MAX_WADERS := 8
+const WATER_RIPPLE_RANGE := 60.0
 ## The speed left when wading at this depth or deeper.
 const WADING_SPEED_FACTOR := 0.55
 const WADING_FULL_DEPTH := 0.6
@@ -77,6 +80,7 @@ const WADING_FULL_DEPTH := 0.6
 ## The roads in the layout file's order.
 var roads: Array[TerrainPath] = []
 var river: TerrainPath
+var _water_material: ShaderMaterial
 ## The places kept free for future buildings, from the layout file.
 var building_sites: Array = []
 
@@ -124,6 +128,10 @@ func _ready() -> void:
 	var fine_faces := _build_mesh(heights, count, fine_cells)
 	_build_collision(heights, count, fine_cells, fine_faces)
 	_build_water()
+
+
+func _process(_delta: float) -> void:
+	_stir_water()
 
 
 func height_at(x: float, z: float) -> float:
@@ -670,6 +678,39 @@ func _cover_grid_with_fine_collision(scaled_heights: PackedFloat32Array, heights
 	add_child(collision)
 
 
+## Hands the water shader the moving people standing in the river, so it ripples around them.
+## Returns how many it passed on, nearest the player first.
+func _stir_water() -> int:
+	var limit := Settings.water_ripples()
+	var player := get_tree().get_first_node_in_group(Player.GROUP) as Node3D
+	var waders: Array[Vector4] = []
+	if limit > 0 and player != null:
+		var candidates: Array[Node3D] = [player]
+		for enemy in get_tree().get_nodes_in_group("enemy"):
+			if enemy is Node3D and enemy.global_position.distance_squared_to(player.global_position) < WATER_RIPPLE_RANGE * WATER_RIPPLE_RANGE:
+				candidates.append(enemy)
+		candidates.sort_custom(func(a: Node3D, b: Node3D) -> bool:
+			return a.global_position.distance_squared_to(player.global_position) < b.global_position.distance_squared_to(player.global_position))
+		for who in candidates:
+			var feet := who.global_position
+			var wet := 1.0 - wading_factor(feet)
+			if wet <= 0.0:
+				continue
+			var speed := 0.0
+			if who is CharacterBody3D:
+				speed = Vector2(who.velocity.x, who.velocity.z).length()
+			# Standing still in the water leaves a faint ring, moving stirs it.
+			waders.append(Vector4(feet.x, feet.z, clampf(0.25 + speed / 4.0, 0.0, 1.0) * minf(wet * 3.0, 1.0), 0.0))
+			if waders.size() >= limit:
+				break
+	var padded := waders.duplicate()
+	while padded.size() < WATER_MAX_WADERS:
+		padded.append(Vector4.ZERO)
+	_water_material.set_shader_parameter("waders", padded)
+	_water_material.set_shader_parameter("wader_count", waders.size())
+	return waders.size()
+
+
 ## A ribbon of water that reaches into the banks, so the land decides where its edge shows.
 func _build_water() -> void:
 	var surface := SurfaceTool.new()
@@ -700,6 +741,7 @@ func _build_water() -> void:
 	material.set_shader_parameter("deep_color", WATER_DEEP_COLOR)
 	material.set_shader_parameter("shallow_color", WATER_SHALLOW_COLOR)
 
+	_water_material = material
 	var water := MeshInstance3D.new()
 	water.name = "Water"
 	water.mesh = surface.commit()

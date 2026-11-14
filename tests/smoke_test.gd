@@ -1393,6 +1393,7 @@ func _test_combat(scene: Node, player: Player) -> void:
 	await _test_enemy_talk(scene, player)
 	FeatureFlags._flags["enemy_talk"] = false
 	await _test_stamina_costs(scene, player)
+	await _test_heavy_swing(player)
 
 	# Hold block through the goblin's attack.
 	Input.action_press("block")
@@ -1557,6 +1558,47 @@ func _test_stamina_costs(scene: Node, player: Player) -> void:
 	player.health.restore()
 
 
+func _test_heavy_swing(player: Player) -> void:
+	var notices: Array[String] = []
+	var listen := func(key: String): notices.append(key)
+	player.notice.connect(listen)
+	player._attack_cooldown = 0.0
+	player.stamina = Player.MAX_STAMINA
+	_check(not HeavySwing.is_charged(HeavySwing.charge_seconds() - 0.1) and HeavySwing.is_charged(HeavySwing.charge_seconds()), "a swing is heavy once the button was held long enough")
+	_check(player.attack(true) and player._swing_heavy and player.stamina == Player.MAX_STAMINA - HeavySwing.stamina_cost(), "a heavy swing costs stamina")
+	player._attack_cooldown = 0.0
+	player._attack_windup = 0.0
+	player.stamina = HeavySwing.stamina_cost() - 1.0
+	_check(player.attack(true) and not player._swing_heavy and player.stamina == HeavySwing.stamina_cost() - 1.0 and notices == ["UI_TOO_TIRED_HEAVY"], "with too little stamina a heavy swing becomes a normal one")
+	player._attack_cooldown = 0.0
+	player._attack_windup = 0.0
+	player.stamina = Player.MAX_STAMINA
+	_check(player.attack() and not player._swing_heavy and player.stamina == Player.MAX_STAMINA, "a normal swing costs no stamina")
+	player._attack_cooldown = 0.0
+	player._attack_windup = 0.0
+	FeatureFlags._flags["stamina"] = false
+	player.stamina = 0.0
+	_check(player.attack(true) and player._swing_heavy, "a heavy swing is free when the flag for stamina is off")
+	FeatureFlags._flags["stamina"] = true
+	player._attack_cooldown = 0.0
+	player._attack_windup = 0.0
+	FeatureFlags._flags["heavy_swing"] = false
+	player.stamina = Player.MAX_STAMINA
+	_check(player.attack(true) and not player._swing_heavy and player.stamina == Player.MAX_STAMINA, "nothing is heavy when the flag is off")
+	FeatureFlags._flags["heavy_swing"] = true
+	player._charge = -1.0
+	player.notice.disconnect(listen)
+	for key in ["UI_TOO_TIRED_HEAVY"]:
+		TranslationServer.set_locale("de")
+		var german := tr(key)
+		TranslationServer.set_locale("en")
+		_check(tr(key) != key and german != key and german != tr(key), "%s has English and German text" % key)
+	player._attack_cooldown = 0.0
+	player._attack_windup = 0.0
+	player._swing_heavy = false
+	player.stamina = Player.MAX_STAMINA
+
+
 func _test_sneaking(player: Player, enemy: Enemy) -> void:
 	enemy.revive()
 	var normal_range := float(enemy._stats["aggro_range"])
@@ -1629,7 +1671,44 @@ func _test_enemy_talk(scene: Node, player: Player) -> void:
 	runner.advance(pay)
 	_check(talk.is_calm() and goblin.state == Enemy.State.IDLE and player.inventory.count("iron_scrap") == 0, "paying calms the goblin and costs the scrap")
 	_check(not talk.is_available(), "a calmed goblin is not talked to again")
+	# The calm is saved with the game, in an optional key, and old saves load without it (#329).
+	var calm_data := goblin.to_data()
+	_check(calm_data.has("calm_left") and calm_data["calm_left"] > 0.0, "a calmed goblin saves its remaining calm")
+	var calm_before: float = talk.calm_left()
 	talk.break_calm()
+	goblin.load_data(calm_data)
+	_check(talk.is_calm() and absf(talk.calm_left() - calm_before) < 0.5 and goblin.state == Enemy.State.IDLE, "loading restores a goblin's calm")
+	var old_save := calm_data.duplicate()
+	old_save.erase("calm_left")
+	goblin.load_data(old_save)
+	_check(goblin.state == Enemy.State.IDLE, "a save without a calm still loads")
+	talk.restore_calm(calm_before)
+	talk._process(0.0)
+	var look_key := Settings.colour_vision
+	var look_high := Settings.high_contrast
+	_check(talk.cue() == "calm" and talk._cue.visible and talk._cue.text.contains("~") and talk._cue.text.contains(goblin.tr("TALK_CUE_CALM")), "a calmed goblin shows a calm cue with a shape and a word")
+	var normal_color: Color = talk._cue.modulate
+	Settings.colour_vision = "deuteranopia"
+	talk._process(0.0)
+	_check(talk._cue.modulate != normal_color, "the cue follows the colour vision mode")
+	Settings.colour_vision = "off"
+	Settings.high_contrast = true
+	talk._process(0.0)
+	_check(talk._cue.modulate == Color.WHITE and talk._cue.outline_size > 8, "the cue is plain white with a thick outline in high contrast")
+	Settings.colour_vision = look_key
+	Settings.high_contrast = look_high
+	talk._process(0.0)
+	talk.break_calm()
+	talk._process(0.0)
+	_check(talk.cue() == "" and not talk._cue.visible, "no cue shows once the calm is broken")
+	goblin.state = Enemy.State.CHASE
+	talk._reset()
+	talk.holds_back(10.0, 0.1)
+	talk.holds_back(3.0, 0.1)
+	talk._process(0.0)
+	_check(talk.cue() == "wait" and talk._cue.text.contains("?"), "a goblin waiting to be spoken to shows a cue")
+	talk.break_calm()
+	talk._reset()
 	_check(not talk.is_calm(), "hitting a calmed goblin ends the calm")
 
 	# A bluff that works sometimes: a low roll calms, a high roll starts the fight.
@@ -2651,6 +2730,12 @@ func _test_controller_navigation(scene: Node, player: Player) -> void:
 	dialogue.open_conversation("bertram", "bertram", player)
 	await _physics_frames(3)
 	_check(_focus_in(dialogue._panel) and _all_reachable(dialogue._choices), "a conversation takes the focus and the d-pad reaches every reply")
+	dialogue._input(back)
+	_check(not dialogue.is_open() and not player.is_busy(), "back leaves a conversation")
+	dialogue.open_conversation("bertram", "bertram", player)
+	dialogue._runner._node["must_answer"] = true
+	dialogue._input(back)
+	_check(dialogue.is_open() and player.is_busy(), "back does not leave a line that needs an answer")
 	while dialogue.is_open():
 		dialogue.choose(0)
 
@@ -2829,6 +2914,9 @@ func _test_settings(scene: Node, player: Player) -> void:
 	var label_settings: LabelSettings = scene.get_node("UI/QuestLabel").label_settings
 	_check(Settings.high_contrast and label_settings.outline_size == Accessibility.HC_OUTLINE_SIZE and theme.get_color("font_color", "Label") == Accessibility.HC_TEXT_COLOR, "high contrast outlines the HUD text and whitens the menu text")
 	_check(theme.get_stylebox("normal", "HudPlate").modulate_color == Accessibility.HC_PLATE_COLOR, "high contrast darkens the HUD plates")
+	_check(is_equal_approx(dialogue_ui._panel.self_modulate.a, 1.0), "high contrast makes the dialogue panel opaque")
+	_check(WorldMap.text_color() == Accessibility.HC_TEXT_COLOR and WorldMap.outline_size() == Accessibility.HC_OUTLINE_SIZE, "high contrast makes the world map text white with a thick outline")
+	await _test_enemy_accessibility(scene)
 	menu._choose_colour_vision(0)
 	_check(Settings.high_contrast and stamina_pattern.visible, "high contrast shows the bar patterns on its own")
 	menu._close_settings()
@@ -2850,6 +2938,8 @@ func _test_settings(scene: Node, player: Player) -> void:
 	_check(Settings.colour_vision == "off" and not Settings.high_contrast, "invalid accessibility settings fall back to defaults")
 	_check(theme.get_color("font_color", "Label") == Color(0.93, 0.88, 0.76, 1) and theme.get_stylebox("normal", "HudPlate").modulate_color == Color.WHITE, "turning high contrast off puts the theme's colors back")
 	scene.get_node("UI").refresh_accessibility()
+	dialogue_ui.refresh_style()
+	_check(is_equal_approx(dialogue_ui._panel.self_modulate.a, Settings.dialogue_opacity) and WorldMap.outline_size() == 4, "turning high contrast off puts the dialogue opacity and map text back")
 	_check(label_settings.outline_size == 4 and not health_pattern.visible, "turning high contrast off puts the HUD text and bars back")
 	menu.close()
 	player.set_busy(false)
@@ -3068,6 +3158,23 @@ func _test_key_bindings(scene: Node) -> void:
 	page.listen("block", KeyBindings.KEYBOARD)
 	page.offer(escape)
 	_check(not page.is_listening(), "Esc stops listening")
+
+	# A gamepad wait ends by itself, and back cancels the question about a used input.
+	page.listen("attack", KeyBindings.GAMEPAD)
+	page.wait(ControlsMenu.GAMEPAD_WAIT_SECONDS - 1.0)
+	_check(page.is_listening(), "a gamepad wait goes on for a while")
+	page.wait(1.0)
+	_check(not page.is_listening(), "a gamepad wait ends by itself")
+	page.listen("block", KeyBindings.KEYBOARD)
+	page.wait(ControlsMenu.GAMEPAD_WAIT_SECONDS * 2.0)
+	_check(page.is_listening(), "a keyboard wait does not time out")
+	page.offer(escape)
+	page.listen("jump", KeyBindings.GAMEPAD)
+	page.offer(pad_button)
+	var back := InputEventAction.new()
+	back.action = "ui_cancel"
+	back.pressed = true
+	_check(page.is_asking() and page.offer(back) and not page.is_asking() and not page.is_listening(), "back on a gamepad cancels the question about a used input")
 
 	# Saved, loaded, and reset.
 	Settings.save()
@@ -3393,12 +3500,12 @@ func _test_ranged(scene: Node, player: Player) -> void:
 	var notices: Array[String] = []
 	player.notice.connect(func(key: String): notices.append(key))
 	player.inventory.remove("short_bow")
-	_check(not player.fire_ranged("shoot") and notices == ["UI_NEED_SHORT_BOW"], "an arrow can't be shot without a bow")
+	_check(not player.fire_ranged("shoot") and notices == ["UI_NEED_BOW"], "an arrow can't be shot without a bow")
 	player.inventory.add("short_bow")
 	var quiver := player.inventory.count("arrow")
 	player.inventory.remove("arrow", quiver)
 	_check(not player.fire_ranged("shoot") and notices.back() == "UI_NO_ARROW", "an empty quiver can't shoot")
-	for key in ["UI_NEED_SHORT_BOW", "UI_NO_ARROW", "UI_NO_FIRE_FLASK", "ITEM_SHORT_BOW", "ITEM_ARROW", "ITEM_FIRE_FLASK"]:
+	for key in ["UI_NEED_BOW", "UI_NO_ARROW", "UI_NO_FIRE_FLASK", "ITEM_SHORT_BOW", "ITEM_ARROW", "ITEM_FIRE_FLASK"]:
 		TranslationServer.set_locale("de")
 		var german := tr(key)
 		TranslationServer.set_locale("en")
@@ -3626,6 +3733,33 @@ func _test_rain_cover(scene: Node, weather: Weather) -> void:
 	weather._push()
 
 
+## Seen from outside, rain must stop at roofs and bridge decks (#312): the rain shader reads a coarse map.
+func _test_rain_roofs(scene: Node, weather: Weather) -> void:
+	var terrain: Terrain = scene.get_node("Terrain")
+	var village: Village = scene.get_node("Village")
+	weather.refresh_roofs()
+	var hall_top := weather.roof_height_at(0.0, -28.0)
+	var hall_floor := terrain.height_at(0.0, -28.0)
+	_check(hall_top > hall_floor + 6.0 and hall_top < hall_floor + 6.0 + ModelBuilder.ROOF_HEIGHT + 0.01, "rain stops at the town hall roof (%.1f over %.1f)" % [hall_top, hall_floor])
+	_check(weather.roof_height_at(0.0, -34.0) < hall_top and weather.roof_height_at(0.0, -34.0) > hall_floor + 6.0 or weather.roof_height_at(0.0, -34.0) == RoofMap.NONE, "the roof slopes down to its eaves")
+	_check(weather.roof_height_at(0.0, -10.0) == RoofMap.NONE and weather.roof_height_at(300.0, 300.0) == RoofMap.NONE, "open ground has no roof over it")
+	_check(weather.roof_height_at(-36.0, 28.0) == RoofMap.NONE, "a ruined house keeps no rain off")
+	var bridge_covers := village.roof_covers.filter(func(cover: Dictionary) -> bool: return cover["shape"] == "arch")
+	_check(not bridge_covers.is_empty(), "bridges are in the rain map")
+	for cover: Dictionary in bridge_covers:
+		var middle: Vector2 = cover["center"]
+		_check(weather.roof_height_at(middle.x, middle.y) > cover["base"], "rain stops at a bridge deck")
+	_check(weather.roof_height_at(25.0, -14.0) == RoofMap.NONE, "the inn's broken roof lets the rain in")
+	village.apply_flags({ "inn_roof_repaired": true })
+	weather.refresh_roofs()
+	_check(weather.roof_height_at(25.0, -14.0) > terrain.height_at(25.0, -14.0) + 5.0, "a repaired roof keeps the rain off")
+	village.apply_flags({})
+	weather.refresh_roofs()
+	_check(weather.roof_height_at(25.0, -14.0) == RoofMap.NONE, "the map follows the roof back to broken")
+	var drop_material: ShaderMaterial = weather.rain_particles().draw_pass_1.material
+	_check(drop_material.get_shader_parameter("roof_size") == weather._roof_map.size, "the rain shader gets the roof map")
+
+
 func _test_weather(scene: Node, day_night: DayNight) -> void:
 	var weather: Weather = scene.get_node_or_null("Weather")
 	_check(weather != null and FeatureFlags.enabled("weather"), "weather is added when its flag is on")
@@ -3652,6 +3786,7 @@ func _test_weather(scene: Node, day_night: DayNight) -> void:
 	_check(weather.rain_particles().emitting, "rain falls in the rain")
 	_check(scene.get_node("Village/Grass")._material.get_shader_parameter("wind_strength") > 0.6, "the wind shakes the grass in the rain")
 	await _test_rain_cover(scene, weather)
+	_test_rain_roofs(scene, weather)
 	var rain_nodes := weather.find_children("*", "GPUParticles3D", true, false)
 	_check(rain_nodes.size() == 1 and weather.get_child_count() == 1, "rain is one particle system")
 	weather.set_quality("low")
@@ -3693,3 +3828,31 @@ func _goblins() -> Array[Node]:
 		if node.enemy_type == "goblin":
 			result.append(node)
 	return result
+
+
+## The enemy's health bar and wind-up warning don't depend on color, and follow the palette.
+func _test_enemy_accessibility(scene: Node) -> void:
+	var enemy := Enemy.new()
+	enemy.setup("goblin", Vector3(0.0, 100.0, 0.0))
+	scene.add_child(enemy)
+	var saved_mode := Settings.colour_vision
+	Settings.colour_vision = "off"
+	var plain := Enemy.bar_image(0.5)
+	Settings.colour_vision = "protanopia"
+	var coloured := Enemy.bar_image(0.5)
+	Settings.colour_vision = saved_mode
+	var inner_y := Enemy.BAR_PIXELS.y / 2
+	_check(plain.get_pixel(0, inner_y) == Enemy.BAR_FRAME_COLOR and plain.get_pixel(Enemy.BAR_PIXELS.x / 2, 1) == Enemy.BAR_TICK_COLOR, "the enemy health bar has a frame and ticks")
+	_check(coloured.get_pixel(3, 1) != plain.get_pixel(3, 1) or coloured.get_pixel(4, 1) != plain.get_pixel(4, 1), "the enemy health bar follows the colour vision palette")
+	_check(Enemy.bar_image(1.0).get_pixel(Enemy.BAR_PIXELS.x - 3, 3) != Enemy.bar_image(0.0).get_pixel(Enemy.BAR_PIXELS.x - 3, 3), "the enemy health bar fill shows how much health is left without color")
+	enemy.state = Enemy.State.WINDUP
+	enemy._update_color(0.016)
+	_check(enemy._warning.visible, "an enemy winding up shows a warning mark")
+	enemy.state = Enemy.State.IDLE
+	enemy._update_color(0.016)
+	_check(not enemy._warning.visible, "the warning mark goes away after the wind-up")
+	_check(Accessibility.color("warning") != Accessibility.color("enemy"), "the warning and the enemy bar differ in color")
+	for mode: String in Accessibility.MODES:
+		_check(Accessibility.PALETTES[mode]["warning"] != Accessibility.PALETTES[mode]["enemy"], "the %s palette tells the wind-up warning from the enemy bar" % mode)
+	enemy.free()
+	await process_frame

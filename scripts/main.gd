@@ -69,6 +69,7 @@ func _ready() -> void:
 	device.changed.connect(_on_input_device_changed)
 	_menu.text_size_changed.connect(_apply_text_size)
 	_menu.accessibility_changed.connect(_ui.refresh_accessibility)
+	_menu.accessibility_changed.connect($DialogueUI.refresh_style)
 	_apply_text_size()
 	_ui.refresh_accessibility()
 	_welcome_label.modulate.a = 0.0

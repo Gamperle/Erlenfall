@@ -64,7 +64,7 @@ Crafting is the core of the game. It combines **free experimentation** (combine 
 
 Combat is about 15% of play time and is simple, real-time, and often avoidable.
 
-- Attack, block, and dodge, with options to sneak or talk. Sprinting, dodging, and blocking hits spend stamina (`stamina` flag).
+- Attack, block, and dodge, with options to sneak or talk. Sprinting, dodging, blocking hits, and heavy swings (hold the attack button) spend stamina (`stamina` and `heavy_swing` flags).
 - Melee, bows, thrown potions, and magic, which are added gradually (see Milestones). Crafted items drive combat.
 - Enemies are mostly animals, goblins, and other non-humans. Human enemies are rare.
 - On death, you wake up in the village and lose some gathered materials.

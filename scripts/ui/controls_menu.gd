@@ -7,6 +7,9 @@ signal changed
 signal back_chosen
 
 const STICK_THRESHOLD := 0.6
+## A wait for a gamepad input ends by itself after this long, since every gamepad button
+## (including back) is a valid binding and a player on a gamepad alone could not cancel otherwise.
+const GAMEPAD_WAIT_SECONDS := 5.0
 
 var _action := ""
 var _kind := ""
@@ -16,6 +19,7 @@ var _pending: InputEvent
 var _last_action := ""
 var _last_kind := ""
 var _status: Label
+var _waited := 0.0
 
 
 func _ready() -> void:
@@ -36,13 +40,14 @@ func listen(action: String, kind: String) -> void:
 	_action = action
 	_kind = kind
 	_pending = null
+	_waited = 0.0
 	_rebuild()
 
 
 ## Gives the page an input, as if the player had just pressed it. Returns whether it was used.
 func offer(event: InputEvent) -> bool:
 	if _pending != null:
-		if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE:
+		if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE):
 			answer_conflict(false)
 			return true
 		return false
@@ -93,6 +98,19 @@ func reset_to_defaults() -> void:
 	changed.emit()
 
 
+func _process(delta: float) -> void:
+	wait(delta)
+
+
+## Counts time spent waiting for a gamepad input and gives up when it runs out.
+func wait(delta: float) -> void:
+	if _kind != KeyBindings.GAMEPAD or _pending != null:
+		return
+	_waited += delta
+	if _waited >= GAMEPAD_WAIT_SECONDS:
+		_stop()
+
+
 func _input(event: InputEvent) -> void:
 	if is_listening() and is_visible_in_tree() and offer(event):
 		get_viewport().set_input_as_handled()
@@ -121,7 +139,10 @@ func _rebuild() -> void:
 		return
 	if is_listening():
 		_status.visible = true
-		_status.text = tr("UI_CONTROLS_LISTENING") % KeyBindings.action_name(_action)
+		if _kind == KeyBindings.GAMEPAD:
+			_status.text = tr("UI_CONTROLS_LISTENING_PAD") % [KeyBindings.action_name(_action), roundi(GAMEPAD_WAIT_SECONDS)]
+		else:
+			_status.text = tr("UI_CONTROLS_LISTENING") % KeyBindings.action_name(_action)
 	var focus: Control = null
 	for action in KeyBindings.ACTIONS:
 		var row := HBoxContainer.new()

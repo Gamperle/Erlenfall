@@ -4,6 +4,7 @@ extends CanvasLayer
 
 const PANEL_WIDTH := 640.0
 const BAR_HEIGHT := 36.0
+const TARGET_EDGE_WIDTH := 4.0
 const MARKER_COLOR := Color(1.0, 1.0, 0.95)
 const RESULT_SECONDS := 1.0
 
@@ -36,6 +37,8 @@ var _forge_line: PromptLine
 var _bar: Control
 var _target: Panel
 var _marker: ColorRect
+## Dark ends on the forging target, shown for colour vision modes and high contrast, so the target is a shape too.
+var _target_edges: Array[ColorRect] = []
 
 
 func _ready() -> void:
@@ -166,6 +169,9 @@ func _process(delta: float) -> void:
 	_target.position.x = (_game.target - _game.target_width / 2.0) * width
 	_target.size = Vector2(_game.target_width * width, BAR_HEIGHT)
 	_marker.position.x = _game.marker * width - _marker.size.x / 2.0
+	for edge in _target_edges:
+		edge.visible = BarPattern.wanted()
+	_marker.color = Color.WHITE if Settings.high_contrast else MARKER_COLOR
 
 
 func _open(player: Player, station_id: String, title: String) -> void:
@@ -255,7 +261,13 @@ func _refresh_use_buttons() -> void:
 		button.pressed.connect(use_item.bind(item_id))
 		_use_row.add_child(button)
 		if item_id == focused_item:
-			button.grab_focus.call_deferred()
+			_focus_later.call_deferred(button)
+
+
+## A button can leave the tree again before the deferred focus runs, when the list is rebuilt.
+func _focus_later(control: Control) -> void:
+	if is_instance_valid(control) and control.is_inside_tree():
+		control.grab_focus()
 
 
 ## The item the selected materials would make, or "" if they make nothing.
@@ -477,6 +489,16 @@ func _build() -> void:
 	_target = Panel.new()
 	_target.theme_type_variation = &"ForgeTarget"
 	_bar.add_child(_target)
+	for side in 2:
+		var edge := ColorRect.new()
+		edge.color = Color.BLACK
+		edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		edge.set_anchors_preset(Control.PRESET_LEFT_WIDE if side == 0 else Control.PRESET_RIGHT_WIDE)
+		edge.custom_minimum_size.x = TARGET_EDGE_WIDTH
+		if side == 1:
+			edge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		_target.add_child(edge)
+		_target_edges.append(edge)
 	_marker = ColorRect.new()
 	_marker.color = MARKER_COLOR
 	_marker.size = Vector2(6.0, BAR_HEIGHT)

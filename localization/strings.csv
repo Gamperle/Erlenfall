@@ -73,6 +73,8 @@ QUALITY_FINE,Fine,Fein
 QUALITY_MASTERWORK,Masterwork,Meisterwerk
 UI_CONTINUE,Continue,Weiter
 PROMPT_TALK,Talk to %s,Mit %s sprechen
+TALK_CUE_WAIT,Talk to it,Sprich mit ihm
+TALK_CUE_CALM,Calm,Ruhig
 NPC_HEDDA,Grandma Hedda,Oma Hedda
 NPC_BERTRAM,Bertram the smith,Schmied Bertram
 NPC_MIRA,Mira,Mira
@@ -266,7 +268,8 @@ ITEM_SHORT_BOW,Short bow,Kurzbogen
 ITEM_ARROW,Arrow,Pfeil
 ITEM_LONG_BOW,Long bow,Langbogen
 ITEM_FIRE_FLASK,Fire flask,Feuerflasche
-UI_NEED_SHORT_BOW,You have no bow.,Du hast keinen Bogen.
+UI_NEED_BOW,You have no bow.,Du hast keinen Bogen.
+UI_TOO_TIRED_HEAVY,You are too tired for a heavy swing.,Du bist zu erschöpft für einen schweren Schlag.
 UI_NO_ARROW,You have no arrows.,Du hast keine Pfeile.
 UI_NO_FIRE_FLASK,You have no fire flasks.,Du hast keine Feuerflaschen.
 UI_MAP,Map,Karte
@@ -292,6 +295,7 @@ UI_CONTROLS_KEYBOARD,Keyboard and mouse,Tastatur und Maus
 UI_CONTROLS_GAMEPAD,Gamepad,Gamepad
 UI_CONTROLS_PRESS,Press an input...,Eingabe drücken ...
 UI_CONTROLS_LISTENING,"Press the new input for ""%s"". Esc cancels.",Drücke die neue Eingabe für „%s“. Esc bricht ab.
+UI_CONTROLS_LISTENING_PAD,"Press the new input for ""%s"". Waiting stops after %d seconds, or press Esc.","Drücke die neue Eingabe für „%s“. Das Warten endet nach %d Sekunden, oder drücke Esc."
 UI_CONTROLS_CONFLICT,"%s is already used for ""%s"". Swap it with ""%s""?",%s wird schon für „%s“ verwendet. Mit „%s“ tauschen?
 UI_CONTROLS_SWAP,Swap,Tauschen
 UI_CONTROLS_CANCEL,Cancel,Abbrechen

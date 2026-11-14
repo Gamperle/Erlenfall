@@ -40,23 +40,36 @@ func open_conversation(npc_id: String, speaker: String, player: Player, talker: 
 	_show_line()
 
 
-## Applies the text size and panel opacity settings.
+## Applies the text size and panel opacity settings. High contrast makes the panel opaque.
 func refresh_style() -> void:
 	_speaker.add_theme_font_size_override("font_size", Settings.scaled_font_size(SPEAKER_FONT_SIZE))
 	if _hint.get_child_count() > 0:
 		_hint.rebuild()
-	_panel.self_modulate.a = Settings.dialogue_opacity
+	# High contrast needs a solid panel, whatever the opacity setting says.
+	_panel.self_modulate.a = 1.0 if Settings.high_contrast else Settings.dialogue_opacity
 
 
 ## Answers with the given reply. Public so buttons, keys, and tests share one path.
 func choose(index: int) -> void:
 	_runner.advance(index)
 	if _runner.is_finished():
-		_panel.visible = false
-		_player.set_busy(false)
-		_player.end_conversation()
+		_close()
 	else:
 		_show_line()
+
+
+## Ends the conversation early, if the story allows it (see DialogueRunner.can_leave).
+func leave() -> bool:
+	if not is_open() or not _runner.can_leave():
+		return false
+	_close()
+	return true
+
+
+func _close() -> void:
+	_panel.visible = false
+	_player.set_busy(false)
+	_player.end_conversation()
 
 
 ## Shows the choose hint with the inputs of the device in use.
@@ -65,6 +78,11 @@ func refresh_prompts() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if is_open() and event.is_action_pressed("ui_cancel"):
+		# Back never counts when the story wants an answer.
+		if leave():
+			get_viewport().set_input_as_handled()
+		return
 	if is_open() and event.is_action_pressed("interact"):
 		var focused := get_viewport().gui_get_focus_owner() as Button
 		if focused != null:

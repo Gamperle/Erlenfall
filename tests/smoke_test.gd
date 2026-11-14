@@ -825,6 +825,7 @@ func _test_hud(scene: Node, player: Player) -> void:
 	await _test_item_models(scene)
 	await _test_interface_fit(scene)
 	await _test_controls_hint(scene)
+	await _test_credits(scene)
 	_test_input_device_prompts(scene)
 	_test_input_glyphs(scene)
 	await _test_ground_dryness()
@@ -2582,6 +2583,30 @@ func _test_controls_hint(scene: Node) -> void:
 	scene.resume()
 
 
+func _test_credits(scene: Node) -> void:
+	var data := CreditsData.parse("| File | Source | Author | License | Notes |\n| --- | --- | --- | --- | --- |\n| `a/x.jpg` | [Site: x](https://e.com) | Ann | CC0 | n |\n| `a/y.jpg` | [Site: x](https://e.com) | Ann | CC0 | n |\n\nAfter [link](u).")
+	_check(data["entries"].size() == 1 and data["entries"][0]["files"].size() == 2, "credits merge rows with the same source")
+	_check(data["entries"][0]["source"] == "Site: x" and data["notes"] == ["After link."], "credits drop Markdown links")
+	var real := CreditsData.load_assets()
+	var rows := CreditsData.read_text(CreditsData.ASSETS_PATH).count("| `assets/")
+	var files := 0
+	for entry: Dictionary in real["entries"]:
+		files += entry["files"].size()
+	_check(files >= rows and rows > 0, "every asset row reaches the credits (%d rows, %d files)" % [rows, files])
+	scene.open_pause_menu()
+	var menu: GameMenu = scene.get_node("GameMenu")
+	menu.open_credits(menu.open_pause)
+	await process_frame
+	await process_frame
+	var credits: CreditsMenu = menu._credits
+	_check(credits != null and credits.is_inside_tree(), "the pause menu opens the credits")
+	credits.scroll_by(120.0)
+	_check(credits.scroll_position() > 0, "the credits scroll")
+	credits.back_chosen.emit()
+	_check(menu._credits == null and menu.is_open(), "back leaves the credits for the menu")
+	scene.resume()
+
+
 func _test_ground_dryness() -> void:
 	var texture := Surfaces.noise_texture()
 	if texture.get_image() == null:
@@ -2850,7 +2875,7 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	DirAccess.remove_absolute(TEST_SLOT_2)
 	DirAccess.remove_absolute(TEST_SLOT_2 + SaveGame.BACKUP_SUFFIX)
 	menu.open_title()
-	_check(not menu._asset_note.get_parent() == null and menu._buttons.get_child_count() == 3, "with no saves, the title offers new game, settings, and quit")
+	_check(not menu._asset_note.get_parent() == null and menu._buttons.get_child_count() == 4, "with no saves, the title offers new game, settings, credits, and quit")
 	started[0] = ""
 	menu._buttons.get_child(0).pressed.emit()
 	_check(started[0] == TEST_SAVE, "with no save, new game starts at once")

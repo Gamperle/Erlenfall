@@ -2828,6 +2828,9 @@ func _test_settings(scene: Node, player: Player) -> void:
 	var label_settings: LabelSettings = scene.get_node("UI/QuestLabel").label_settings
 	_check(Settings.high_contrast and label_settings.outline_size == Accessibility.HC_OUTLINE_SIZE and theme.get_color("font_color", "Label") == Accessibility.HC_TEXT_COLOR, "high contrast outlines the HUD text and whitens the menu text")
 	_check(theme.get_stylebox("normal", "HudPlate").modulate_color == Accessibility.HC_PLATE_COLOR, "high contrast darkens the HUD plates")
+	_check(is_equal_approx(dialogue_ui._panel.self_modulate.a, 1.0), "high contrast makes the dialogue panel opaque")
+	_check(WorldMap.text_color() == Accessibility.HC_TEXT_COLOR and WorldMap.outline_size() == Accessibility.HC_OUTLINE_SIZE, "high contrast makes the world map text white with a thick outline")
+	await _test_enemy_accessibility(scene)
 	menu._choose_colour_vision(0)
 	_check(Settings.high_contrast and stamina_pattern.visible, "high contrast shows the bar patterns on its own")
 	menu._close_settings()
@@ -2849,6 +2852,8 @@ func _test_settings(scene: Node, player: Player) -> void:
 	_check(Settings.colour_vision == "off" and not Settings.high_contrast, "invalid accessibility settings fall back to defaults")
 	_check(theme.get_color("font_color", "Label") == Color(0.93, 0.88, 0.76, 1) and theme.get_stylebox("normal", "HudPlate").modulate_color == Color.WHITE, "turning high contrast off puts the theme's colors back")
 	scene.get_node("UI").refresh_accessibility()
+	dialogue_ui.refresh_style()
+	_check(is_equal_approx(dialogue_ui._panel.self_modulate.a, Settings.dialogue_opacity) and WorldMap.outline_size() == 4, "turning high contrast off puts the dialogue opacity and map text back")
 	_check(label_settings.outline_size == 4 and not health_pattern.visible, "turning high contrast off puts the HUD text and bars back")
 	menu.close()
 	player.set_busy(false)
@@ -3614,3 +3619,31 @@ func _goblins() -> Array[Node]:
 		if node.enemy_type == "goblin":
 			result.append(node)
 	return result
+
+
+## The enemy's health bar and wind-up warning don't depend on color, and follow the palette.
+func _test_enemy_accessibility(scene: Node) -> void:
+	var enemy := Enemy.new()
+	enemy.setup("goblin", Vector3(0.0, 100.0, 0.0))
+	scene.add_child(enemy)
+	var saved_mode := Settings.colour_vision
+	Settings.colour_vision = "off"
+	var plain := Enemy.bar_image(0.5)
+	Settings.colour_vision = "protanopia"
+	var coloured := Enemy.bar_image(0.5)
+	Settings.colour_vision = saved_mode
+	var inner_y := Enemy.BAR_PIXELS.y / 2
+	_check(plain.get_pixel(0, inner_y) == Enemy.BAR_FRAME_COLOR and plain.get_pixel(Enemy.BAR_PIXELS.x / 2, 1) == Enemy.BAR_TICK_COLOR, "the enemy health bar has a frame and ticks")
+	_check(coloured.get_pixel(3, 1) != plain.get_pixel(3, 1) or coloured.get_pixel(4, 1) != plain.get_pixel(4, 1), "the enemy health bar follows the colour vision palette")
+	_check(Enemy.bar_image(1.0).get_pixel(Enemy.BAR_PIXELS.x - 3, 3) != Enemy.bar_image(0.0).get_pixel(Enemy.BAR_PIXELS.x - 3, 3), "the enemy health bar fill shows how much health is left without color")
+	enemy.state = Enemy.State.WINDUP
+	enemy._update_color(0.016)
+	_check(enemy._warning.visible, "an enemy winding up shows a warning mark")
+	enemy.state = Enemy.State.IDLE
+	enemy._update_color(0.016)
+	_check(not enemy._warning.visible, "the warning mark goes away after the wind-up")
+	_check(Accessibility.color("warning") != Accessibility.color("enemy"), "the warning and the enemy bar differ in color")
+	for mode: String in Accessibility.MODES:
+		_check(Accessibility.PALETTES[mode]["warning"] != Accessibility.PALETTES[mode]["enemy"], "the %s palette tells the wind-up warning from the enemy bar" % mode)
+	enemy.free()
+	await process_frame

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dhbdby8euh50b"
-path="res://.godot/imported/bertram_eyebrow009.jpg-e481b531b23cadd8b0f8bcfb64412c67.ctex"
+path.bptc="res://.godot/imported/bertram_eyebrow009.jpg-e481b531b23cadd8b0f8bcfb64412c67.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "bae53f479f0ec7636b6e9f2fb7b541ce"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/characters/bertram_eyebrow009.jpg"
-dest_files=["res://.godot/imported/bertram_eyebrow009.jpg-e481b531b23cadd8b0f8bcfb64412c67.ctex"]
+dest_files=["res://.godot/imported/bertram_eyebrow009.jpg-e481b531b23cadd8b0f8bcfb64412c67.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

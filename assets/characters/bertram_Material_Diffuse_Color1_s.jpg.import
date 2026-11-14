@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bxlr1iv4qxvhc"
-path="res://.godot/imported/bertram_Material_Diffuse_Color1_s.jpg-2530a96b47de6dc53eadcf47647d8556.ctex"
+path.bptc="res://.godot/imported/bertram_Material_Diffuse_Color1_s.jpg-2530a96b47de6dc53eadcf47647d8556.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ba67904e25544fa03b384c986a1480e7"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/characters/bertram_Material_Diffuse_Color1_s.jpg"
-dest_files=["res://.godot/imported/bertram_Material_Diffuse_Color1_s.jpg-2530a96b47de6dc53eadcf47647d8556.ctex"]
+dest_files=["res://.godot/imported/bertram_Material_Diffuse_Color1_s.jpg-2530a96b47de6dc53eadcf47647d8556.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

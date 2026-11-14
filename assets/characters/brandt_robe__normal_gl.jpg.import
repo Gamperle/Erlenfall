@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://f07essua42rq"
-path="res://.godot/imported/brandt_robe__normal_gl.jpg-d7afd1d7dddf22a7b2175d30aee7ac2d.ctex"
+path.bptc="res://.godot/imported/brandt_robe__normal_gl.jpg-d7afd1d7dddf22a7b2175d30aee7ac2d.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9fadb64b42876fa0202315241abdbf33"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/characters/brandt_robe__normal_gl.jpg"
-dest_files=["res://.godot/imported/brandt_robe__normal_gl.jpg-d7afd1d7dddf22a7b2175d30aee7ac2d.ctex"]
+dest_files=["res://.godot/imported/brandt_robe__normal_gl.jpg-d7afd1d7dddf22a7b2175d30aee7ac2d.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

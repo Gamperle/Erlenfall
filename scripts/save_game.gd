@@ -59,7 +59,7 @@ static func has_backup(path: String) -> bool:
 	return not _read(path + BACKUP_SUFFIX).is_empty()
 
 
-static func write(path: String, player: Player, day_night: DayNight, village: Village) -> void:
+static func write(path: String, player: Player, day_night: DayNight, village: Village, map: MapData = null) -> void:
 	var data := {
 		"version": VERSION,
 		"position": [player.position.x, player.position.y, player.position.z],
@@ -76,6 +76,9 @@ static func write(path: String, player: Player, day_night: DayNight, village: Vi
 		"weather": _weather_of(day_night).to_data() if _weather_of(day_night) else {},
 		"world": village.to_data(),
 	}
+	# Optional, so saves from before it existed load unchanged and no version bump is needed.
+	if map != null:
+		data["discovered_places"] = map.discovered_ids()
 	var temp_path := path + TEMP_SUFFIX
 	var file := FileAccess.open(temp_path, FileAccess.WRITE)
 	if file == null:
@@ -93,7 +96,7 @@ static func write(path: String, player: Player, day_night: DayNight, village: Vi
 
 
 ## Applies a saved game and reports whether there was one to apply.
-static func apply(path: String, player: Player, day_night: DayNight, village: Village) -> bool:
+static func apply(path: String, player: Player, day_night: DayNight, village: Village, map: MapData = null) -> bool:
 	var data := _read(path)
 	if data.is_empty():
 		data = _read(path + BACKUP_SUFFIX)
@@ -133,6 +136,9 @@ static func apply(path: String, player: Player, day_night: DayNight, village: Vi
 	# Games saved before enemies and gathering spots were saved don't have this.
 	if data.has("world"):
 		village.load_data(data["world"])
+	# Games saved before the map remembered places don't have this.
+	if map != null:
+		map.load_discovered(data.get("discovered_places", []))
 	# Last, because quest changes trigger an autosave.
 	player.quests.load_data(data["quests"])
 	return true

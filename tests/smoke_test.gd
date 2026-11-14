@@ -3271,6 +3271,9 @@ func _test_input_glyphs(scene: Node) -> void:
 	for child in line.find_children("*", "InputGlyph", true, false):
 		glyph_count += 1
 	_check(glyph_count == 1 and line.text == "E: Open", "a prompt line draws a glyph for the key and keeps the plain text (%s)" % line.text)
+	line.set_template("%s: %s", [KeyBindings.segments_for("interact"), "Talk to the very old village mayor about sheep"])
+	_check(line.text.ends_with("about sheep") and line.get_combined_minimum_size().x < 120.0, "a long prompt can wrap between words, not only after the glyph (%s)" % line.get_combined_minimum_size())
+	line.set_template("%s: %s", [KeyBindings.segments_for("interact"), "Open"])
 	var glyph: InputGlyph = line.find_children("*", "InputGlyph", true, false)[0]
 	var small := glyph.get_combined_minimum_size()
 	Settings.text_size = 1.5

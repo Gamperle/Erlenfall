@@ -362,6 +362,17 @@ PROMPT_PICK_HERBS,Pick healing herbs,Heilkraut pflücken
 UI_USE_ITEM,Use %s (%d),%s benutzen (%d)
 UI_USED_ITEM,You used %s.,Du hast %s benutzt.
 UI_HEALTH_FULL,Your health is already full.,Deine Gesundheit ist bereits voll.
+DLG_GOBLIN_HALT,"Halt, tall one! This is our ground. Pay up or turn around.","Halt, Langer! Das ist unser Boden. Zahl oder dreh um."
+DLG_GOBLIN_CHOICE_PAY,"Here, take two iron scraps. (2 iron scrap)","Hier, nimm zwei Eisenreste. (2 Eisenreste)"
+DLG_GOBLIN_CHOICE_FRIEND,I mended the village roof. I mean no harm.,Ich habe das Dach im Dorf repariert. Ich will keinen Ärger.
+DLG_GOBLIN_CHOICE_BLUFF,The village guards are right behind me. Run.,Die Wachen des Dorfs sind direkt hinter mir. Lauf.
+DLG_GOBLIN_CHOICE_FIGHT,Then come and get me.,Dann komm und hol mich.
+DLG_GOBLIN_CHOICE_BACK_AWAY,Back away slowly.,Langsam zurückweichen.
+DLG_GOBLIN_PAY,"Hmph. Shiny. Off with you, quick, before I change my mind.","Hmpf. Glänzt schön. Weg mit dir, schnell, bevor ich es mir anders überlege."
+DLG_GOBLIN_FRIEND,The nail-maker's kin? Fine. Walk on. We never saw you.,Verwandtschaft der Nagelschmiedin? Na gut. Geh weiter. Wir haben dich nie gesehen.
+DLG_GOBLIN_BLUFF_OK,Guards?! Not my trouble. I am going home!,Wachen?! Nicht mein Ärger. Ich gehe heim!
+DLG_GOBLIN_BLUFF_FAIL,Liar! There is nobody behind you!,Lügner! Hinter dir ist niemand!
+DLG_GOBLIN_FIGHT,Ha! Gladly!,Ha! Mit Vergnügen!
 UI_JOURNAL,Journal,Tagebuch
 UI_JOURNAL_QUESTS,Quests,Aufgaben
 UI_JOURNAL_MAP,Map,Karte

@@ -16,6 +16,7 @@
 		"windup_seconds": 0.7,
 		"recover_seconds": 1.0,
 		"respawn_seconds": 90,
+		"talk": { "dialogue": "enemy_goblin", "range": 3.2, "wary_seconds": 4.0 },
 		"drops": [
 			{ "item": "iron_scrap", "chance": 0.75, "min": 1, "max": 2 }
 		]

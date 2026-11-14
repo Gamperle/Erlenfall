@@ -28,9 +28,10 @@ func is_open() -> bool:
 	return _panel.visible
 
 
-func open_conversation(npc_id: String, speaker: String, player: Player) -> void:
+## `talker` is whoever is being spoken to, if it reacts to effects like calming (see EnemyTalk).
+func open_conversation(npc_id: String, speaker: String, player: Player, talker: Object = null) -> void:
 	_player = player
-	_runner = DialogueRunner.new(npc_id, player)
+	_runner = DialogueRunner.new(npc_id, player, talker)
 	_speaker.text = speaker
 	refresh_style()
 	_panel.visible = true

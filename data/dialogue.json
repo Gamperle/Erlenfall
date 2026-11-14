@@ -457,5 +457,45 @@
 				"mine": { "text": "DLG_OSWIN_MINE" }
 			}
 		}
+	],
+	"enemy_goblin": [
+		{
+			"start": "halt",
+			"nodes": {
+				"halt": {
+					"text": "DLG_GOBLIN_HALT",
+					"choices": [
+						{ "text": "DLG_GOBLIN_CHOICE_PAY", "when": { "has_item": ["iron_scrap", 2] }, "next": "pay" },
+						{ "text": "DLG_GOBLIN_CHOICE_FRIEND", "when": { "quest_done": "first_nails" }, "next": "friend" },
+						{ "text": "DLG_GOBLIN_CHOICE_BLUFF", "next": "bluff_ok", "chance": 0.4, "fail_next": "bluff_fail" },
+						{ "text": "DLG_GOBLIN_CHOICE_FIGHT", "next": "fight" },
+						{ "text": "DLG_GOBLIN_CHOICE_BACK_AWAY" }
+					]
+				},
+				"pay": {
+					"text": "DLG_GOBLIN_PAY",
+					"effects": [
+						{ "type": "take_item", "item": "iron_scrap", "count": 2 },
+						{ "type": "calm_enemy", "seconds": 120 }
+					]
+				},
+				"friend": {
+					"text": "DLG_GOBLIN_FRIEND",
+					"effects": [{ "type": "calm_enemy", "seconds": 180 }]
+				},
+				"bluff_ok": {
+					"text": "DLG_GOBLIN_BLUFF_OK",
+					"effects": [{ "type": "calm_enemy", "seconds": 60 }]
+				},
+				"bluff_fail": {
+					"text": "DLG_GOBLIN_BLUFF_FAIL",
+					"effects": [{ "type": "provoke_enemy" }]
+				},
+				"fight": {
+					"text": "DLG_GOBLIN_FIGHT",
+					"effects": [{ "type": "provoke_enemy" }]
+				}
+			}
+		}
 	]
 }

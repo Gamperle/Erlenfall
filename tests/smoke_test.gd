@@ -1385,7 +1385,12 @@ func _test_combat(scene: Node, player: Player) -> void:
 	await _physics_frames(5)
 	_check(enemy.state != Enemy.State.IDLE, "goblins notice a nearby player")
 
+	# Goblins that wait to be spoken to would throw off the fights below, so only the talking test has it on.
+	FeatureFlags._flags["enemy_talk"] = false
 	await _test_sneaking(player, enemy)
+	FeatureFlags._flags["enemy_talk"] = true
+	await _test_enemy_talk(scene, player)
+	FeatureFlags._flags["enemy_talk"] = false
 	await _test_stamina_costs(scene, player)
 
 	# Hold block through the goblin's attack.
@@ -1579,6 +1584,67 @@ func _test_sneaking(player: Player, enemy: Enemy) -> void:
 	player.health.restore()
 	player.position = enemy.position + Vector3(0.0, 0.3, 1.5)
 	await _physics_frames(5)
+
+
+## Goblins that noticed the player from afar wait to be spoken to. The conversation can calm them, or start the fight.
+func _test_enemy_talk(scene: Node, player: Player) -> void:
+	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Enemy.DATA_PATH))
+	_check(data["goblin"].has("talk") and not data["wolf"].has("talk") and not data["goblin_brute"].has("talk"), "only goblins can be talked to")
+	var terrain: Terrain = scene.get_node("Terrain")
+	var spot := _flat_open_spot(terrain, player)
+	var goblin := Enemy.new()
+	scene.add_child(goblin)
+	goblin.setup("goblin", spot)
+	goblin.set_physics_process(false)
+	var wolf := Enemy.new()
+	scene.add_child(wolf)
+	wolf.setup("wolf", spot + Vector3(20.0, 0.0, 0.0))
+	wolf.set_physics_process(false)
+	_check(wolf.talk == null and goblin.talk != null, "wolves have no way to be talked to")
+
+	var talk := goblin.talk
+	goblin.state = Enemy.State.CHASE
+	_check(not talk.holds_back(10.0, 0.1) and not talk.is_available(), "a goblin far away keeps coming and can't be spoken to")
+	_check(talk.holds_back(3.0, 0.1) and talk.is_available(), "a goblin that comes up to talking range waits and can be spoken to")
+	_check(talk.prompt().contains(goblin.tr("ENEMY_GOBLIN")), "the prompt names the goblin")
+	_check(not talk.holds_back(3.0, 10.0) and not talk.is_available(), "a goblin stops waiting after its wary time")
+
+	goblin.state = Enemy.State.IDLE
+	talk._process(0.1)
+	goblin.state = Enemy.State.CHASE
+	talk.holds_back(10.0, 0.1)
+	FeatureFlags._flags["enemy_talk"] = false
+	_check(not talk.holds_back(3.0, 0.1) and not talk.is_available(), "the enemy_talk flag turns talking off")
+	FeatureFlags._flags["enemy_talk"] = true
+
+	# The conversation: choices are hidden without their items, and calming stands the goblin down.
+	player.inventory.remove("iron_scrap", player.inventory.count("iron_scrap"))
+	var runner := DialogueRunner.new("enemy_goblin", player, talk)
+	_check(runner.text_key() == "DLG_GOBLIN_HALT" and not runner.choice_keys().has("DLG_GOBLIN_CHOICE_PAY") and runner.choice_keys().has("DLG_GOBLIN_CHOICE_FRIEND") == player.quests.is_done("first_nails"), "paying and the village's friendship are only offered when they apply")
+	player.inventory.add("iron_scrap", 2)
+	runner = DialogueRunner.new("enemy_goblin", player, talk)
+	var pay := runner.choice_keys().find("DLG_GOBLIN_CHOICE_PAY")
+	_check(pay >= 0, "paying is offered with two iron scrap")
+	runner.advance(pay)
+	_check(talk.is_calm() and goblin.state == Enemy.State.IDLE and player.inventory.count("iron_scrap") == 0, "paying calms the goblin and costs the scrap")
+	_check(not talk.is_available(), "a calmed goblin is not talked to again")
+	talk.break_calm()
+	_check(not talk.is_calm(), "hitting a calmed goblin ends the calm")
+
+	# A bluff that works sometimes: a low roll calms, a high roll starts the fight.
+	for won in [true, false]:
+		goblin.state = Enemy.State.CHASE
+		talk._reset()
+		runner = DialogueRunner.new("enemy_goblin", player, talk)
+		runner.roll = func() -> float: return 0.0 if won else 0.99
+		runner.advance(runner.choice_keys().find("DLG_GOBLIN_CHOICE_BLUFF"))
+		if won:
+			_check(runner.text_key() == "DLG_GOBLIN_BLUFF_OK" and talk.is_calm(), "a bluff that works calms the goblin")
+		else:
+			_check(runner.text_key() == "DLG_GOBLIN_BLUFF_FAIL" and not talk.is_calm() and not talk.is_available() and goblin.state == Enemy.State.CHASE, "a bluff that fails starts the fight")
+	goblin.queue_free()
+	wolf.queue_free()
+	await _physics_frames(2)
 
 
 func _test_enemy_types(scene: Node, player: Player) -> void:

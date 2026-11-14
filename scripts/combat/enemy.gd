@@ -66,6 +66,8 @@ static var _data: Dictionary = {}
 ## The key of this enemy's entry in the enemy data.
 var enemy_type := ""
 var health: Health
+## Set for enemies that can be talked to (#206).
+var talk: EnemyTalk
 var state := State.IDLE
 
 var _stats: Dictionary = {}
@@ -110,6 +112,10 @@ func setup(type: String, home: Vector3) -> void:
 	health.changed.connect(_update_bar)
 	health.died.connect(_die)
 	_build()
+	if _stats.has("talk"):
+		talk = EnemyTalk.new()
+		add_child(talk)
+		talk.setup(self, _stats["talk"])
 
 
 func _enter_tree() -> void:
@@ -152,6 +158,8 @@ func take_hit(amount: float, from_position := Vector3.INF) -> void:
 	if state == State.DEAD:
 		return
 	_flash = HIT_FLASH_SECONDS
+	if talk != null:
+		talk.break_calm()
 	_sparks.restart()
 	if from_position != Vector3.INF:
 		var away := global_position - from_position
@@ -208,7 +216,7 @@ func load_data(data: Dictionary) -> void:
 
 
 func _process_idle(player: Player) -> void:
-	if player != null and _distance_to(player) < notice_range(player):
+	if player != null and not (talk != null and talk.is_calm()) and _distance_to(player) < notice_range(player):
 		state = State.CHASE
 		return
 	if _flat_distance(_home) > HOME_TOLERANCE:
@@ -230,7 +238,9 @@ func _process_chase(player: Player) -> void:
 	if player == null or _flat_distance(_home) > float(_stats["leash_range"]):
 		state = State.IDLE
 		return
-	if _distance_to(player) < float(_stats["attack_range"]):
+	if talk != null and talk.holds_back(_distance_to(player), get_physics_process_delta_time()):
+		_stop()
+	elif _distance_to(player) < float(_stats["attack_range"]):
 		state = State.WINDUP
 		_timer = _stats["windup_seconds"]
 		_body.play_action(ATTACK_ANIMATION)
@@ -249,6 +259,12 @@ func _process_windup(player: Player, delta: float) -> void:
 		player.take_hit(_stats["damage"], global_position)
 	state = State.RECOVER
 	_timer = _stats["recover_seconds"]
+
+
+## Gives up the chase and goes home, as when talked out of a fight.
+func stand_down() -> void:
+	if state != State.DEAD:
+		state = State.IDLE
 
 
 func _die() -> void:

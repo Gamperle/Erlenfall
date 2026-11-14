@@ -3068,6 +3068,42 @@ func _test_data_validation() -> void:
 	_check(not empty.is_empty(), "a data file of the wrong kind is reported")
 
 
+func _test_rain_cover(scene: Node, weather: Weather) -> void:
+	var camera := scene.get_viewport().get_camera_3d()
+	_check(camera != null, "there is a camera to keep the rain dry under a roof")
+	if camera == null:
+		return
+	var spot := Vector3(2000.0, 500.0, 2000.0)
+	var roof := StaticBody3D.new()
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(6.0, 0.3, 6.0)
+	shape.shape = box
+	roof.add_child(shape)
+	roof.position = spot + Vector3(0.0, 3.0, 0.0)
+	scene.add_child(roof)
+	await scene.get_tree().physics_frame
+	await scene.get_tree().physics_frame
+	_check(weather.is_covered(spot), "a roof overhead covers the spot under it")
+	_check(not weather.is_covered(spot + Vector3(20.0, 0.0, 0.0)), "open ground beside the roof is not covered")
+	_check(not weather.is_covered(spot + Vector3(0.0, 4.0, 0.0)), "above the roof is not covered")
+	var saved_transform := camera.global_transform
+	camera.global_position = spot
+	weather.set_state("rain")
+	weather._cover_timer = 0.0
+	for step in 20:
+		weather._update_cover(0.2)
+	_check(weather.cover == 1.0 and not weather.rain_particles().emitting, "the rain stops under a roof")
+	camera.global_position = spot + Vector3(20.0, 0.0, 0.0)
+	weather._cover_timer = 0.0
+	for step in 20:
+		weather._update_cover(0.2)
+	_check(weather.cover == 0.0 and weather.rain_particles().emitting, "the rain comes back in the open")
+	camera.global_transform = saved_transform
+	roof.queue_free()
+	weather._push()
+
+
 func _test_weather(scene: Node, day_night: DayNight) -> void:
 	var weather: Weather = scene.get_node_or_null("Weather")
 	_check(weather != null and FeatureFlags.enabled("weather"), "weather is added when its flag is on")
@@ -3093,6 +3129,7 @@ func _test_weather(scene: Node, day_night: DayNight) -> void:
 	_check(environment.sky.sky_material.sky_top_color.v < clear_top.v, "rain darkens the sky")
 	_check(weather.rain_particles().emitting, "rain falls in the rain")
 	_check(scene.get_node("Village/Grass")._material.get_shader_parameter("wind_strength") > 0.6, "the wind shakes the grass in the rain")
+	await _test_rain_cover(scene, weather)
 	var rain_nodes := weather.find_children("*", "GPUParticles3D", true, false)
 	_check(rain_nodes.size() == 1 and weather.get_child_count() == 1, "rain is one particle system")
 	weather.set_quality("low")

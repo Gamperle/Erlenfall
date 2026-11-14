@@ -158,6 +158,7 @@ Bows and thrown flasks are the first slice of [#29](https://github.com/Gamperle/
 | `health_regen_delay_seconds` | `8.0` | Seconds without a hit before regeneration starts |
 | `health_regen_per_second` | `2.0` | Health regained per second while regenerating |
 | `healing_items` | `true` | Items with a `use` action in `crafting.json` (berries, healing potion) can be used from the inventory, and the potion can be brewed |
+| `cooking` | `true` | Places a campfire cooking station in the village and enables its recipes (cooked meat, berry compote, hearty stew) and the cooking skill. Off removes the campfire; food already made stays and can still be eaten. Cooking is an instant craft with no timing check yet |
 
 ## Torch flags
 

@@ -471,7 +471,7 @@ func _check_village_layout(data: Dictionary) -> void:
 		"enemies": { "type": ["string", true] },
 		"repair_sites": { "quest": ["string", true], "objective": ["string", true], "flag": ["string", true], "model": ["string", true], "rotation": ["number", true], "prompt": ["text", true], "width": ["number", true], "depth": ["number", true], "height": ["number", true], "color": ["color", true] },
 		"beds": { "model": ["string", true], "asset": ["string", false], "prompt": ["text", true], "width": ["number", true], "depth": ["number", true], "height": ["number", true], "color": ["color", true] },
-		"stations": { "id": ["string", true], "model": ["string", true], "asset": ["string", false], "prompt": ["text", true], "width": ["number", true], "depth": ["number", true], "height": ["number", true], "work_spot": ["vec3", false], "color": ["color", true] },
+		"stations": { "id": ["string", true], "model": ["string", true], "asset": ["string", false], "prompt": ["text", true], "width": ["number", true], "depth": ["number", true], "height": ["number", true], "work_spot": ["vec3", false], "requires_flag": ["string", false], "color": ["color", true] },
 		"resources": { "item": ["string", true], "prompt": ["text", true], "size": ["number", true], "uses": ["int", true], "respawn_seconds": ["number", true], "color": ["color", true] },
 		"building_sites": { "id": ["string", true], "radius": ["number", true], "blend": ["number", true], "rise": ["number", true] },
 		"hills": { "radius": ["number", true], "height": ["number", true] },

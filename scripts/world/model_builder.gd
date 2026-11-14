@@ -212,6 +212,10 @@ static func prop(model: String, size: Vector3) -> Node3D:
 			return merged(_furnace(size))
 		"anvil":
 			return merged(_anvil(size))
+		"campfire":
+			var campfire := merged(_campfire(size))
+			campfire.add_child(CampfireFire.new())
+			return campfire
 		"ladder":
 			return merged(_ladder(size))
 		"bed":
@@ -354,6 +358,24 @@ static func _anvil(size: Vector3) -> Node3D:
 	var top_at := Vector3.UP * (size.y - size.y * 0.1)
 	anvil.add_child(box(Vector3(size.x, size.y * 0.2, size.z * 0.7), Surfaces.Pattern.PLASTER, IRON_COLOR, top_at))
 	return anvil
+
+
+## A ring of stones around a few crossed logs. The flame and light come from CampfireFire.
+static func _campfire(size: Vector3) -> Node3D:
+	var campfire := Node3D.new()
+	var radius := minf(size.x, size.z) / 2.0
+	var stones := 8
+	for i in stones:
+		var angle := TAU * i / stones
+		var stone_size := Vector3(0.22, 0.16 + 0.04 * (i % 2), 0.18)
+		var stone := box(stone_size, Surfaces.Pattern.STONE, STONE_COLOR.lightened(WALL_TINTS[i % WALL_TINTS.size()]), Vector3(cos(angle) * radius, stone_size.y / 2.0, sin(angle) * radius))
+		stone.rotation.y = -angle
+		campfire.add_child(stone)
+	for i in 3:
+		var log_mesh := box(Vector3(radius * 1.5, 0.1, 0.1), Surfaces.Pattern.WOOD, WOOD_COLOR, Vector3.UP * (0.08 + 0.07 * (i % 2)))
+		log_mesh.rotation.y = PI * i / 3.0 + 0.3
+		campfire.add_child(log_mesh)
+	return campfire
 
 
 static func _ladder(size: Vector3) -> Node3D:

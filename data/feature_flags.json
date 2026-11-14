@@ -32,6 +32,7 @@
 		"ranged_starting_items": true,
 		"health_regen": true,
 		"healing_items": true,
+		"cooking": true,
 		"torches": true,
 		"torch_crafting_enabled": true,
 		"torch_starting_item_enabled": true,

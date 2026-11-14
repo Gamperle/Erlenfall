@@ -117,6 +117,8 @@ func _ready() -> void:
 		enemy.setup(enemy_data["type"], _ground_position(enemy_data["x"], enemy_data["z"]) + Vector3.UP * 0.2)
 		add_child(enemy)
 	for station: Dictionary in layout["stations"]:
+		if station.has("requires_flag") and not FeatureFlags.enabled(station["requires_flag"]):
+			continue
 		var crafting_station := CraftingStation.new()
 		crafting_station.name = station["id"]
 		crafting_station.station_id = station["id"]

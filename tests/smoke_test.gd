@@ -144,6 +144,7 @@ func _run() -> void:
 	_test_rubble_ground(terrain)
 	await _test_hud(scene, player)
 	await _test_map(scene, player)
+	await _test_journal(scene, player)
 	_test_character_models(player)
 	_test_generated_props()
 	_test_feature_flags()
@@ -646,6 +647,100 @@ func _test_map(scene: Node, player: Player) -> void:
 	_check(tr("UI_MAP") == "Karte" and tr("MAP_FORGE") == "Schmiede", "the map is translated to German")
 	TranslationServer.set_locale("en")
 	_check(MapMarkers.clamp_to_rect(Vector2(1000.0, 50.0), Rect2(0.0, 0.0, 100.0, 100.0), 5.0).x <= 95.0, "a faraway objective stays at the map's edge")
+
+
+func _test_journal(scene: Node, player: Player) -> void:
+	var journal: Journal = scene.get_node("Journal")
+	var controller: MapController = scene.get_node("MapController")
+	_check(FeatureFlags.enabled("journal") and journal != null and not journal.is_open(), "the journal starts closed")
+	_check(InputMap.has_action("journal") and _has_key("journal", KEY_J) and _has_joypad_button("journal") and _has_key("map", KEY_M), "the journal opens with J or a controller button, and M still opens the map")
+	_check(KeyBindings.ACTIONS.has("journal") and KeyBindings.HINTS.any(func(hint: Array) -> bool: return hint[0] == "journal"), "the journal key can be remapped and is on the controls line")
+
+	# Tracking and the compass.
+	var quests := QuestLog.new()
+	var carried := Inventory.new()
+	quests.start("arrival")
+	quests.start("first_nails")
+	_check(quests.objective_markers(carried).size() == 2 and quests.tracker_lines(carried).size() == 2, "without a pinned quest every active quest shows")
+	_check(quests.track("first_nails") and quests.objective_markers(carried).size() == 1 and quests.tracker_lines(carried).size() == 1, "a pinned quest is the only one on the tracker and compass")
+	_check(not quests.track("nonexistent_quest") and quests.tracked == "first_nails", "only a started, unfinished quest can be pinned")
+	var saved_quests := quests.to_data()
+	var restored := QuestLog.new()
+	restored.load_data(saved_quests)
+	_check(restored.tracked == "first_nails", "the pinned quest is saved")
+	var old_data := saved_quests.duplicate()
+	old_data.erase("tracked")
+	restored.load_data(old_data)
+	_check(restored.tracked == "" and restored.objective_markers(carried).size() == 2, "a save from before the journal tracks every quest")
+	quests.untrack()
+	_check(quests.tracked == "" and quests.tracker_lines(carried).size() == 2, "unpinning tracks every quest again")
+	quests.track("arrival")
+	quests.advance("arrival")
+	quests.advance("arrival")
+	_check(quests.is_done("arrival") and quests.tracker_lines(carried).size() == 1, "finishing the pinned quest shows the others again")
+	var entries := quests.journal_entries(carried)
+	_check(entries.size() == 2 and entries[0]["id"] == "first_nails" and entries[1]["done"] and entries[1]["objectives"].size() == 2 and entries[1]["objectives"].all(func(o: Dictionary) -> bool: return o["done"]), "the journal lists active quests first, then finished ones with their objectives")
+
+	# Notes.
+	var notes := JournalNotes.new()
+	_check(notes.count() == 0 and notes.add("test_note", "UI_JOURNAL", "UI_JOURNAL_NO_MAP") and not notes.add("test_note", "x", "y") and notes.has("test_note"), "a note is added once")
+	var restored_notes := JournalNotes.new()
+	restored_notes.load_data(notes.to_data())
+	restored_notes.load_data(restored_notes.to_data() + ["junk", { "id": 5 }])
+	_check(restored_notes.count() == 1 and restored_notes.entries()[0]["title"] == "Journal", "notes are saved and damaged entries are skipped")
+
+	# Saved in an optional key.
+	var data := JSON.parse_string(JSON.stringify({ "notes": notes.to_data() })) as Dictionary
+	var from_save := JournalNotes.new()
+	from_save.load_data(data.get("notes", []))
+	_check(from_save.has("test_note"), "notes survive a save file round trip")
+	_check(not JSON.parse_string(JSON.stringify({ "version": 2 })).has("notes"), "an old save without notes is still valid input")
+
+	# The screen.
+	var press := InputEventAction.new()
+	press.action = "journal"
+	press.pressed = true
+	journal._input(press)
+	_check(journal.is_open() and player.is_busy() and scene.get_tree().paused, "the journal key opens the journal and pauses the game")
+	_check(journal.current_tab() == Journal.TAB_QUESTS and journal.get_viewport().gui_get_focus_owner() != null, "the journal opens on the quests with something focused for a controller")
+	await process_frame
+	var quest_texts := _all_text(journal)
+	_check(quest_texts.contains(tr("QUEST_ARRIVAL")) or quest_texts.contains(tr("QUEST_FIRST_NAILS")), "the quests tab lists the player's quests")
+	journal.select_tab(Journal.TAB_MAP)
+	await process_frame
+	_check(journal.is_ancestor_of(controller.world_map._canvas) and not controller.world_map.is_open(), "the map tab shows the world map's own picture inside the journal")
+	journal.select_tab(Journal.TAB_NOTES)
+	_check(not journal.is_ancestor_of(controller.world_map._canvas) and controller.world_map.is_ancestor_of(controller.world_map._canvas), "leaving the map tab gives the picture back to the full-screen map")
+	_check(_all_text(journal).contains(tr("UI_JOURNAL_NO_NOTES")), "the notes tab says so when there are no notes")
+	player.notes.add("test_note", "UI_JOURNAL", "UI_JOURNAL_NO_MAP")
+	journal.select_tab(Journal.TAB_NOTES)
+	_check(not _all_text(journal).contains(tr("UI_JOURNAL_NO_NOTES")) and _all_text(journal).contains(tr("UI_JOURNAL_NO_MAP")), "a found note shows on the notes tab")
+	player.notes.load_data([])
+	var map_press := InputEventAction.new()
+	map_press.action = "map"
+	map_press.pressed = true
+	journal._input(map_press)
+	_check(journal.current_tab() == Journal.TAB_MAP and journal.is_open(), "the map key shows the map tab while the journal is open")
+	var cancel := InputEventAction.new()
+	cancel.action = "ui_cancel"
+	cancel.pressed = true
+	journal._input(cancel)
+	_check(not journal.is_open() and not player.is_busy() and not scene.get_tree().paused, "cancel closes the journal and resumes the game")
+	player.set_busy(true)
+	_check(not journal.can_open.call(), "the journal doesn't open over a menu")
+	player.set_busy(false)
+	TranslationServer.set_locale("de")
+	_check(tr("UI_JOURNAL") == "Tagebuch" and tr("UI_JOURNAL_QUESTS") == "Aufgaben" and tr("ACTION_JOURNAL") == "Tagebuch", "the journal is translated to German")
+	TranslationServer.set_locale("en")
+
+
+func _all_text(node: Node) -> String:
+	var text := ""
+	if node is Label or node is Button:
+		text += node.text + "\n"
+	for child in node.get_children():
+		text += _all_text(child)
+	return text
 
 
 func _close_color(a: Color, b: Color) -> bool:

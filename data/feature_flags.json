@@ -5,6 +5,7 @@
 		"compass": true,
 		"world_map": true,
 		"minimap": true,
+		"journal": true,
 		"compass_objectives": true,
 		"compass_landmarks": true,
 		"realistic_villagers": true,

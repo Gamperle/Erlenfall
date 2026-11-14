@@ -33,6 +33,7 @@ var _fade_overlay: ColorRect
 @onready var _day_night: DayNight = $DayNight
 @onready var _player: Player = $Player
 var _map: MapController
+var _journal: Journal
 var _controls_tween: Tween
 var _hurt_tween: Tween
 
@@ -74,6 +75,7 @@ func _ready() -> void:
 	_map = MapController.new()
 	add_child(_map)
 	_map.setup(_terrain, _village, _player, _ui)
+	_journal = Journal.create(self, _player, _ui, _map.world_map)
 
 	_player.quests.changed.connect(_on_quests_changed)
 	_player.inventory.changed.connect(_update_quest_label)

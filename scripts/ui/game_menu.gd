@@ -178,7 +178,11 @@ func close() -> void:
 func _input(event: InputEvent) -> void:
 	if _controls != null and _controls.is_inside_tree():
 		if event.is_action_pressed("ui_cancel") and not _controls.is_listening():
-			_close_controls()
+			# Back goes from an action's inputs to the list, then out of the page.
+			if _controls.is_editing():
+				_controls.finish_editing()
+			else:
+				_close_controls()
 		if event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause"):
 			get_viewport().set_input_as_handled()
 		return

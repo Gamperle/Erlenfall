@@ -3439,6 +3439,35 @@ func _test_key_bindings(scene: Node) -> void:
 	Settings.load_saved()
 	_check(KeyBindings.controls_hint() == default_hint, "bindings that aren't a dictionary fall back to the defaults")
 
+	# Several inputs per action, the mouse wheel, and Esc.
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+	wheel.pressed = true
+	page.listen("jump", KeyBindings.KEYBOARD, KeyBindings.ADD)
+	page.offer(wheel)
+	_check(KeyBindings.events_for("jump", KeyBindings.KEYBOARD).size() == 2 and InputMap.event_is_action(wheel, "jump") and KeyBindings.event_text(wheel) == "Wheel up", "the mouse wheel can be added as a second input")
+	_check(KeyBindings.label_for("jump") == "Space" and ControlsMenu.inputs_text("jump", KeyBindings.KEYBOARD) == "Space, Wheel up", "prompts show the first input and the page lists them all")
+	Settings.save()
+	KeyBindings.reset()
+	Settings.load_saved()
+	_check(KeyBindings.events_for("jump", KeyBindings.KEYBOARD).size() == 2, "several inputs are remembered")
+	var old_file := FileAccess.open(TEST_SETTINGS, FileAccess.WRITE)
+	old_file.store_string(JSON.stringify({ "bindings": { "jump": { "keyboard": { "type": "key", "code": KEY_N }, "gamepad": null } } }))
+	old_file.close()
+	Settings.load_saved()
+	_check(KeyBindings.events_for("jump", KeyBindings.KEYBOARD).size() == 1 and KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_N and KeyBindings.events_for("jump", KeyBindings.GAMEPAD).is_empty(), "settings files from before several inputs still load")
+	KeyBindings.reset()
+	var escape_key := InputEventKey.new()
+	escape_key.physical_keycode = KEY_ESCAPE
+	_check(not KeyBindings.bind("jump", escape_key, KeyBindings.ADD) and not KeyBindings.unbind("pause", KeyBindings.KEYBOARD, 0), "Esc stays the pause menu's key while it has no other, and its last key can't be removed")
+	var key_p := InputEventKey.new()
+	key_p.physical_keycode = KEY_P
+	_check(KeyBindings.bind("pause", key_p, KeyBindings.ADD) and KeyBindings.bind("jump", escape_key, KeyBindings.ADD) and InputMap.event_is_action(escape_key, "jump") and not InputMap.event_is_action(escape_key, "pause"), "Esc can go to another action once the pause menu has another key")
+	for _i in 3:
+		KeyBindings.bind("jump", key_p, KeyBindings.ADD)
+	_check(KeyBindings.events_for("jump", KeyBindings.KEYBOARD).size() <= KeyBindings.MAX_PER_KIND, "an action holds only a few inputs")
+	KeyBindings.reset()
+
 	menu.close()
 	Settings.path = Settings.DEFAULT_PATH
 	DirAccess.remove_absolute(TEST_SETTINGS)

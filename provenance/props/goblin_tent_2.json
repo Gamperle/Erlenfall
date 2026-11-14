@@ -1,0 +1,50 @@
+{
+	"schema": 1,
+	"asset": "assets/props/goblin_tent_2.glb",
+	"kind": "ai_prop",
+	"origin": "backfill",
+	"batch": "klein2",
+	"object": "goblin_tent",
+	"name": "goblin_tent_2",
+	"chosen_by": "Claude for Markus Gamperle",
+	"subject": "small crude tent made of patched brown animal hides stretched over wooden poles",
+	"prompt": "A single small crude tent made of patched brown animal hides stretched over wooden poles, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
+	"seed": 7092,
+	"stages": [
+		{
+			"step": "image",
+			"tool": "FLUX.2 klein 4B",
+			"versions": {},
+			"date": null,
+			"width": 1024,
+			"height": 1024,
+			"steps": 4,
+			"guidance": 1.0,
+			"candidate": 2
+		},
+		{
+			"step": "mesh",
+			"tool": "TRELLIS.2 (Comfy-Org int8 build)",
+			"versions": {
+				"ComfyUI": "0.43.0"
+			},
+			"helpers": [
+				"BiRefNet",
+				"DINOv3"
+			],
+			"date": null,
+			"faces": 4000
+		},
+		{
+			"step": "size",
+			"tool": "Blender",
+			"versions": {
+				"Blender": "5.2"
+			},
+			"date": null,
+			"meters": 2.4
+		}
+	],
+	"manual_edits": [],
+	"backfill_note": "Rebuilt from ASSETS.md and the batch file. Dates and tool versions it doesn't state are null."
+}

@@ -19,6 +19,9 @@ import mathutils.bvhtree
 import mathutils.kdtree
 import numpy
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "asset_pipeline"))
+import provenance
+
 MPFB = "bl_ext.blender_org.mpfb"
 TEXTURE_SIZE = 1024
 ALPHA_CUTOFF = 0.25
@@ -373,7 +376,18 @@ def main():
         recipes = json.load(file)
     recipe = next(item for item in recipes if item["id"] == character_id)
     addon_utils.enable(MPFB, default_set=False)
-    build(recipe, folders.split(","), output, arguments[4:] == ["full"])
+    full = arguments[4:] == ["full"]
+    build(recipe, folders.split(","), output, full)
+    mpfb = getattr(sys.modules.get(MPFB), "bl_info", {}).get("version")
+    stage = {
+        "step": "build", "tool": "build_character.py with MPFB", "date": provenance.today(),
+        "versions": {"Blender": bpy.app.version_string, "MPFB": ".".join(map(str, mpfb)) if mpfb else None},
+        "recipe": recipe, "recipes_file_sha256": provenance.sha256(recipes_path), "asset_folders": [os.path.basename(f.rstrip("/\\")) for f in folders.split(",")],
+        "full_detail": full, "output_sha256": provenance.sha256(output),
+    }
+    asset = "assets/characters/" + os.path.basename(output)
+    provenance.save(provenance.record_path("character", asset), provenance.new_record(
+        "character", asset, name=recipe["id"], stages=[stage]))
 
 
 main()

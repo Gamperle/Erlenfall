@@ -39,6 +39,11 @@ jobs:
       - name: Import project
         run: godot --headless --path . --import
 
+      - name: Check provenance records
+        run: |
+          python3 tools/asset_pipeline/test_provenance.py
+          python3 -B tools/asset_pipeline/provenance.py validate
+
       - name: Run smoke test
         run: godot --headless --path . --script res://tests/smoke_test.gd
 

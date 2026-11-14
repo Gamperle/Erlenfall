@@ -12,6 +12,9 @@ import sys
 import time
 import urllib.request
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import provenance
+
 ROOT = os.environ.get("ASSET_ROOT", r"D:\erlenfall-assets")
 SERVER = "http://127.0.0.1:8188"
 COMFY = os.path.join(ROOT, "comfyui")
@@ -38,6 +41,15 @@ def call(path, payload=None):
     data = json.dumps(payload).encode() if payload is not None else None
     request = urllib.request.Request(SERVER + path, data=data, headers={"Content-Type": "application/json"})
     return json.load(urllib.request.urlopen(request))
+
+
+def comfy_versions():
+    """ComfyUI's and its PyTorch's versions, as the running server reports them."""
+    try:
+        system = call("/system_stats")["system"]
+        return {"ComfyUI": system.get("comfyui_version"), "pytorch": system.get("pytorch_version"), "python": system.get("python_version", "").split(" ")[0] or None}
+    except Exception:
+        return {"ComfyUI": None}
 
 
 for name in names:
@@ -67,5 +79,14 @@ for name in names:
         continue
     saved = history["outputs"]["save"]["3d"][0]
     shutil.copy(os.path.join(COMFY, "output", saved["subfolder"], saved["filename"]), target)
+    # TRELLIS.2 also runs BiRefNet and DINOv3 inside this workflow, so the workflow file's hash names the set.
+    provenance.add_stage(
+        os.path.join(base, "provenance", name + ".json"),
+        {"step": "mesh", "tool": "TRELLIS.2 (Comfy-Org int8 build)", "versions": comfy_versions(), "date": provenance.today(),
+         "helpers": ["BiRefNet", "DINOv3"], "faces": item["faces"], "workflow": "trellis2_api.json",
+         "workflow_sha256": provenance.sha256(os.path.join(HERE, "trellis2_api.json")), "picture_sha256": provenance.sha256(picture),
+         "comfy_prompt_id": prompt_id},
+        kind="ai_prop", asset=f"assets/props/{name}.glb", batch=batch, object=name.rsplit("_", 1)[0], name=name, subject=item["subject"],
+    )
     print(f"{name} ok {item['faces']} faces {time.time() - start:.0f}s", flush=True)
 print("finished", flush=True)

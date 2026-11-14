@@ -12,6 +12,7 @@ signal text_size_changed
 signal accessibility_changed
 
 const PANEL_WIDTH := 420.0
+const CREDITS_WIDTH := 700.0
 const ASSET_LIST_URL := "https://github.com/Gamperle/Erlenfall/blob/main/ASSETS.md"
 
 ## The save files to offer. Set before the title menu opens.
@@ -27,6 +28,8 @@ var _slot_screen := false
 var _settings_open := false
 var _leave_settings: Callable
 var _controls: ControlsMenu
+var _credits: CreditsMenu
+var _leave_credits: Callable
 ## The key of the control that gets the focus when the next screen shows, so that going back lands
 ## on the control that led there.
 var _focus_key := ""
@@ -59,6 +62,7 @@ func open_title() -> void:
 	else:
 		_add_action("UI_NEW_GAME", func() -> void: new_game_chosen.emit(slot_paths[0]))
 	_add_action("UI_SETTINGS", open_settings.bind(open_title))
+	_add_action("UI_CREDITS", open_credits.bind(open_title))
 	_add_button("UI_QUIT", quit_chosen)
 	_asset_note.visible = true
 	_show()
@@ -73,6 +77,7 @@ func open_pause() -> void:
 	_clear_buttons()
 	_add_button("UI_RESUME", resume_chosen)
 	_add_action("UI_SETTINGS", open_settings.bind(open_pause))
+	_add_action("UI_CREDITS", open_credits.bind(open_pause))
 	_add_button("UI_SAVE_AND_QUIT", quit_chosen)
 	_asset_note.visible = false
 	_show()
@@ -169,13 +174,45 @@ func open_controls() -> void:
 	_show()
 
 
+## The credits and licenses, read from the asset list. The given function goes back to the menu
+## they were opened from.
+func open_credits(leave: Callable) -> void:
+	_leave_credits = leave
+	_confirming = false
+	_slot_screen = false
+	_settings_open = false
+	_title.text = tr("UI_CREDITS")
+	_message.visible = false
+	_asset_note.visible = false
+	_clear_buttons()
+	_panel.set_width(CREDITS_WIDTH)
+	_credits = CreditsMenu.new()
+	_credits.back_chosen.connect(_close_credits)
+	_buttons.add_child(_credits)
+	_show()
+
+
+func _close_credits() -> void:
+	_credits = null
+	_panel.set_width(PANEL_WIDTH)
+	_focus_key = "UI_CREDITS"
+	_leave_credits.call()
+
+
 func close() -> void:
+	_credits = null
+	_panel.set_width(PANEL_WIDTH)
 	_settings_open = false
 	_panel.visible = false
 	get_tree().paused = false
 
 
 func _input(event: InputEvent) -> void:
+	if _credits != null and _credits.is_inside_tree():
+		if event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause"):
+			_close_credits()
+			get_viewport().set_input_as_handled()
+		return
 	if _controls != null and _controls.is_inside_tree():
 		if event.is_action_pressed("ui_cancel") and not _controls.is_listening():
 			_close_controls()
@@ -359,7 +396,7 @@ func _show() -> void:
 	_panel.visible = true
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	if _controls == null or not _controls.is_inside_tree():
+	if (_controls == null or not _controls.is_inside_tree()) and (_credits == null or not _credits.is_inside_tree()):
 		_focus_target(_buttons).grab_focus()
 	_focus_key = ""
 

@@ -20,6 +20,14 @@ const HEADFRAME_HEIGHT := 11.0
 const SINK := 3.0
 ## Where the plaza ends in front of the opening, and so where the path in is planned to.
 const FRONT_DISTANCE := 7.0
+## The sculpted face: where its front plane lies, the size of its cells, how tall its ledges are,
+## how far it reaches beyond the cliff's width and above its top, to blend into the hill.
+const FACE_FRONT := 0.8
+const FACE_CELL := 0.5
+const FACE_LEDGE := 1.8
+const FACE_MARGIN := 4.0
+const FACE_CREST := 3.0
+const ROOT_COLOR := Color(0.2, 0.14, 0.09)
 
 var mine_id := ""
 var landmark := false
@@ -44,6 +52,7 @@ func _ready() -> void:
 	look.name = "Look"
 	_build_cliff(look, body)
 	_build_cliff_rocks(look, body, random)
+	_build_base_details(look, body, random)
 	_build_frame(look, body)
 	_build_rubble(look, body, random)
 	_build_headframe(look, body)
@@ -69,13 +78,81 @@ func _build_cliff(look: Node3D, body: StaticBody3D) -> void:
 	var side := (width - opening) / 2.0
 	var side_x := opening / 2.0 + side / 2.0
 	# Two buttresses either side of the opening, a slab over it, and a mass behind that fills the hill.
-	_add_block(look, body, Vector3(side, height + SINK, 4.0), Vector3(-side_x, (height - SINK) / 2.0, -1.2), -3.0, Surfaces.Pattern.BOULDER, ROCK_COLOR)
-	_add_block(look, body, Vector3(side, height * 0.8 + SINK, 4.4), Vector3(side_x, (height * 0.8 - SINK) / 2.0, -1.4), 4.0, Surfaces.Pattern.BOULDER, DARK_ROCK_COLOR)
-	_add_block(look, body, Vector3(opening + 1.6, height - opening_height - 0.4, 3.2), Vector3(0.0, opening_height + 0.4 + (height - opening_height - 0.4) / 2.0, -1.0), 0.0, Surfaces.Pattern.BOULDER, ROCK_COLOR)
-	_add_block(look, body, Vector3(width + 6.0, height + 4.0 + SINK, 6.0), Vector3(0.0, (height + 4.0 - SINK) / 2.0, -5.0), 0.0, Surfaces.Pattern.BOULDER, DARK_ROCK_COLOR)
+	# These only block the way. What is seen is the sculpted face below.
+	_add_block(body, Vector3(side, height + SINK, 4.0), Vector3(-side_x, (height - SINK) / 2.0, -1.2), -3.0)
+	_add_block(body, Vector3(side, height * 0.8 + SINK, 4.4), Vector3(side_x, (height * 0.8 - SINK) / 2.0, -1.4), 4.0)
+	_add_block(body, Vector3(opening + 1.6, height - opening_height - 0.4, 3.2), Vector3(0.0, opening_height + 0.4 + (height - opening_height - 0.4) / 2.0, -1.0), 0.0)
+	_add_block(body, Vector3(width + 6.0, height + 4.0 + SINK, 6.0), Vector3(0.0, (height + 4.0 - SINK) / 2.0, -5.0), 0.0)
+	_build_cliff_face(look)
 	# The dark of the tunnel, seen above the rubble.
 	var dark := ModelBuilder.box(Vector3(opening, opening_height, 0.2), Surfaces.Pattern.BOULDER, OPENING, Vector3(0.0, opening_height / 2.0, -0.5))
 	look.add_child(dark)
+
+
+## The height of the cliff's face at (x, y) across its plane: ledges that step back as it rises, with
+## rough noise on them, and a crest and sides that curl back so that the face melts into the hill.
+func _face_z(x: float, y: float, top: float, noise: FastNoiseLite) -> float:
+	var width: float = _data["width"]
+	var ledge := y / FACE_LEDGE
+	var steps := floorf(ledge) + smoothstep(0.65, 1.0, ledge - floorf(ledge))
+	var z := FACE_FRONT - steps * 0.3 + noise.get_noise_2d(x * 2.0, y * 2.0) * 0.18 + noise.get_noise_2d(x * 0.7 + 50.0, y * 0.7) * 0.5
+	var over := maxf(0.0, y - top)
+	var out := maxf(0.0, absf(x) - width / 2.0)
+	return z - over * 1.2 - out * out * 0.35
+
+
+func _build_cliff_face(look: Node3D) -> void:
+	var width: float = _data["width"]
+	var height: float = _data["height"]
+	var opening: float = _data["opening_width"]
+	var opening_height: float = _data["opening_height"]
+	var noise := FastNoiseLite.new()
+	noise.seed = int(_data["seed"]) + 2
+	noise.frequency = 0.5
+	var half := width / 2.0 + FACE_MARGIN
+	var columns := int(ceilf(half * 2.0 / FACE_CELL))
+	var rows := int(ceilf((height + FACE_CREST + SINK) / FACE_CELL))
+	var tops: PackedFloat32Array = []
+	for column in columns + 1:
+		var x := -half + column * FACE_CELL
+		var fade := maxf(0.0, absf(x) - width / 2.0)
+		tops.append(height + noise.get_noise_1d(x * 3.0 + 9.0) * 1.6 - fade * 0.9)
+	var points: Array[Vector3] = []
+	for row in rows + 1:
+		for column in columns + 1:
+			var x := -half + column * FACE_CELL
+			var y := -SINK + row * FACE_CELL
+			points.append(Vector3(x, y, _face_z(x, y, tops[column], noise)))
+	var tools: Array[SurfaceTool] = []
+	var materials: Array[Material] = [Surfaces.get_material(Surfaces.Pattern.BOULDER, ROCK_COLOR), Surfaces.get_material(Surfaces.Pattern.BOULDER, DARK_ROCK_COLOR)]
+	for i in 2:
+		var tool := SurfaceTool.new()
+		tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+		tools.append(tool)
+	for row in rows:
+		for column in columns:
+			var centre_x := -half + (column + 0.5) * FACE_CELL
+			var centre_y := -SINK + (row + 0.5) * FACE_CELL
+			if absf(centre_x) < opening / 2.0 and centre_y > 0.0 and centre_y < opening_height:
+				continue
+			var a := points[row * (columns + 1) + column]
+			var b := points[row * (columns + 1) + column + 1]
+			var c := points[(row + 1) * (columns + 1) + column + 1]
+			var d := points[(row + 1) * (columns + 1) + column]
+			# Strata of two shades, banded by ledge and broken up by noise.
+			var strata := 1 if int(floorf(centre_y / FACE_LEDGE + noise.get_noise_2d(centre_x * 1.5, 7.0) * 0.8)) % 2 != 0 else 0
+			var tool := tools[strata]
+			for corner in [a, c, b, a, d, c]:
+				tool.add_vertex(corner)
+	var mesh := ArrayMesh.new()
+	for i in 2:
+		tools[i].generate_normals()
+		tools[i].commit(mesh)
+		mesh.surface_set_material(i, materials[i])
+	var face := MeshInstance3D.new()
+	face.name = "Face"
+	face.mesh = mesh
+	look.add_child(face)
 
 
 ## Lumpy rocks along the cliff's top and feet, so that its outline is not a straight edge.
@@ -86,9 +163,30 @@ func _build_cliff_rocks(look: Node3D, body: StaticBody3D, random: RandomNumberGe
 	mesh.surface_set_material(0, Surfaces.get_material(Surfaces.Pattern.BOULDER, ROCK_COLOR))
 	for i in 14:
 		var along := random.randf_range(-1.0, 1.0)
-		var up := random.randf_range(0.0, 1.0)
-		var at := Vector3(along * (width / 2.0 + 1.5), lerpf(0.5, height + 1.5, up * up), random.randf_range(-3.0, 0.5))
+		var up := random.randf_range(0.0, 0.7)
+		var at := Vector3(along * (width / 2.0 + 1.0), lerpf(0.5, height - 1.0, up * up), random.randf_range(-1.5, 0.2))
 		_add_rock(look, body, mesh, at, random.randf_range(1.2, 2.6), random)
+
+
+## Fallen rocks along the cliff's foot and roots reaching down its face, so that it meets the ground
+## with a ragged edge. They keep clear of the opening, the plaza and the trail.
+func _build_base_details(look: Node3D, body: StaticBody3D, random: RandomNumberGenerator) -> void:
+	var width: float = _data["width"]
+	var opening: float = _data["opening_width"]
+	var mesh := _rock_mesh(int(_data["seed"]) + 3)
+	mesh.surface_set_material(0, Surfaces.get_material(Surfaces.Pattern.BOULDER, DARK_ROCK_COLOR))
+	for i in 9:
+		var side := -1.0 if i % 2 == 0 else 1.0
+		var x := side * random.randf_range(opening / 2.0 + 2.4, width / 2.0 + 2.5)
+		var size := random.randf_range(0.5, 1.3)
+		_add_rock(look, body, mesh, Vector3(x, size * 0.3, random.randf_range(0.0, 1.0)), size, random)
+	for i in 7:
+		var x := random.randf_range(-width / 2.0, width / 2.0)
+		if absf(x) < opening / 2.0 + 0.8:
+			x += signf(x + 0.01) * (opening / 2.0 + 0.8)
+		var length := random.randf_range(1.0, 2.2)
+		var y := random.randf_range(0.6, 0.6 + length)
+		_add_timber(look, Vector3(0.14, length, 0.14), Vector3(x, y, FACE_FRONT + 0.1), Vector3(random.randf_range(-0.2, 0.2), random.randf(), random.randf_range(-0.35, 0.35)), ROOT_COLOR)
 
 
 func _build_frame(look: Node3D, body: StaticBody3D) -> void:
@@ -189,16 +287,13 @@ func _add_rock(look: Node3D, body: StaticBody3D, mesh: ArrayMesh, at: Vector3, s
 	body.add_child(shape)
 
 
-func _add_block(look: Node3D, body: StaticBody3D, size: Vector3, at: Vector3, yaw_degrees: float, pattern: Surfaces.Pattern, color: Color) -> void:
-	var block := ModelBuilder.box(size, pattern, color, at)
-	block.rotation.y = deg_to_rad(yaw_degrees)
-	look.add_child(block)
+func _add_block(body: StaticBody3D, size: Vector3, at: Vector3, yaw_degrees: float) -> void:
 	var box := BoxShape3D.new()
 	box.size = size
 	var shape := CollisionShape3D.new()
 	shape.shape = box
 	shape.position = at
-	shape.rotation.y = block.rotation.y
+	shape.rotation.y = deg_to_rad(yaw_degrees)
 	body.add_child(shape)
 
 

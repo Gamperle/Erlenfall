@@ -1072,6 +1072,7 @@ func _test_villager_routines(scene: Node) -> void:
 	routines.update(18.4)
 	routines.update(18.6)
 	_check(bertram.is_processing(), "a villager sets off when their stop changes")
+	_check(bertram.activity().is_empty(), "and stops what they were doing")
 	# The walk goes by way of the places the stop names.
 	var first := VillagerRoutines.route_of(evening)[0]
 	var start := Vector2(bertram.position.x, bertram.position.z).distance_to(first)
@@ -1081,6 +1082,7 @@ func _test_villager_routines(scene: Node) -> void:
 	_check(absf(bertram.position.y - village.terrain.height_at(bertram.position.x, bertram.position.z)) < 0.01, "following the ground")
 	routines.update(6.5)
 	_check(not bertram.is_processing() and Vector2(bertram.position.x, bertram.position.z).is_equal_approx(bertram.home), "a jump in time puts villagers straight at their places")
+	await _test_routine_activities(village, routines)
 	var absent := Npc.new()
 	absent.setup({ "id": "absent", "name": "NPC_MAREK", "x": 0.0, "z": 0.0, "color": "#808080", "appears_when": { "flag": "nothing_yet" } })
 	absent.apply_flags({})
@@ -1092,6 +1094,30 @@ func _test_villager_routines(scene: Node) -> void:
 	routines._villagers.erase("absent")
 	absent.free()
 	routines.set_process(FeatureFlags.enabled("villager_routines"))
+
+
+## Villagers work, sit and sleep at their stops, and go out of sight indoors (#223).
+func _test_routine_activities(village: Village, routines: VillagerRoutines) -> void:
+	_check(not VillagerRoutines.problems({ "bertram": [{ "from": 5.0, "activity": "juggle" }] }, ["bertram"]).is_empty(), "an unknown activity is reported")
+	for activity: String in Npc.ACTIVITIES:
+		for key: String in ["loop", "shot"]:
+			var animation: StringName = Npc.ACTIVITIES[activity].get(key, &"")
+			_check(animation.is_empty() or CharacterAnimations.library().has_animation(animation), "the %s animation of %s exists" % [animation, activity])
+	var bertram: Npc = village.get_node("bertram")
+	var greta: Npc = village.get_node("greta")
+	routines.update(12.0)
+	_check(bertram.activity() == "hammer" and greta.activity() == "sweep", "villagers do their work by day")
+	for i in 4:
+		bertram.activity_tick(0.5)
+	_check(greta.visible and not greta.is_indoors(), "villagers are in sight while they work")
+	routines.update(23.0)
+	_check(bertram.activity() == "sleep" and is_equal_approx(bertram.get_child(0).rotation.x, PI / 2.0), "villagers lie down to sleep")
+	_check(greta.is_indoors() and not greta.visible, "a villager goes out of sight indoors at night")
+	await process_frame
+	var shapes := greta.get_children().filter(func(c: Node) -> bool: return c is CollisionShape3D)
+	_check(shapes.size() == 1 and shapes[0].disabled, "and cannot be bumped into or talked to there")
+	routines.update(7.0)
+	_check(greta.visible and not greta.is_indoors() and absf(bertram.get_child(0).rotation.x) < 0.01, "they come back out and get up in the morning")
 
 
 ## Every leg of every routine, from one stop's place through the "via" places to the next, has to
@@ -1146,7 +1172,7 @@ func _test_story(scene: Node, player: Player) -> void:
 	var hedda: Npc = village.get_node("hedda")
 	var hedda_model: Node3D = hedda.find_child("Model", true, false)
 	var hedda_player: AnimationPlayer = hedda_model.get_node("Animations")
-	_check(hedda_player.is_playing() and hedda_player.current_animation == "Idle", "a villager with a model plays its idle animation")
+	_check(hedda_player.is_playing() and hedda_player.current_animation in ["Idle", "Sitting_Idle"], "a villager with a model plays its idle animation (or sits, by her routine)")
 	_check(hedda_model.find_child("GeneralSkeleton", true, false) != null, "the model's skeleton is set up for shared animations")
 	var casters := 0
 	var shadows_only := 0

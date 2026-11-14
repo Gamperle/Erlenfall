@@ -415,13 +415,15 @@ func _check_villager_routines(data: Dictionary) -> void:
 		var previous := -1.0
 		for i in data[id].size():
 			var spath := "%s[%d]" % [path, i]
-			if not _fields(file, spath, data[id][i], { "from": ["number", true], "x": ["number", false], "z": ["number", false], "facing": ["number", false], "via": ["array", false] }):
+			if not _fields(file, spath, data[id][i], { "from": ["number", true], "x": ["number", false], "z": ["number", false], "facing": ["number", false], "via": ["array", false], "activity": ["string", false], "indoors": ["bool", false] }):
 				continue
 			var stop: Dictionary = data[id][i]
 			var via: Array = stop.get("via", []) if stop.get("via") is Array else []
 			for j in via.size():
 				if not (via[j] is Array and via[j].size() == 2 and _is_type(via[j][0], "number") and _is_type(via[j][1], "number")):
 					_add(file, "%s.via[%d]" % [spath, j], "must be an [x, z] pair of numbers")
+			if stop.get("activity") is String and not Npc.ACTIVITIES.has(stop["activity"]):
+				_add(file, spath + ".activity", "must be one of %s" % [Npc.ACTIVITIES.keys()])
 			if stop.has("x") != stop.has("z"):
 				_add(file, spath, "a stop needs both x and z, or neither")
 			if stop.get("from") is float:

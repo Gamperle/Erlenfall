@@ -21,6 +21,7 @@ var _title: Label
 var _inventory_label: Label
 var _materials_label: Label
 var _materials: HFlowContainer
+var _use_row: HFlowContainer
 var _selection_label: Label
 var _parts: GridContainer
 var _actions: HBoxContainer
@@ -76,6 +77,15 @@ func choose_part(slot: String, option_id: String) -> void:
 		return
 	_choices[slot] = option_id
 	_update_part_buttons()
+
+
+## Eats or drinks one of the item to regain health. Public so the buttons and tests share one path.
+func use_item(item_id: String) -> void:
+	if _player.health.current >= _player.health.maximum:
+		_message.text = tr("UI_HEALTH_FULL")
+	elif Healing.use_item(_player, item_id):
+		_message.text = tr("UI_USED_ITEM") % CraftingData.item_name(item_id)
+	_refresh()
 
 
 func clear_selection() -> void:
@@ -168,6 +178,7 @@ func _open(player: Player, station_id: String, title: String) -> void:
 
 func _refresh() -> void:
 	_inventory_label.text = _inventory_text()
+	_refresh_use_buttons()
 	var at_station := _station != ""
 	var forging := is_forging()
 	_materials_label.visible = at_station and not forging
@@ -217,6 +228,28 @@ func _refresh() -> void:
 				focus_target = child
 				break
 	focus_target.grab_focus()
+
+
+## One button for each carried item that can be eaten or drunk.
+func _refresh_use_buttons() -> void:
+	var focused := _panel.get_viewport().gui_get_focus_owner()
+	var focused_item := String(focused.name) if focused != null and focused.get_parent() == _use_row else ""
+	for child in _use_row.get_children():
+		_use_row.remove_child(child)
+		child.queue_free()
+	var seen := {}
+	for entry in _player.inventory.entries():
+		var item_id: String = entry["id"]
+		if seen.has(item_id) or not Healing.is_usable(item_id):
+			continue
+		seen[item_id] = true
+		var button := Button.new()
+		button.name = item_id
+		button.text = tr("UI_USE_ITEM") % [CraftingData.item_name(item_id), _player.inventory.count(item_id)]
+		button.pressed.connect(use_item.bind(item_id))
+		_use_row.add_child(button)
+		if item_id == focused_item:
+			button.grab_focus.call_deferred()
 
 
 ## The item the selected materials would make, or "" if they make nothing.
@@ -386,6 +419,8 @@ func _build() -> void:
 	column.add_child(HSeparator.new())
 
 	_inventory_label = _wrapped_label(column)
+	_use_row = HFlowContainer.new()
+	column.add_child(_use_row)
 	_materials_label = _wrapped_label(column)
 	# Set as keys, so that these follow a change of language on their own.
 	_materials_label.text = "UI_ADD_MATERIALS"

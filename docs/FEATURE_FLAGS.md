@@ -110,6 +110,15 @@ Bows and thrown flasks are the first slice of [#29](https://github.com/Gamperle/
 | `ranged_starting_arrows` | `10` | How many arrows the player starts with |
 | `ranged_starting_flasks` | `3` | How many fire flasks the player starts with |
 
+## Healing flags
+
+| Name | Default | Effect |
+|---|---|---|
+| `health_regen` | `true` | Health regenerates slowly after a few seconds without being hit |
+| `health_regen_delay_seconds` | `8.0` | Seconds without a hit before regeneration starts |
+| `health_regen_per_second` | `2.0` | Health regained per second while regenerating |
+| `healing_items` | `true` | Items with a `use` action in `crafting.json` (berries, healing potion) can be used from the inventory, and the potion can be brewed |
+
 ## Torch flags
 
 | Name | Default | Effect |

@@ -46,6 +46,11 @@ static func item_length(item_id: String) -> float:
 	return length
 
 
+## Health the item restores when used, or 0 if it can't be used.
+static func heal_amount(item_id: String) -> float:
+	return float(_get_data()["items"].get(item_id, {}).get("use", {}).get("heal", 0.0))
+
+
 static func is_material(item_id: String) -> bool:
 	return _get_data()["items"][item_id].get("material", false)
 

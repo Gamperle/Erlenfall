@@ -58,7 +58,8 @@ const NEIGHBOR_KEYS: Array[int] = [
 const DIAGONAL_SIDES: Array[int] = [0, 2, 0, 3, 1, 2, 1, 3]
 
 ## What walking along a straight line runs into first.
-enum Line { CLEAR, BLOCKED, WET }
+## UNKNOWN is when the frame's budget ran out before the line was checked all the way.
+enum Line { CLEAR, BLOCKED, WET, UNKNOWN }
 
 static var _grids: Dictionary = {}
 static var _surfaces: Dictionary = {}
@@ -204,17 +205,20 @@ func advance() -> bool:
 
 ## Whether the body can walk along a straight line at full speed, so water counts as in the way. The
 ## start is skipped, because something the body is pressed against can reach into its cell, and
-## `skip_end` does the same for a goal.
-func is_line_clear(from: Vector3, to: Vector3, skip_end := 0.0) -> bool:
+## `skip_end` does the same for a goal. Checking new cells counts against the frame's budget like a
+## search does. A line that runs out of it isn't known to be clear, so this returns false, and a
+## later call carries on from the cells found so far. `limited` false checks it all now (#180).
+func is_line_clear(from: Vector3, to: Vector3, skip_end := 0.0, limited := true) -> bool:
 	if Vector2(from.x, from.z).distance_to(Vector2(to.x, to.z)) > LINE_MAX_LENGTH:
 		return false
-	_walk_line(from, to, skip_end)
+	_walk_line(from, to, skip_end, limited)
 	return _line_end == Line.CLEAR
 
 
 ## How far the body would walk straight toward a point, looking at most `max_length` ahead, before it
 ## got wet, or INF when it doesn't or something else is in the way first, which is left to be found
-## by bumping into it.
+## by bumping into it. A check that runs out of the frame's budget also gives INF, and is tried again
+## later.
 func wet_distance(from: Vector3, to: Vector3, max_length: float) -> float:
 	var offset := Vector2(to.x - from.x, to.z - from.z).limit_length(max_length)
 	var length := offset.length()
@@ -229,24 +233,31 @@ func wet_distance(from: Vector3, to: Vector3, max_length: float) -> float:
 	var start := from.lerp(end, skip / length)
 	if skip > 0.0:
 		start.y = _terrain.height_at(start.x, start.z)
-	var along := _walk_line(start, end, 0.0)
+	var along := _walk_line(start, end, 0.0, true)
 	return skip + along if _line_end == Line.WET else INF
 
 
 ## Walks along a straight line until it ends or something is in the way, which is kept in
 ## `_line_end`, and returns how far it got.
-func _walk_line(from: Vector3, to: Vector3, skip_end: float) -> float:
+func _walk_line(from: Vector3, to: Vector3, skip_end: float, limited: bool) -> float:
 	_refresh_grids()
 	_know_crowd()
 	var start := Vector2(from.x, from.z)
 	var end := Vector2(to.x, to.z)
 	var length := start.distance_to(end)
 	var cell := _cell_of(start)
+	var budget: int = FeatureFlags.value("enemy_path_budget_steps")
+	_line_end = Line.CLEAR
+	if limited and not _can_check(cell, budget):
+		_line_end = Line.UNKNOWN
+		return 0.0
 	var floor_index := _floor_near(cell, from.y, false)
 	var along := LINE_SKIP_AT_START
-	_line_end = Line.CLEAR
 	while along < length - skip_end:
 		var next := _cell_of(start.lerp(end, along / length))
+		if limited and next != cell and not _can_check(next, budget):
+			_line_end = Line.UNKNOWN
+			break
 		if floor_index < 0:
 			# The body's own cell can be blocked when it's pressed against something.
 			floor_index = _floor_near(next, from.y)
@@ -263,6 +274,11 @@ func _walk_line(from: Vector3, to: Vector3, skip_end: float) -> float:
 			break
 		along += _cell_size / 2.0
 	return along
+
+
+## Whether a cell is known, or there is budget left in this frame to check it.
+func _can_check(cell: Vector2i, budget: int) -> bool:
+	return _cells.has(_key(cell)) or _spend(0) < budget
 
 
 ## Forgets what is known about the cells around a point, where the body ran into something.

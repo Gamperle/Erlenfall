@@ -1327,7 +1327,7 @@ func _test_routine_legs(_scene: Node, village: Village, data: Dictionary) -> voi
 				legs += 1
 				var from := Vector3(points[j].x, village.walking_height(points[j].x, points[j].y) + 0.1, points[j].y)
 				var to := Vector3(points[j + 1].x, village.walking_height(points[j + 1].x, points[j + 1].y) + 0.1, points[j + 1].y)
-				if not path.is_line_clear(from, to):
+				if not path.is_line_clear(from, to, 0.0, false):
 					bad += " %s %s->%s" % [id, points[j], points[j + 1]]
 	for villager in villagers:
 		villager.position.y += 100.0

@@ -304,6 +304,16 @@ UI_CONTROLS_CONFLICT,"%s is already used for ""%s"". Swap it with ""%s""?",%s wi
 UI_CONTROLS_SWAP,Swap,Tauschen
 UI_CONTROLS_CANCEL,Cancel,Abbrechen
 UI_CONTROLS_RESET,Reset to defaults,Auf Standard zurücksetzen
+UI_CONTROLS_EDITING,"%s, %s: change, remove, or add an input.","%s, %s: Eingabe ändern, entfernen oder hinzufügen."
+UI_CONTROLS_CHANGE,Change: %s,Ändern: %s
+UI_CONTROLS_REMOVE,Remove,Entfernen
+UI_CONTROLS_ADD,Add another input,Weitere Eingabe hinzufügen
+UI_CONTROLS_USE_ESC,Add Esc,Esc hinzufügen
+UI_CONTROLS_DONE,Done,Fertig
+UI_CONTROLS_MOVE,Move,Verschieben
+UI_CONTROLS_CONFLICT_MOVE,"%s is already used for ""%s"". Move it to ""%s""?",%s wird schon für „%s“ verwendet. Zu „%s“ verschieben?
+UI_CONTROLS_FULL,"There is no room for another input. Remove one first.","Es ist kein Platz für eine weitere Eingabe. Entferne zuerst eine."
+UI_CONTROLS_PAUSE_KEY,"%s is the only key for ""%s"". Give that action another key first.",%s ist die einzige Taste für „%s“. Gib dieser Aktion zuerst eine andere Taste.
 UI_KEY_SPACE,Space,Leertaste
 UI_KEY_SHIFT,Shift,Umschalt
 UI_KEY_CTRL,Ctrl,Strg
@@ -313,6 +323,10 @@ UI_MOUSE_LEFT,Left click,Linksklick
 UI_MOUSE_RIGHT,Right click,Rechtsklick
 UI_MOUSE_MIDDLE,Middle click,Mausrad-Klick
 UI_MOUSE_OTHER,Mouse button %d,Maustaste %d
+UI_MOUSE_WHEEL_UP,Wheel up,Mausrad hoch
+UI_MOUSE_WHEEL_DOWN,Wheel down,Mausrad runter
+UI_MOUSE_WHEEL_LEFT,Wheel left,Mausrad links
+UI_MOUSE_WHEEL_RIGHT,Wheel right,Mausrad rechts
 UI_PAD_UP,up,hoch
 UI_PAD_DOWN,down,runter
 UI_PAD_LEFT,left,links

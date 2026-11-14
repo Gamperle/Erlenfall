@@ -11,18 +11,22 @@ const PALETTES: Dictionary = {
 	"off": {
 		"health": Color(0.74, 0.14, 0.1), "stamina": Color(0.85, 0.7, 0.2),
 		"objective": Color(1.0, 0.85, 0.3), "player": Color(0.95, 0.35, 0.2),
+		"enemy": Color(0.85, 0.15, 0.1), "warning": Color(0.95, 0.35, 0.1), "target": Color(0.85, 0.55, 0.2),
 	},
 	"deuteranopia": {
 		"health": Color(0.9, 0.45, 0.0), "stamina": Color(0.35, 0.7, 0.95),
 		"objective": Color(0.95, 0.9, 0.25), "player": Color(0.4, 0.75, 1.0),
+		"enemy": Color(0.9, 0.45, 0.0), "warning": Color(0.95, 0.9, 0.25), "target": Color(0.35, 0.7, 0.95),
 	},
 	"protanopia": {
 		"health": Color(1.0, 0.6, 0.1), "stamina": Color(0.3, 0.65, 1.0),
 		"objective": Color(0.95, 0.9, 0.25), "player": Color(0.5, 0.8, 1.0),
+		"enemy": Color(1.0, 0.6, 0.1), "warning": Color(0.95, 0.9, 0.25), "target": Color(0.3, 0.65, 1.0),
 	},
 	"tritanopia": {
 		"health": Color(0.85, 0.1, 0.2), "stamina": Color(0.0, 0.65, 0.5),
 		"objective": Color(1.0, 0.55, 0.75), "player": Color(0.95, 0.4, 0.15),
+		"enemy": Color(0.85, 0.1, 0.2), "warning": Color(1.0, 0.55, 0.75), "target": Color(0.0, 0.65, 0.5),
 	},
 }
 const HC_TEXT_COLOR := Color(1.0, 1.0, 1.0)
@@ -68,6 +72,9 @@ static func apply_theme() -> void:
 	# The fills always follow the palette.
 	_set_modulate(theme, "ProgressBar", "fill", color("health"))
 	_set_modulate(theme, "StaminaBar", "fill", color("stamina"))
+	# The forging target follows the palette, and the forging bar's trough goes dark in high contrast.
+	_set_modulate(theme, "ForgeTarget", "panel", color("target"))
+	_set_modulate(theme, "BarTrough", "panel", HC_PLATE_COLOR if high else null)
 
 
 ## A null value puts the theme's own color back.

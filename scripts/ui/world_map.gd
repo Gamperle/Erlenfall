@@ -7,6 +7,9 @@ const MARGIN := 24.0
 const FRAME_COLOR := Color(0.1, 0.06, 0.03)
 const DIM_COLOR := Color(0.03, 0.03, 0.02, 0.88)
 const TEXT_COLOR := Color(0.95, 0.92, 0.85)
+## High contrast: a nearly solid dim, plain white text and a thick black outline.
+const HC_DIM_COLOR := Color(0.0, 0.0, 0.0, 0.97)
+const HC_FRAME_COLOR := Color(1.0, 1.0, 1.0)
 const TITLE_FONT_SIZE := 24
 const LABEL_FONT_SIZE := 15
 const HINT_FONT_SIZE := 14
@@ -218,7 +221,7 @@ func _draw_map() -> void:
 	var canvas_size := _canvas.size
 	var font := _canvas.get_theme_default_font()
 	if not _embedded:
-		_canvas.draw_rect(Rect2(Vector2.ZERO, canvas_size), DIM_COLOR)
+		_canvas.draw_rect(Rect2(Vector2.ZERO, canvas_size), HC_DIM_COLOR if Settings.high_contrast else DIM_COLOR)
 		var title_size := Settings.scaled_font_size(TITLE_FONT_SIZE)
 		_text(font, Vector2(canvas_size.x / 2.0, MARGIN + title_size), tr("UI_MAP"), title_size, true)
 	var rect := _map_rect()
@@ -235,7 +238,7 @@ func _draw_map() -> void:
 	var player_at := to_screen(player_position, rect)
 	if rect.has_point(player_at):
 		MapMarkers.draw_player(_canvas, player_at, heading, PLAYER_SIZE)
-	_canvas.draw_rect(rect, FRAME_COLOR, false, 3.0)
+	_canvas.draw_rect(rect, HC_FRAME_COLOR if Settings.high_contrast else FRAME_COLOR, false, 3.0)
 	_draw_compass_letters(font, rect)
 	_draw_footer(font, canvas_size, rect)
 
@@ -265,7 +268,7 @@ func _draw_places(font: Font, rect: Rect2) -> void:
 
 func _draw_compass_letters(font: Font, rect: Rect2) -> void:
 	var size := Settings.scaled_font_size(LABEL_FONT_SIZE)
-	_text(font, Vector2(rect.get_center().x, rect.position.y + size + 4.0), tr("UI_COMPASS_N"), size, true, MapMarkers.PLAYER_COLOR)
+	_text(font, Vector2(rect.get_center().x, rect.position.y + size + 4.0), tr("UI_COMPASS_N"), size, true, Accessibility.color("player"))
 
 
 func _draw_footer(font: Font, canvas_size: Vector2, rect: Rect2) -> void:
@@ -283,20 +286,31 @@ func _draw_footer(font: Font, canvas_size: Vector2, rect: Rect2) -> void:
 	_legend_text(font, Vector2(x, y), tr("UI_MAP_PLACE"), label_size)
 	var hint_size := Settings.scaled_font_size(HINT_FONT_SIZE)
 	var hint_top := y + label_size * 0.6
-	_canvas.draw_multiline_string(font, Vector2(MARGIN, hint_top + hint_size), tr(_hint_key()), HORIZONTAL_ALIGNMENT_CENTER, canvas_size.x - MARGIN * 2.0, hint_size, -1, TEXT_COLOR)
+	_canvas.draw_multiline_string(font, Vector2(MARGIN, hint_top + hint_size), tr(_hint_key()), HORIZONTAL_ALIGNMENT_CENTER, canvas_size.x - MARGIN * 2.0, hint_size, -1, text_color())
 
 
 ## Draws a legend entry and returns where it ends.
 func _legend_text(font: Font, at: Vector2, text: String, font_size: int) -> float:
-	_canvas.draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Color(0.0, 0.0, 0.0, 0.8))
-	_canvas.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
+	_canvas.draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, outline_size(), Color(0.0, 0.0, 0.0, 1.0 if Settings.high_contrast else 0.8))
+	_canvas.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_color())
 	return at.x + font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 
 
 ## Draws text with a dark outline. Centered on `at.x` when `centered`, otherwise starting there.
-func _text(font: Font, at: Vector2, text: String, font_size: int, centered: bool, color := TEXT_COLOR) -> void:
+func _text(font: Font, at: Vector2, text: String, font_size: int, centered: bool, color := Color.TRANSPARENT) -> void:
+	if color.a == 0.0:
+		color = text_color()
 	var start := at
 	if centered:
 		start.x -= font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x / 2.0
-	_canvas.draw_string_outline(font, start, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Color(0.0, 0.0, 0.0, 0.8))
+	_canvas.draw_string_outline(font, start, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, outline_size(), Color(0.0, 0.0, 0.0, 1.0 if Settings.high_contrast else 0.8))
 	_canvas.draw_string(font, start, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
+
+
+## The text color: plain white in high contrast.
+static func text_color() -> Color:
+	return Accessibility.HC_TEXT_COLOR if Settings.high_contrast else TEXT_COLOR
+
+
+static func outline_size() -> int:
+	return Accessibility.HC_OUTLINE_SIZE if Settings.high_contrast else 4

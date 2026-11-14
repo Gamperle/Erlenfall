@@ -40,10 +40,11 @@ func open_conversation(npc_id: String, speaker: String, player: Player, talker: 
 	_show_line()
 
 
-## Applies the text size and panel opacity settings.
+## Applies the text size and panel opacity settings. High contrast makes the panel opaque.
 func refresh_style() -> void:
 	_speaker.add_theme_font_size_override("font_size", Settings.scaled_font_size(SPEAKER_FONT_SIZE))
-	_panel.self_modulate.a = Settings.dialogue_opacity
+	# High contrast needs a solid panel, whatever the opacity setting says.
+	_panel.self_modulate.a = 1.0 if Settings.high_contrast else Settings.dialogue_opacity
 
 
 ## Answers with the given reply. Public so buttons, keys, and tests share one path.

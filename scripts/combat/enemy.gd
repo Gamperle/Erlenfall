@@ -10,13 +10,17 @@ const GROUP := "enemy"
 ## The height of a built animal model before it is scaled.
 const BEAST_HEIGHT := 0.75
 const TURN_SPEED := 8.0
-const WINDUP_COLOR := Color(0.95, 0.35, 0.1)
 const HIT_COLOR := Color(1.0, 1.0, 1.0)
 const HIT_FLASH_SECONDS := 0.12
 const HOME_TOLERANCE := 2.0
 const ATTACK_REACH_MARGIN := 0.5
 const BAR_WIDTH := 0.8
 const BAR_HEIGHT := 0.08
+## The health bar is drawn into a small picture, with a frame and a tick at each quarter.
+const BAR_PIXELS := Vector2i(64, 8)
+const BAR_FRAME_COLOR := Color(0.0, 0.0, 0.0)
+const BAR_EMPTY_COLOR := Color(0.12, 0.1, 0.1)
+const BAR_TICK_COLOR := Color(1.0, 1.0, 1.0)
 const KNOCKBACK_SPEED := 4.0
 const KNOCKBACK_DECAY := 14.0
 const SPARK_COLOR := Color(1.0, 0.75, 0.35)
@@ -98,7 +102,9 @@ var _searched_crowd := PackedVector3Array()
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _body: Humanoid
 var _collision: CollisionShape3D
-var _bar: MeshInstance3D
+var _bar: Sprite3D
+var _warning: Label3D
+var _look_key := ""
 
 
 func setup(type: String, home: Vector3) -> void:
@@ -592,14 +598,42 @@ func _update_color(delta: float) -> void:
 	if _flash > 0.0:
 		_body.set_glow(HIT_COLOR, 1.5)
 	elif state == State.WINDUP:
-		_body.set_glow(WINDUP_COLOR, 1.2)
+		_body.set_glow(Accessibility.color("warning"), 1.2)
 	else:
 		_body.set_glow(HIT_COLOR, 0.0)
+	# The warning mark shows with the glow, so the attack is announced by a shape too.
+	_warning.visible = state == State.WINDUP
+	var key := Settings.colour_vision + str(Settings.high_contrast)
+	if key != _look_key:
+		_look_key = key
+		_warning.modulate = Accessibility.color("warning")
+		_update_bar()
 
 
 func _update_bar() -> void:
 	_bar.visible = health.fraction() < 1.0
-	_bar.scale.x = maxf(health.fraction(), 0.01)
+	_bar.texture = ImageTexture.create_from_image(bar_image(health.fraction()))
+
+
+## Draws the health bar: a dark frame, ticks at the quarters, the fill in the palette's color, and
+## stripes in the fill when patterns are wanted. So the bar reads without color.
+static func bar_image(fraction: float) -> Image:
+	var size := BAR_PIXELS
+	var image := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+	image.fill(BAR_FRAME_COLOR)
+	var inner := Rect2i(1, 1, size.x - 2, size.y - 2)
+	image.fill_rect(inner, BAR_EMPTY_COLOR)
+	var fill_width := 0 if fraction <= 0.0 else maxi(1, roundi(inner.size.x * clampf(fraction, 0.0, 1.0)))
+	var fill_color := Accessibility.color("enemy")
+	for x in fill_width:
+		for y in inner.size.y:
+			var striped := BarPattern.wanted() and (x + y) % 4 < 2
+			image.set_pixel(inner.position.x + x, inner.position.y + y, fill_color.darkened(0.45) if striped else fill_color)
+	for quarter in range(1, 4):
+		var x := inner.position.x + inner.size.x * quarter / 4
+		for y in inner.size.y:
+			image.set_pixel(x, inner.position.y + y, BAR_TICK_COLOR)
+	return image
 
 
 func _build() -> void:
@@ -633,20 +667,27 @@ func _build() -> void:
 	_sparks = _build_sparks(height * 0.65)
 	add_child(_sparks)
 
-	var bar_mesh := QuadMesh.new()
-	bar_mesh.size = Vector2(BAR_WIDTH, BAR_HEIGHT)
-	var bar_material := StandardMaterial3D.new()
-	bar_material.albedo_color = Color(0.85, 0.15, 0.1)
-	bar_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	bar_material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	bar_material.billboard_keep_scale = true
-	bar_mesh.material = bar_material
-	_bar = MeshInstance3D.new()
-	_bar.mesh = bar_mesh
+	_bar = Sprite3D.new()
+	_bar.pixel_size = BAR_WIDTH / BAR_PIXELS.x
+	_bar.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_bar.shaded = false
+	_bar.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	_bar.position.y = height + 0.25
 	_bar.visible = false
 	_bar.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_bar)
+
+	_warning = Label3D.new()
+	_warning.text = "!"
+	_warning.font_size = 96
+	_warning.pixel_size = 0.006
+	_warning.outline_size = 24
+	_warning.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_warning.no_depth_test = true
+	_warning.position.y = height + 0.6
+	_warning.visible = false
+	add_child(_warning)
+	_look_key = ""
 
 
 func _build_sparks(at_height: float) -> CPUParticles3D:

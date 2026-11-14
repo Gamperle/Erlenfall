@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/world/terrain.gd" id="2"]
@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://scripts/ui/compass.gd" id="10"]
 [ext_resource type="Script" path="res://scripts/ui/performance_overlay.gd" id="11"]
 [ext_resource type="Script" path="res://scripts/ui/hud_layout.gd" id="12"]
+[ext_resource type="Script" path="res://scripts/world/sky_dome.gd" id="13"]
 
 [sub_resource type="ProceduralSkyMaterial" id="1"]
 sky_top_color = Color(0.34, 0.45, 0.58, 1)
@@ -65,8 +66,12 @@ directional_shadow_max_distance = 200.0
 [node name="Mist" type="Node3D" parent="."]
 script = ExtResource("9")
 
-[node name="DayNight" type="Node" parent="." node_paths=PackedStringArray("sun", "world_environment", "mist")]
+[node name="SkyDome" type="MeshInstance3D" parent="."]
+script = ExtResource("13")
+
+[node name="DayNight" type="Node" parent="." node_paths=PackedStringArray("sun", "world_environment", "mist", "sky_dome")]
 script = ExtResource("4")
+sky_dome = NodePath("../SkyDome")
 sun = NodePath("../Sun")
 world_environment = NodePath("../WorldEnvironment")
 mist = NodePath("../Mist")

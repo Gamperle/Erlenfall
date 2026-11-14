@@ -106,6 +106,27 @@ func _run() -> void:
 	_check(morning.x > 0.9 and morning.y > 0.0, "the sun rises in the east")
 	_check(midday.y > 0.7 and midday.z > 0.5 and absf(midday.x) < 0.01, "the sun is high in the south at midday")
 	_check(evening.x < -0.9 and evening.y > 0.0, "the sun sets in the west")
+	var dome: SkyDome = scene.get_node("SkyDome")
+	var dome_param := func(hour: float, parameter: String) -> Variant:
+		day_night.hour = hour
+		day_night._apply()
+		return dome.material_override.get_shader_parameter(parameter)
+	_check(dome.material_override.shader != null and dome.material_override.shader.get_mode() == Shader.MODE_SPATIAL, "the sky dome has its shader")
+	_check(dome_param.call(1.0, "star_visibility") == 1.0 and dome_param.call(12.0, "star_visibility") == 0.0, "stars show at night and not by day")
+	_check(dome_param.call(19.0, "star_visibility") == 0.0 and dome_param.call(19.9, "star_visibility") > 0.0 and dome_param.call(21.0, "star_visibility") == 1.0, "stars fade in after sunset")
+	_check(dome_param.call(1.0, "moon_visibility") > 0.9 and dome_param.call(12.0, "moon_visibility") == 0.0, "the moon shows at night only")
+	var moon_dir: Vector3 = dome_param.call(0.0, "moon_direction")
+	day_night._apply()
+	_check(moon_dir.is_equal_approx(sun.basis.z), "the moon disc sits where the moonlight comes from")
+	var night_cloud: Color = dome_param.call(1.0, "cloud_light_color")
+	var day_cloud: Color = dome_param.call(12.0, "cloud_light_color")
+	_check(night_cloud.v < 0.4 and day_cloud.v > 0.9, "clouds are tinted by the time of day")
+	var cloud_before: Vector2 = dome_param.call(12.0, "cloud_offset")
+	dome._process(10.0)
+	_check(dome.material_override.get_shader_parameter("cloud_offset") != cloud_before, "clouds drift")
+	dome.set_quality("low")
+	_check(dome.material_override.get_shader_parameter("cloud_octaves") < SkyDome.CLOUD_OCTAVES["high"], "low graphics draw simpler clouds")
+	dome.set_quality(Settings.graphics)
 	day_night.hour = 9.0
 	day_night._apply()
 

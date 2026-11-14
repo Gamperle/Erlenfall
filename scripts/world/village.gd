@@ -85,6 +85,11 @@ func _ready() -> void:
 	bushes.name = "Bushes"
 	_set_small_plants(bushes, BUSH_DRAW_DISTANCE)
 	_add_grass(layout["grass"], layout["fields"])
+	if FeatureFlags.enabled("ambient_life"):
+		var ambient := AmbientLife.new()
+		ambient.name = "AmbientLife"
+		ambient.terrain = terrain
+		add_child(ambient)
 	_add_boulders(layout["boulders"])
 	var routines := VillagerRoutines.new()
 	routines.name = "VillagerRoutines"

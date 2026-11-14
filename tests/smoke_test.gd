@@ -157,6 +157,7 @@ func _run() -> void:
 	await _test_forest(scene, player)
 	await _test_player_fixes(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
+	await _test_ambient_life(scene, day_night)
 	await _test_grass_cost(scene)
 	_test_surface_relief(scene)
 	_test_grass_cell_edge(scene)
@@ -2349,6 +2350,58 @@ func _blocked_above(terrain: Terrain, point: Vector3) -> bool:
 		if not space.intersect_ray(query).is_empty():
 			return true
 	return false
+
+
+func _test_ambient_life(scene: Node, day_night: DayNight) -> void:
+	var ambient: AmbientLife = scene.get_node_or_null("Village/AmbientLife")
+	_check(ambient != null, "ambient life is added when its flag is on")
+	if ambient == null:
+		return
+	var kinds := ambient.find_children("*", "MultiMeshInstance3D", false, false)
+	_check(kinds.size() == 3, "birds, butterflies, and fireflies are one MultiMesh each")
+	_check(ambient.find_children("*", "CollisionObject3D", true, false).is_empty() and kinds.all(func(kind): return kind.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF), "ambient life has no collision and casts no shadows")
+	var full := ambient.full_counts()
+	_check(full["birds"] + full["butterflies"] + full["fireflies"] <= 150, "ambient life stays within its count budget")
+	var player: Player = scene.get_node("Player")
+	var saved_hour := day_night.hour
+	var saved_graphics := Settings.graphics
+	day_night.hour = 12.0
+	ambient.update_around(player.global_position)
+	var by_day := ambient.drawn_counts()
+	_check(by_day["birds"] > 0 and by_day["butterflies"] > 0 and by_day["fireflies"] == 0, "birds and butterflies fly by day and fireflies sleep")
+	day_night.hour = 0.0
+	ambient.update_around(player.global_position)
+	var by_night := ambient.drawn_counts()
+	_check(by_night["birds"] == 0 and by_night["butterflies"] == 0 and by_night["fireflies"] > 0, "fireflies glow at night and the others sleep")
+	var terrain: Terrain = scene.get_node("Terrain")
+	var on_lush_ground := true
+	for index in ambient._fireflies.shown:
+		var home := ambient._fireflies.anchors[index]
+		if ambient._fireflies.settled[index] and terrain.river_clearance(home.x, home.z) < 0.0:
+			on_lush_ground = false
+	_check(on_lush_ground, "fireflies never settle in the river")
+	var lush := 0
+	var settled := 0
+	day_night.hour = 12.0
+	ambient.update_around(player.global_position)
+	for index in ambient._butterflies.shown:
+		if ambient._butterflies.settled[index]:
+			var home := ambient._butterflies.anchors[index]
+			settled += 1
+			if Surfaces.ground_dryness(home.x, home.z) <= AmbientLife.LUSH_DRYNESS:
+				lush += 1
+	_check(lush == settled, "butterflies stay over lush grass (%d of %d)" % [lush, settled])
+	Settings.graphics = "low"
+	await process_frame
+	ambient._process(0.0)
+	var low := ambient.drawn_counts()
+	Settings.graphics = "high"
+	ambient._process(0.0)
+	var high := ambient.drawn_counts()
+	_check(low["birds"] < high["birds"] and low["butterflies"] < high["butterflies"], "lower graphics show fewer creatures")
+	Settings.graphics = saved_graphics
+	ambient._process(0.0)
+	day_night.hour = saved_hour
 
 
 func _test_grass_cell_edge(scene: Node) -> void:

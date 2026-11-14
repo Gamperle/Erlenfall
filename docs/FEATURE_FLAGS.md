@@ -78,6 +78,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 |---|---|---|
 | `surface_relief` | `true` | Gives the photo surfaces of buildings, roads, rocks, and the ground their normal, roughness, and occlusion maps from `assets/textures/*_relief.png`, so they catch the light and stones poke through grass. Off draws them flat, with one texture read fewer per photo, which costs about 5% of the frame rate on a Radeon 680M |
 | `screen_ambient_occlusion` | `true` | Darkens corners, eaves, and the ground under things on high graphics. Off never does, which saves about 1.3 ms a frame on a Radeon 680M, most of it for the extra normal buffer that it needs whatever its quality |
+| `ambient_life` | `true` | Adds birds that circle high above by day, butterflies over lush grass by day, and fireflies over lush grass and the river at night. Each kind is one MultiMesh draw call without shadows or collision. Off adds none of them. Low and medium graphics show 40% and 70% of each count |
 
 ## Player flags and values
 
@@ -159,6 +160,14 @@ Enemies walk straight at their target until something blocks them, then search a
 | `grass_draw_scale_low` | `0.6` | How far grass reaches on low graphics, as a share of the full 220 meters |
 | `grass_draw_scale_medium` | `0.8` | The same on medium graphics |
 | `grass_draw_scale_high` | `1.0` | The same on high graphics |
+
+## Ambient life values
+
+| Name | Default | Effect |
+|---|---|---|
+| `ambient_bird_count` | `12` | How many birds fly on high graphics |
+| `ambient_butterfly_count` | `30` | How many butterflies flutter near the camera on high graphics |
+| `ambient_firefly_count` | `50` | How many fireflies glow near the camera on high graphics |
 
 ## Village values
 

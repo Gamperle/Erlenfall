@@ -124,6 +124,7 @@ UI_LOAD_GAME,Load game,Spiel laden
 UI_SLOT,Slot %d: %s,Spielstand %d: %s
 UI_SLOT_EMPTY,empty,leer
 UI_SLOT_DAMAGED,damaged and unreadable,beschädigt und unlesbar
+UI_SLOT_TOO_NEW,saved by a newer version of the game,von einer neueren Spielversion gespeichert
 UI_SLOT_DAMAGED_BACKUP,damaged - load the backup,beschädigt - Sicherung laden
 UI_SETTINGS,Settings,Einstellungen
 UI_LANGUAGE,Language,Sprache

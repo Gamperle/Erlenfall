@@ -2,6 +2,7 @@ extends SceneTree
 ## Run with: godot --headless --path . --script res://tests/smoke_test.gd
 
 const TEST_SAVE := "user://smoke_test_save.json"
+const TEST_OLD_SAVE := "user://smoke_test_old_save.json"
 const TEST_SLOT_2 := "user://smoke_test_save_2.json"
 const TEST_SLOT_3 := "user://smoke_test_save_3.json"
 const TEST_SETTINGS := "user://smoke_test_settings.json"
@@ -1822,6 +1823,28 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	_check(not SaveGame.exists(TEST_SAVE), "a damaged save is ignored")
 	_check(SaveGame.is_damaged(TEST_SAVE) and not SaveGame.has_backup(TEST_SAVE), "a damaged save without a backup is reported")
 	_check(not SaveGame.apply(TEST_SAVE, player, day_night, village), "a damaged save doesn't load")
+
+	# A checked-in version 1 save is upgraded when loaded.
+	var fixture := FileAccess.get_file_as_string("res://tests/fixtures/save_v1.json")
+	var old_file := FileAccess.open(TEST_OLD_SAVE, FileAccess.WRITE)
+	old_file.store_string(fixture)
+	old_file.close()
+	_check(SaveGame.exists(TEST_OLD_SAVE) and not SaveGame.is_too_new(TEST_OLD_SAVE), "an old-format save counts as a save")
+	_check(SaveGame.apply(TEST_OLD_SAVE, player, day_night, village), "an old-format fixture save loads")
+	_check(is_equal_approx(player.health.current, 42.0) and player.inventory.count("coal") == 3, "the old-format fixture's contents are restored")
+	_check(is_equal_approx(day_night.hour, 9.5), "the old-format fixture's time is restored")
+	# A save from a newer build is reported, not loaded or lost.
+	var new_data: Dictionary = JSON.parse_string(fixture)
+	new_data["version"] = SaveGame.VERSION + 1
+	var new_file := FileAccess.open(TEST_OLD_SAVE, FileAccess.WRITE)
+	new_file.store_string(JSON.stringify(new_data))
+	new_file.close()
+	_check(SaveGame.is_too_new(TEST_OLD_SAVE) and not SaveGame.exists(TEST_OLD_SAVE), "a newer save is reported and not loaded")
+	_check(not SaveGame.apply(TEST_OLD_SAVE, player, day_night, village), "a newer save doesn't load")
+	menu.slot_paths = [TEST_OLD_SAVE, TEST_SLOT_2, TEST_SLOT_3]
+	menu._open_load_slots()
+	_check((menu._buttons.get_child(0) as Button).text.contains(tr("UI_SLOT_TOO_NEW")), "the load menu says a save is from a newer version")
+	DirAccess.remove_absolute(TEST_OLD_SAVE)
 
 	# Saving twice keeps the first save as the backup and leaves no temporary file.
 	player.health.current = 77.0

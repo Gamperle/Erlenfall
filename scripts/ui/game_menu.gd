@@ -164,7 +164,7 @@ func _open_new_game_slots() -> void:
 	for i in slot_paths.size():
 		var path := slot_paths[i]
 		var button := _add_slot_button(i)
-		if SaveGame.exists(path):
+		if SaveGame.exists(path) or SaveGame.is_too_new(path):
 			button.pressed.connect(_open_new_game_warning.bind(path))
 		else:
 			button.pressed.connect(func() -> void: new_game_chosen.emit(path))
@@ -184,7 +184,9 @@ func _open_slots(title_key: String) -> void:
 func _add_slot_button(index: int) -> Button:
 	var path := slot_paths[index]
 	var state := tr("UI_SLOT_EMPTY")
-	if SaveGame.is_damaged(path):
+	if SaveGame.is_too_new(path):
+		state = tr("UI_SLOT_TOO_NEW")
+	elif SaveGame.is_damaged(path):
 		state = tr("UI_SLOT_DAMAGED_BACKUP") if SaveGame.has_backup(path) else tr("UI_SLOT_DAMAGED")
 	elif SaveGame.exists(path):
 		state = SaveGame.saved_at_text(path)

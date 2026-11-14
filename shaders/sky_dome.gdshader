@@ -24,10 +24,12 @@ float hash13(vec3 p) {
 	return fract((p.x + p.y) * p.z);
 }
 
+// The earlier dot-product hash gave whole rows of lattice cells a shared bias, so the higher cloud octaves drew a
+// hard straight diagonal edge across the sky (#283). Keep this one free of that.
 float hash12(vec2 p) {
-	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-	p3 += dot(p3, p3.yzx + 33.33);
-	return fract((p3.x + p3.y) * p3.z);
+	p = fract(p * vec2(123.34, 456.21));
+	p += dot(p, p + 45.32);
+	return fract(p.x * p.y);
 }
 
 float value_noise(vec2 p) {
@@ -102,8 +104,10 @@ void fragment() {
 		vec2 plane = dir.xz / (dir.y + 0.12);
 		float density = cloud_density(plane * 0.9 + cloud_offset);
 		float mass = smoothstep(1.0 - cloud_coverage, 1.0 - cloud_coverage + 0.25, density);
-		float shifted = cloud_density(plane * 0.9 + cloud_offset + vec2(0.06, 0.04));
-		vec3 cloud_colour = mix(cloud_light_color, cloud_shade_color, clamp((density - shifted) * 6.0 + 0.4, 0.0, 1.0));
+		// Thin edges catch the light and thick cores sit in shade. One density sample does it; the old shifted second
+		// sample doubled the cloud cost and sharpened that streak (#283, #284).
+		float thickness = clamp((density - (1.0 - cloud_coverage)) * 2.5, 0.0, 1.0);
+		vec3 cloud_colour = mix(cloud_light_color, cloud_shade_color, thickness * 0.8);
 		cloud_colour = mix(cloud_colour, cloud_shade_color * 1.1, cloud_gloom * 0.7);
 		float cloud_alpha = mass * smoothstep(0.0, 0.2, dir.y) * mix(0.9, 1.0, cloud_gloom);
 		float out_alpha = cloud_alpha + colour.a * (1.0 - cloud_alpha);

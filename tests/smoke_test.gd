@@ -256,6 +256,13 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 				steepest_west = maxf(steepest_west, _slope_degrees(terrain, x, z))
 	_check(steepest_west < 45.0, "the river's west valley sides can be climbed (steepest %.1f degrees)" % steepest_west)
 
+	# The land around the north farm and its field, far from the river, can be climbed too (#345).
+	var steepest_farm := 0.0
+	for x in range(60, 230, 2):
+		for z in range(-170, -10, 2):
+			steepest_farm = maxf(steepest_farm, _slope_degrees(terrain, x, z))
+	_check(steepest_farm < 45.0, "the land around the north farm can be climbed (steepest %.1f degrees)" % steepest_farm)
+
 	_check(terrain.building_sites.size() == 2, "the assembly building and the fort each have a site")
 	for site: Dictionary in terrain.building_sites:
 		_test_building_site(terrain, site)

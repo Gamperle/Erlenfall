@@ -25,6 +25,8 @@ const SHOULDER_OFFSET := 0.8
 const CONVERSATION_SWING := 0.45
 
 const GROUP := "player"
+## Said when a projectile needs a launcher, such as a bow, and the player carries none that fits.
+const NEED_LAUNCHER_NOTICE := "UI_NEED_BOW"
 const PLAYER_CLOTH_COLOR := Color(0.45, 0.3, 0.2)
 const MAX_HEALTH := 100.0
 const REGEN_DELAY := 8.0
@@ -114,6 +116,9 @@ var _busy := false
 var _look_before_conversation: Variant = null
 var _attack_cooldown := 0.0
 var _attack_windup := 0.0
+## How long the attack button has been held, or -1 when it isn't (see HeavySwing).
+var _charge := -1.0
+var _swing_heavy := false
 var _ranged_cooldown := 0.0
 var _dodge_time := 0.0
 var _dodge_cooldown := 0.0
@@ -304,7 +309,7 @@ func fire_ranged(action: String) -> bool:
 				launchers.append(type["requires_item"])
 			strength = inventory.best_launcher_multiplier(launchers)
 			if strength == 0.0:
-				notice.emit("UI_NEED_" + String(type["requires_item"]).to_upper())
+				notice.emit(NEED_LAUNCHER_NOTICE)
 				return false
 		var ammo := inventory.take_best_ranged(type["ammo_item"])
 		if ammo == 0.0:
@@ -336,9 +341,13 @@ func set_torch_lit(lit: bool) -> void:
 
 ## Starts a swing. The hit lands after a short windup.
 ## Starts a swing if one can start now, and reports whether it did.
-func attack() -> bool:
+func attack(heavy := false) -> bool:
 	var ready_to_swing := _attack_cooldown <= 0.0 and not is_blocking() and not is_dodging()
 	if ready_to_swing:
+		_swing_heavy = heavy and HeavySwing.enabled()
+		if _swing_heavy and not spend_stamina(HeavySwing.stamina_cost()):
+			_swing_heavy = false
+			notice.emit("UI_TOO_TIRED_HEAVY")
 		_attack_cooldown = ATTACK_COOLDOWN
 		_attack_windup = ATTACK_WINDUP
 		_body_mesh.play_action(ATTACK_ANIMATION)
@@ -417,7 +426,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		# Screen units, so the window's size and the interface scale don't change the sensitivity.
 		_look(event.screen_relative * MOUSE_SENSITIVITY * Settings.look_speed)
 	elif event.is_action_pressed("attack"):
-		attack()
+		if HeavySwing.enabled():
+			_charge = 0.0
+		else:
+			attack()
+	elif event.is_action_released("attack") and _charge >= 0.0:
+		var held := _charge
+		_charge = -1.0
+		attack(HeavySwing.is_charged(held))
 	elif event.is_action_pressed("shoot"):
 		fire_ranged("shoot")
 	elif event.is_action_pressed("throw"):
@@ -512,6 +528,8 @@ func _update_combat(delta: float) -> void:
 	_dodge_cooldown = maxf(_dodge_cooldown - delta, 0.0)
 	_block_broken = maxf(_block_broken - delta, 0.0)
 	_update_stamina(delta)
+	if _charge >= 0.0:
+		_charge = _charge + delta if Input.is_action_pressed("attack") else -1.0
 	if _tool_seconds > 0.0:
 		_tool_seconds -= delta
 		if _tool_seconds <= 0.0:
@@ -566,7 +584,7 @@ func swing_damage() -> float:
 
 
 func _land_attack() -> void:
-	var damage := swing_damage()
+	var damage := swing_damage() * (HeavySwing.damage_factor() if _swing_heavy else 1.0)
 	for node in get_tree().get_nodes_in_group(Enemy.GROUP):
 		var enemy := node as Enemy
 		var offset := enemy.global_position - global_position

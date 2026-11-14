@@ -115,6 +115,17 @@ Holding the sneak key (Ctrl, or pressing the left stick) slows the player and ma
 | `sneak_speed_factor` | `0.5` | The share of walking speed that a sneaking player moves at. Sneaking replaces sprinting. A default pick, for the maintainer to balance |
 | `sneak_notice_factor` | `0.35` | The share of an enemy's `aggro_range` at which it notices a sneaking player: 14 m becomes 4.9 m for a goblin. A default pick, for the maintainer to balance |
 
+## Heavy swing
+
+Holding the attack button charges a heavier hit, released on letting go ([#295](https://github.com/Gamperle/Erlenfall/issues/295)). A tap swings as before. A heavy swing spends stamina, so it needs the `stamina` flag to cost anything, and with too little stamina the swing falls back to a normal one. The numbers are default picks, for the maintainer to balance.
+
+| Name | Default | Effect |
+|---|---|---|
+| `heavy_swing` | `true` | Turns charging on or off. Off swings on the button press, as before |
+| `heavy_swing_charge_seconds` | `0.6` | How long the button must be held for a heavy swing |
+| `heavy_swing_damage_factor` | `2.0` | How many times the normal damage a heavy swing does |
+| `heavy_swing_stamina_cost` | `30.0` | The stamina a heavy swing costs |
+
 ## Talking to enemies
 
 Part of [#206](https://github.com/Gamperle/Erlenfall/issues/206). An enemy with a `talk` block in [`data/enemies.json`](../data/enemies.json) can be spoken to. Today that is the goblin; wolves and goblin brutes cannot. When such an enemy notices the player from beyond `range` and walks up, it stops within `range` for `wary_seconds` before attacking. While it waits, the interact key opens the conversation named by `dialogue` in [`data/dialogue.json`](../data/dialogue.json). An enemy that noticed the player at arm's length, or that has already been hit or provoked, attacks at once.

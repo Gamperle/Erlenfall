@@ -32,12 +32,13 @@ static func load_saved() -> void:
 	language = ""
 	look_speed = 1.0
 	graphics = "high"
+	var bindings: Variant = null
 	text_size = 1.0
 	dialogue_opacity = 1.0
 	if FileAccess.file_exists(path):
 		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 		if data is Dictionary:
-			if data.get("language") in LANGUAGES:
+			if data.get("language") is String and data["language"] in LANGUAGES:
 				language = data["language"]
 			if data.get("look_speed") is float:
 				look_speed = clampf(data["look_speed"], MIN_LOOK_SPEED, MAX_LOOK_SPEED)
@@ -47,6 +48,8 @@ static func load_saved() -> void:
 				text_size = data["text_size"]
 			if data.get("dialogue_opacity") is float:
 				dialogue_opacity = clampf(data["dialogue_opacity"], MIN_DIALOGUE_OPACITY, 1.0)
+			bindings = data.get("bindings")
+	KeyBindings.load_data(bindings)
 	apply_language()
 	apply_text_size()
 
@@ -59,6 +62,7 @@ static func save() -> void:
 	file.store_string(JSON.stringify({
 		"language": language, "look_speed": look_speed, "graphics": graphics,
 		"text_size": text_size, "dialogue_opacity": dialogue_opacity,
+		"bindings": KeyBindings.to_data(),
 	}, "\t"))
 
 

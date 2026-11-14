@@ -7,6 +7,7 @@ signal new_game_chosen(path: String)
 signal resume_chosen
 signal quit_chosen
 signal graphics_changed
+signal bindings_changed
 signal text_size_changed
 
 const PANEL_WIDTH := 420.0
@@ -24,6 +25,7 @@ var _confirming := false
 var _slot_screen := false
 var _settings_open := false
 var _leave_settings: Callable
+var _controls: ControlsMenu
 
 
 func _ready() -> void:
@@ -121,7 +123,22 @@ func open_settings(leave: Callable) -> void:
 	opacity.value_changed.connect(_choose_dialogue_opacity)
 	_add_setting("UI_DIALOGUE_OPACITY", opacity)
 
+	_add_action("UI_CONTROLS_TITLE", open_controls)
 	_add_action("UI_BACK", _close_settings)
+	_show()
+
+
+## The page for remapping the keyboard and gamepad controls.
+func open_controls() -> void:
+	_settings_open = false
+	_title.text = tr("UI_CONTROLS_TITLE")
+	_message.visible = false
+	_asset_note.visible = false
+	_clear_buttons()
+	_controls = ControlsMenu.new()
+	_controls.changed.connect(_save_bindings)
+	_controls.back_chosen.connect(_close_controls)
+	_buttons.add_child(_controls)
 	_show()
 
 
@@ -132,6 +149,12 @@ func close() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if _controls != null and _controls.is_inside_tree():
+		if event.is_action_pressed("ui_cancel") and not _controls.is_listening():
+			_close_controls()
+		if event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause"):
+			get_viewport().set_input_as_handled()
+		return
 	if is_open() and _settings_open and (event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause")):
 		_close_settings()
 		get_viewport().set_input_as_handled()
@@ -210,6 +233,16 @@ func _open_new_game_warning(path: String) -> void:
 	_show()
 
 
+func _close_controls() -> void:
+	_controls = null
+	open_settings(_leave_settings)
+
+
+func _save_bindings() -> void:
+	Settings.save()
+	bindings_changed.emit()
+
+
 func _close_settings() -> void:
 	Settings.save()
 	_leave_settings.call()
@@ -260,7 +293,8 @@ func _show() -> void:
 	_panel.visible = true
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	_first_focusable(_buttons).grab_focus()
+	if _controls == null or not _controls.is_inside_tree():
+		_first_focusable(_buttons).grab_focus()
 
 
 func _first_focusable(parent: Node) -> Control:

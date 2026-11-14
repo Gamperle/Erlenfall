@@ -135,6 +135,10 @@ UI_LOOK_SPEED,Look speed,Blickgeschwindigkeit
 UI_GRAPHICS,Graphics,Grafik
 UI_TEXT_SIZE,Text size,Textgröße
 UI_DIALOGUE_OPACITY,Dialogue panel opacity,Deckkraft des Dialogfelds
+UI_VOLUME_MASTER,Master volume,Gesamtlautstärke
+UI_VOLUME_MUSIC,Music volume,Musiklautstärke
+UI_VOLUME_EFFECTS,Effects volume,Effektlautstärke
+UI_VOLUME_AMBIENCE,Ambience volume,Umgebungslautstärke
 UI_GRAPHICS_LOW,Low,Niedrig
 UI_GRAPHICS_MEDIUM,Medium,Mittel
 UI_GRAPHICS_HIGH,High,Hoch

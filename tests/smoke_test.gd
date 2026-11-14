@@ -2208,7 +2208,7 @@ func _test_settings(scene: Node, player: Player) -> void:
 	TranslationServer.set_locale("en")
 	menu.open_pause()
 	menu._buttons.get_child(1).pressed.emit()
-	_check(menu._settings_open and menu._buttons.get_child_count() == 7, "the pause menu opens the settings")
+	_check(menu._settings_open and menu._buttons.get_child_count() == 7 + AudioBuses.ALL.size(), "the pause menu opens the settings")
 
 	menu._choose_language(2)
 	await process_frame
@@ -2227,6 +2227,16 @@ func _test_settings(scene: Node, player: Player) -> void:
 	menu._choose_look_speed(2.0)
 	menu._choose_text_size(2)
 	menu._choose_dialogue_opacity(0.5)
+	menu._choose_volume(0.25, AudioBuses.MUSIC)
+	menu._choose_volume(0.0, AudioBuses.AMBIENCE)
+	_check(AudioServer.get_bus_index(AudioBuses.EFFECTS) != -1 and AudioServer.get_bus_send(AudioServer.get_bus_index(AudioBuses.MUSIC)) == AudioBuses.MASTER, "the Music, Effects, and Ambience buses feed into Master")
+	_check(is_equal_approx(AudioServer.get_bus_volume_db(AudioServer.get_bus_index(AudioBuses.MUSIC)), linear_to_db(0.25)) and AudioServer.is_bus_mute(AudioServer.get_bus_index(AudioBuses.AMBIENCE)), "a volume slider changes its bus at once")
+	var test_player := AudioStreamPlayer.new()
+	AudioBuses.route(test_player, AudioBuses.EFFECTS)
+	_check(test_player.bus == AudioBuses.EFFECTS, "sound code can pick a bus")
+	AudioBuses.route(test_player, "Nonsense")
+	_check(test_player.bus == AudioBuses.MASTER, "an unknown bus falls back to Master")
+	test_player.free()
 	var dialogue_ui: DialogueUI = scene.get_node("DialogueUI")
 	dialogue_ui.refresh_style()
 	_check(ThemeDB.get_project_theme().default_font_size == roundi(Settings.BASE_FONT_SIZE * 1.5), "a larger text size scales the interface text")
@@ -2243,14 +2253,21 @@ func _test_settings(scene: Node, player: Player) -> void:
 	Settings.load_saved()
 	_check(Settings.language == "de" and Settings.look_speed == 2.0 and Settings.graphics == "high", "settings are remembered")
 	_check(Settings.text_size == 1.5 and is_equal_approx(Settings.dialogue_opacity, 0.5), "the text size and dialogue opacity are remembered")
+	_check(is_equal_approx(Settings.volumes[AudioBuses.MUSIC], 0.25) and Settings.volumes[AudioBuses.AMBIENCE] == 0.0 and Settings.volumes[AudioBuses.MASTER] == Settings.DEFAULT_VOLUME, "volumes are remembered")
 	menu.close()
 	player.set_busy(false)
+
+	var bad_volumes := FileAccess.open(TEST_SETTINGS, FileAccess.WRITE)
+	bad_volumes.store_string('{"volumes": {"Master": 7, "Music": "loud", "Effects": -1}}')
+	bad_volumes.close()
+	Settings.load_saved()
+	_check(Settings.volumes[AudioBuses.MASTER] == 1.0 and Settings.volumes[AudioBuses.MUSIC] == Settings.DEFAULT_VOLUME and Settings.volumes[AudioBuses.EFFECTS] == 0.0, "volumes are checked when loaded")
 
 	var damaged := FileAccess.open(TEST_SETTINGS, FileAccess.WRITE)
 	damaged.store_string("not json")
 	damaged.close()
 	Settings.load_saved()
-	_check(Settings.language == "" and Settings.look_speed == 1.0 and Settings.graphics == "high" and Settings.text_size == 1.0 and Settings.dialogue_opacity == 1.0, "damaged settings fall back to defaults")
+	_check(Settings.language == "" and Settings.look_speed == 1.0 and Settings.graphics == "high" and Settings.text_size == 1.0 and Settings.dialogue_opacity == 1.0 and Settings.volumes == Settings.default_volumes(), "damaged settings fall back to defaults")
 	_check(ThemeDB.get_project_theme().default_font_size == Settings.BASE_FONT_SIZE, "default settings use the normal text size")
 	Settings.path = Settings.DEFAULT_PATH
 	DirAccess.remove_absolute(TEST_SETTINGS)
@@ -2276,7 +2293,7 @@ func _test_key_bindings(scene: Node) -> void:
 	var menu: GameMenu = scene.get_node("GameMenu")
 	menu.open_pause()
 	menu._buttons.get_child(1).pressed.emit()
-	menu._buttons.get_child(5).pressed.emit()
+	menu._buttons.get_child(5 + AudioBuses.ALL.size()).pressed.emit()
 	await process_frame
 	var page: ControlsMenu = menu._controls
 	_check(menu._title.text == tr("UI_CONTROLS_TITLE") and page != null, "the settings open the Controls page")

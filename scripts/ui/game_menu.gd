@@ -123,6 +123,15 @@ func open_settings(leave: Callable) -> void:
 	opacity.value_changed.connect(_choose_dialogue_opacity)
 	_add_setting("UI_DIALOGUE_OPACITY", opacity)
 
+	for bus_name: String in AudioBuses.ALL:
+		var volume := HSlider.new()
+		volume.max_value = 1.0
+		volume.step = 0.05
+		volume.value = Settings.volumes[bus_name]
+		volume.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		volume.value_changed.connect(_choose_volume.bind(bus_name))
+		_add_setting("UI_VOLUME_" + bus_name.to_upper(), volume)
+
 	_add_action("UI_CONTROLS_TITLE", open_controls)
 	_add_action("UI_BACK", _close_settings)
 	_show()
@@ -275,6 +284,10 @@ func _choose_text_size(index: int) -> void:
 
 func _choose_dialogue_opacity(value: float) -> void:
 	Settings.dialogue_opacity = value
+
+
+func _choose_volume(value: float, bus_name: String) -> void:
+	Settings.set_volume(bus_name, value)
 
 
 func _add_setting(text_key: String, control: Control) -> void:

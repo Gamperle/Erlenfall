@@ -394,3 +394,21 @@ UI_JOURNAL_MAP_HINT,WASD / left stick: move the map   Mouse wheel / + and - / LB
 UI_FORGE_STOP_KEYBOARD,Esc,Esc
 UI_FORGE_STOP_GAMEPAD,B,B
 UI_DIALOGUE_HINT,%s: choose,%s: auswählen
+PROMPT_READ_SIGN,Read the sign,Das Schild lesen
+PROMPT_READ_NOTE,Read the note,Die Notiz lesen
+PROMPT_READ_BOOK,Read the book,Das Buch lesen
+UI_READING_HINT,%s: close,%s: schließen
+UI_READING_CLOSE,Close,Schließen
+UI_NOTE_ADDED,Added to your journal: %s,Zum Tagebuch hinzugefügt: %s
+NOTE_VILLAGE_SIGN_TITLE,Welcome to Erlenfall,Willkommen in Erlenfall
+NOTE_VILLAGE_SIGN_TEXT,"ERLENFALL\nNamed for the alders on the rockfall.\n\nThe Alder Bough inn: straight on, by the square.\nThe forge: to the east.\nThe town hall: north.\nTravellers, mind the bridge.","ERLENFALL\nBenannt nach den Erlen auf dem Felssturz.\n\nGasthaus Zum Erlenzweig: geradeaus, am Platz.\nDie Schmiede: nach Osten.\nDas Rathaus: nach Norden.\nReisende, Vorsicht auf der Brücke."
+NOTE_NOTICE_BOARD_TITLE,Notice board,Anschlagbrett
+NOTE_NOTICE_BOARD_TEXT,"BY ORDER OF THE MAYOR\nEvery repair, nail, board and sack of grain goes through the town hall. Ask first, then work.\n\nThe spring assembly meets under the old alder. All who can walk are asked to come.","AUF ANORDNUNG DES BÜRGERMEISTERS\nJede Reparatur, jeder Nagel, jedes Brett und jeder Sack Korn läuft über das Rathaus. Erst fragen, dann arbeiten.\n\nDie Frühjahrsversammlung tagt unter der alten Erle. Wer gehen kann, ist gebeten zu kommen."
+NOTE_NORTH_ROAD_TITLE,The north road,Die Nordstraße
+NOTE_NORTH_ROAD_TEXT,NORTH ROAD\nTo the Slide and the mine. The road beyond is buried.\nTo the pass and Talbrück: goat path only.\n\nThe slope still shifts after heavy rain. Do not linger.,NORDSTRASSE\nZum Erdrutsch und zur Mine. Die Straße dahinter ist verschüttet.\nZum Pass und nach Talbrück: nur ein Ziegenpfad.\n\nDer Hang rutscht nach starkem Regen noch immer. Nicht verweilen.
+NOTE_MINE_NOTICE_TITLE,Notice at the mine,Anschlag an der Mine
+NOTE_MINE_NOTICE_TEXT,"MINE CLOSED\nBy order of the mayor. Nobody goes in.\n\nScratched into the board below, in another hand:\nJorin. Matthis. We have not forgotten.","MINE GESCHLOSSEN\nAuf Anordnung des Bürgermeisters. Niemand geht hinein.\n\nDarunter, in anderer Handschrift ins Brett geritzt:\nJorin. Matthis. Wir haben euch nicht vergessen."
+NOTE_GRANDFATHER_LETTER_TITLE,A letter from Grandfather,Ein Brief von Großvater
+NOTE_GRANDFATHER_LETTER_TEXT,"To whoever keeps this house after me,\n\nThe hinges want oil, the roof wants nails, and the village wants a little patience. Start with the nails. Bertram will show you how to hold the hammer, and Hedda will tell you whether you hold it well.\n\nA good door is not made in a day. Neither is a village.\n\nAnselm","An den, der dieses Haus nach mir behält,\n\nDie Angeln wollen Öl, das Dach will Nägel, und das Dorf will ein wenig Geduld. Fang mit den Nägeln an. Bertram zeigt dir, wie man den Hammer hält, und Hedda sagt dir, ob du es gut machst.\n\nEine gute Tür baut man nicht an einem Tag. Ein Dorf auch nicht.\n\nAnselm"
+NOTE_CHRONICLE_TITLE,The Erlenfall chronicle,Die Chronik von Erlenfall
+NOTE_CHRONICLE_TEXT,"Kept by Albrecht, in his own hand.\n\nThe miners came and named the place for the alders on the rockfall. The first beer was poured at the inn, and its fire has never gone out. The spring assembly meets under the old alder on the hill.\n\nThe goblin winter came, and the palisade held. Only its ditch remains.\n\nThen the mountain came down. (Today's date to be written in once I remember it.)","Geführt von Albrecht, in eigener Handschrift.\n\nDie Bergleute kamen und nannten den Ort nach den Erlen auf dem Felssturz. Das erste Bier wurde im Gasthaus eingeschenkt, und dessen Feuer ist nie erloschen. Die Frühjahrsversammlung tagt unter der alten Erle auf dem Hügel.\n\nDer Goblinwinter kam, und die Palisade hielt. Nur ihr Graben ist geblieben.\n\nDann kam der Berg herunter. (Das heutige Datum trage ich ein, sobald es mir einfällt.)"

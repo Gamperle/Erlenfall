@@ -147,6 +147,7 @@ func _run() -> void:
 	await _test_hud(scene, player)
 	await _test_map(scene, player)
 	await _test_journal(scene, player)
+	await _test_readables(scene, player)
 	_test_character_models(player)
 	_test_generated_props()
 	_test_feature_flags()
@@ -217,7 +218,7 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 	_check(downhill, "the river only flows downhill")
 
 	var misplaced := PackedStringArray()
-	for list in ["buildings", "fields", "npcs", "enemies", "repair_sites", "beds", "stations", "resources"]:
+	for list in ["buildings", "fields", "npcs", "enemies", "repair_sites", "beds", "stations", "resources", "readables"]:
 		for spot: Dictionary in layout[list]:
 			if terrain.river_clearance(spot["x"], spot["z"]) < 2.0 or _slope_degrees(terrain, spot["x"], spot["z"]) > 12.0:
 				misplaced.append("%s (%s, %s)" % [list, spot["x"], spot["z"]])
@@ -3714,17 +3715,126 @@ func _test_data_validation() -> void:
 	broken["village_layout.json"]["mine"].erase("opening_width")
 	broken["projectiles.json"]["arrow"]["ammo_item"] = "arrows"
 	broken["crafting.json"]["items"]["berries"]["use"]["heal"] = 0
+	broken["notes.json"]["village_sign"]["type"] = "scroll"
+	broken["notes.json"]["mine_notice"].erase("text")
+	broken["village_layout.json"]["readables"][0]["note"] = "lost_note"
+	broken["village_layout.json"]["readables"][1]["model"] = "tombstone"
 	var found := DataValidator.new().validate_files(broken)
 	for expected in [
 		"crafting.json: recipes[forge_axe]", "crafting.json: items[torch]: missing \"name\"", "quests.json: [arrival].objectives[see_grandmother].marker: unknown marker place \"nobody\"",
 		"dialogue.json: hedda[0].when.objective", "dialogue.json: hedda[0].nodes[send].effects[0].quest: unknown quest \"no_quest\"",
 		"dialogue.json: hedda[0].nodes[how_bad].next", "dialogue.json: [stranger]: unknown villager", "enemies.json: [goblin].drops[0].item: unknown item \"gold\"",
 		"enemies.json: [goblin].health", "village_layout.json: enemies[0].type", "village_layout.json: mine: missing \"opening_width\"", "villager_routines.json: [bertram][1]: a stop needs both", "projectiles.json: [arrow].ammo_item",
-		"crafting.json: items[berries].use.heal",
+		"crafting.json: items[berries].use.heal", "notes.json: [village_sign].type", "notes.json: [mine_notice]: missing \"text\"",
+		"village_layout.json: readables[lost_note].note: unknown text \"lost_note\"", "village_layout.json: readables[notice_board].model",
 	]:
 		_check(found.any(func(line: String) -> bool: return line.begins_with(expected) or line.contains(expected)), "the validator reports: %s" % expected + ("" if found.any(func(line: String) -> bool: return line.contains(expected)) else " (got %s)" % [found]))
 	var empty := DataValidator.new().validate_files({ "quests.json": [] })
 	_check(not empty.is_empty(), "a data file of the wrong kind is reported")
+
+
+## Signs, notes, and books in the world (#268): data, placement, the reading panel, and the journal.
+func _test_readables(scene: Node, player: Player) -> void:
+	var village: Village = scene.get_node("Village")
+	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Village.LAYOUT_PATH))
+	var texts := Readables.all()
+	_check(FeatureFlags.enabled("readables") and texts.size() >= 5, "there are at least five readable texts")
+	var placed := {}
+	var every_text_has_both_languages := true
+	var types_known := true
+	for note_id: String in texts:
+		var entry: Dictionary = texts[note_id]
+		types_known = types_known and Readables.TYPES.has(entry["type"])
+		for key: String in [entry["title"], entry["text"]]:
+			TranslationServer.set_locale("en")
+			var english := TranslationServer.translate(key)
+			TranslationServer.set_locale("de")
+			var german := TranslationServer.translate(key)
+			every_text_has_both_languages = every_text_has_both_languages and english != key and german != key and english != german
+	TranslationServer.set_locale("en")
+	_check(every_text_has_both_languages and types_known, "every readable has a title and text in English and German, and a known kind")
+	for spot: Dictionary in layout["readables"]:
+		placed[spot["note"]] = true
+		var node := village.get_node_or_null(String(spot["note"])) as Readable
+		_check(node != null and node.note_id == spot["note"] and node.is_in_group(Interactable.GROUP), "the readable %s stands in the world and can be used" % spot["note"])
+	_check(placed.size() == texts.size() and placed.size() >= 5, "every text is placed in the village")
+	_check(placed.has("grandfather_letter") and placed.has("notice_board") and placed.has("village_sign") and placed.has("mine_notice"), "the first set includes the village sign, the notice board, the mine note, and Grandfather's letter")
+	var types := {}
+	for note_id: String in texts:
+		types[texts[note_id]["type"]] = true
+	_check(types.size() == 3, "there are signs, notes, and books")
+	var sign_node: Readable = village.get_node("village_sign")
+	_check(sign_node.prompt() == "Read the sign" and (village.get_node("grandfather_letter") as Readable).prompt() == "Read the note" and (village.get_node("village_chronicle") as Readable).prompt() == "Read the book", "each kind of readable has its own prompt")
+	_check(sign_node.find_children("*", "MeshInstance3D", true, false).size() == 1 and sign_node.find_children("*", "CollisionShape3D", true, false).size() == 1, "a readable is built in code as one mesh with a collision shape")
+	for model: String in ModelBuilder.READABLE_MODELS:
+		var built := ModelBuilder.readable(model, Village.READABLE_SIZES[model])
+		_check(built.find_children("*", "MeshInstance3D", true, false).size() >= 1, "the %s model is built" % model)
+		built.free()
+
+	# Reading.
+	var ui: ReadingUI = scene.get_node("ReadingUI")
+	var saved_text_size := Settings.text_size
+	player.notes.load_data([])
+	player.quests.flags.erase("read_grandfather_letter")
+	_check(ui != null and not ui.is_open(), "the reading panel starts closed")
+	(village.get_node("grandfather_letter") as Readable).interact(player)
+	await process_frame
+	_check(ui.is_open() and player.is_busy() and scene.get_tree().paused, "using a letter opens the reading panel and pauses the game")
+	_check(_all_text(ui).contains("Anselm") and _all_text(ui).contains(tr("NOTE_GRANDFATHER_LETTER_TITLE")), "the panel shows the title and the text")
+	_check(ui.get_viewport().gui_get_focus_owner() != null and ui.is_ancestor_of(ui.get_viewport().gui_get_focus_owner()), "the close button has the focus, so a controller can close the panel")
+	_check(player.notes.has("grandfather_letter") and player.notes.count() == 1, "the first reading adds the text to the journal's notes")
+	_check(player.quests.flags.has("read_grandfather_letter"), "a text can set a story flag")
+	var down := InputEventAction.new()
+	down.action = "ui_down"
+	down.pressed = true
+	ui._input(down)
+	var read_again := InputEventAction.new()
+	read_again.action = "interact"
+	read_again.pressed = true
+	ui._input(read_again)
+	_check(not ui.is_open() and not player.is_busy() and not scene.get_tree().paused, "the interact key closes the panel and resumes the game")
+	(village.get_node("grandfather_letter") as Readable).interact(player)
+	_check(ui.is_open() and player.notes.count() == 1, "reading again doesn't add the note twice")
+	var cancel := InputEventAction.new()
+	cancel.action = "ui_cancel"
+	cancel.pressed = true
+	ui._input(cancel)
+	_check(not ui.is_open() and not scene.get_tree().paused, "cancel closes the panel")
+	ui.open_note("village_sign", player)
+	ui._close_button.pressed.emit()
+	_check(not ui.is_open() and player.notes.count() == 2, "the close button closes the panel, and a sign is noted too")
+	ui.open_note("no_such_text", player)
+	_check(not ui.is_open() and not player.is_busy(), "an unknown text opens nothing")
+
+	# Text size and high contrast follow the settings.
+	Settings.text_size = 1.5
+	ui.open_note("notice_board", player)
+	_check(ui._title.get_theme_font_size("font_size") == Settings.scaled_font_size(ReadingUI.TITLE_FONT_SIZE), "the panel follows the text size setting")
+	ui.close()
+	Settings.text_size = saved_text_size
+	var saved_contrast := Settings.high_contrast
+	Settings.high_contrast = true
+	Accessibility.apply_theme()
+	ui.open_note("notice_board", player)
+	_check(ui._text.theme_type_variation == &"InkLabel" and ui._text.get_theme_color("font_color").get_luminance() < 0.2, "high contrast draws the text in plain black ink on the page")
+	ui.close()
+	Settings.high_contrast = saved_contrast
+	Accessibility.apply_theme()
+
+	# The journal shows what was read, in the language chosen, and it survives a save.
+	var journal: Journal = scene.get_node("Journal")
+	journal.open()
+	journal.select_tab(Journal.TAB_NOTES)
+	_check(_all_text(journal).contains(tr("NOTE_VILLAGE_SIGN_TITLE")) and _all_text(journal).contains(tr("NOTE_GRANDFATHER_LETTER_TITLE")), "the journal's notes tab lists what was read")
+	journal.close()
+	var restored := JournalNotes.new()
+	restored.load_data(JSON.parse_string(JSON.stringify(player.notes.to_data())))
+	_check(restored.count() == player.notes.count() and restored.has("grandfather_letter"), "read texts survive a save")
+	TranslationServer.set_locale("de")
+	_check(restored.entries().any(func(note: Dictionary) -> bool: return note["title"] == "Ein Brief von Großvater"), "a read text shows in German when the language changes")
+	TranslationServer.set_locale("en")
+	player.notes.load_data([])
+	player.quests.flags.erase("read_grandfather_letter")
 
 
 func _test_rain_cover(scene: Node, weather: Weather) -> void:

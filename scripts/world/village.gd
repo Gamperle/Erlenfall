@@ -55,6 +55,11 @@ const BUSH_DRAW_DISTANCE := 450.0
 ## How far from the mine's plaza and its trail the landslide's loose boulders stay.
 const MINE_BOULDER_MARGIN := 4.0
 const WOOD_PILE_SHAPE := Vector3(1.0, 0.9, 1.5)
+## The box each readable model fills (width, height, depth), and the model each kind of text gets by default.
+const READABLE_SIZES: Dictionary = {
+	"signpost": Vector3(1.4, 1.9, 0.3), "board": Vector3(2.4, 1.8, 0.3), "note": Vector3(0.8, 1.0, 0.7), "book": Vector3(0.8, 1.1, 0.7),
+}
+const READABLE_DEFAULT_MODELS: Dictionary = { "sign": "signpost", "note": "note", "book": "book" }
 
 @export var terrain: Terrain
 
@@ -76,8 +81,8 @@ func _ready() -> void:
 		_building_spots.append(Vector2(building["x"], building["z"]))
 	var mine_data: Dictionary = layout["mine"]
 	_building_spots.append(Vector2(mine_data["x"], mine_data["z"]))
-	for list: String in ["npcs", "enemies", "stations", "beds", "repair_sites", "resources"]:
-		for spot: Dictionary in layout[list]:
+	for list: String in ["npcs", "enemies", "stations", "beds", "repair_sites", "resources", "readables"]:
+		for spot: Dictionary in layout.get(list, []):
 			_busy_spots.append(Vector2(spot["x"], spot["z"]))
 	for field: Dictionary in layout["fields"]:
 		_add_field(field)
@@ -131,6 +136,9 @@ func _ready() -> void:
 		_add_box_interactable(repair_site, site)
 	for bed_data: Dictionary in layout["beds"]:
 		_add_box_interactable(Bed.new(), bed_data)
+	if FeatureFlags.enabled("readables"):
+		for readable_data: Dictionary in layout.get("readables", []):
+			_add_readable(readable_data)
 	for resource: Dictionary in layout["resources"]:
 		_add_resource(resource)
 	var mine := Mine.new()
@@ -219,6 +227,31 @@ func _add_box_interactable(node: Interactable, data: Dictionary) -> void:
 	collision.shape = shape
 	collision.position = Vector3.UP * (size.y / 2.0)
 	node.add_child(collision)
+
+
+## A sign, note, or book for one text in data/notes.json. The entry gives the text's id as "note", and
+## may name a "model" (signpost, board, note, or book) in place of the default for the text's kind.
+func _add_readable(data: Dictionary) -> void:
+	var note_id: String = data["note"]
+	if not Readables.has(note_id):
+		push_error("Unknown readable text: %s" % note_id)
+		return
+	var model: String = data.get("model", READABLE_DEFAULT_MODELS[Readables.type_of(note_id)])
+	var box_size: Vector3 = READABLE_SIZES[model]
+	var readable := Readable.new()
+	readable.name = note_id
+	readable.note_id = note_id
+	readable.prompt_key = Readables.prompt_key(note_id)
+	readable.position = _ground_position(data["x"], data["z"])
+	readable.rotation_degrees.y = data.get("rotation", 0.0)
+	add_child(readable)
+	readable.add_child(ModelBuilder.readable(model, box_size))
+	var shape := BoxShape3D.new()
+	shape.size = box_size
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	collision.position = Vector3.UP * (box_size.y / 2.0)
+	readable.add_child(collision)
 
 
 func _add_resource(data: Dictionary) -> void:

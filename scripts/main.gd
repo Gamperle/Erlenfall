@@ -82,6 +82,7 @@ func _ready() -> void:
 	add_child(_map)
 	_map.setup(_terrain, _village, _player, _ui)
 	_journal = Journal.create(self, _player, _ui, _map.world_map)
+	ReadingUI.create(self)
 
 	_player.quests.changed.connect(_on_quests_changed)
 	_player.inventory.changed.connect(_update_quest_label)

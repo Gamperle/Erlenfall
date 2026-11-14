@@ -939,6 +939,50 @@ func _test_torch(player: Player) -> void:
 	DirAccess.remove_absolute(TEST_FLAGS_B)
 
 
+func _test_cooking(scene: Node, player: Player, ui: CraftingUI) -> void:
+	var village: Village = scene.get_node("Village")
+	var campfire := village.get_node_or_null("campfire") as CraftingStation
+	_check(campfire != null and campfire.station_id == "campfire", "the village has a campfire station")
+	_check(campfire.find_children("*", "CampfireFire", true, false).size() == 1, "the campfire has a flame")
+	_check(CraftingData.skill_ids().has("cooking") and CraftingData.skill_name("cooking") != "SKILL_COOKING", "cooking is a skill with a name")
+	_check(CraftingData.heal_amount("cooked_meat") > CraftingData.heal_amount("meat"), "cooked meat heals more than raw meat")
+	player.inventory.add("meat", 2)
+	player.inventory.add("berries", 5)
+	player.inventory.add("healing_herb")
+	var xp_before: int = player.skill_xp.get("cooking", 0)
+	ui.open_station("campfire", "Campfire", player)
+	ui.add_material("meat")
+	ui.craft()
+	_check(player.inventory.count("cooked_meat") == 1 and player.inventory.count("meat") == 1, "meat is cooked at the campfire")
+	ui.add_material("berries")
+	ui.add_material("berries")
+	ui.add_material("berries")
+	ui.craft()
+	_check(player.inventory.count("berry_compote") == 1, "three berries make a compote")
+	ui.add_material("meat")
+	ui.add_material("berries")
+	ui.add_material("berries")
+	ui.add_material("healing_herb")
+	ui.craft()
+	_check(player.inventory.count("hearty_stew") == 1, "meat, berries, and a herb make a stew")
+	_check(player.skill_xp.get("cooking", 0) > xp_before, "cooking gives practice")
+	ui.close()
+	player.health.damage(80.0)
+	ui.open_inventory(player)
+	ui.use_item("hearty_stew")
+	_check(is_equal_approx(player.health.current, 80.0), "a stew heals")
+	ui.close()
+	player.health.restore()
+	for item_id in ["cooked_meat", "berry_compote"]:
+		player.inventory.remove(item_id)
+	player.inventory.remove("berries", player.inventory.count("berries"))
+	_write_flags(TEST_FLAGS_A, { "flags": { "cooking": false } })
+	FeatureFlags.load_layers([TEST_FLAGS_A])
+	_check(CraftingData.recipes_for("campfire").is_empty(), "cooking can be switched off")
+	FeatureFlags.load_layers()
+	DirAccess.remove_absolute(TEST_FLAGS_A)
+
+
 func _test_healing(player: Player, ui: CraftingUI) -> void:
 	player.inventory.add("healing_herb", 2)
 	ui.open_station("furnace", "Furnace", player)
@@ -1042,6 +1086,7 @@ func _test_crafting(scene: Node, player: Player) -> void:
 	ui.close()
 	_check(not ui.is_open(), "crafting screen closes")
 	_test_healing(player, ui)
+	_test_cooking(scene, player, ui)
 
 	ui.open_station("anvil", "Anvil", player)
 	ui.add_material("iron_ingot")

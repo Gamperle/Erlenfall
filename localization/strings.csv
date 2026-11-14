@@ -20,6 +20,7 @@ UI_SKILL_UP,Your %s skill rose to level %d.,Deine Fertigkeit %s ist auf Stufe %d
 SKILL_SMITHING,Smithing,Schmieden
 SKILL_ALCHEMY,Alchemy,Alchemie
 SKILL_CARPENTRY,Carpentry,Tischlerei
+SKILL_COOKING,Cooking,Kochen
 UI_FORGING,Forging %s: strike %d of %d,Schmieden: %s – Schlag %d von %d
 UI_FORGE_HINT,Press %s when the white marker is over the orange target. %s stops and loses materials.,"Drücke %s, wenn die weiße Markierung über dem orangen Ziel ist. %s bricht ab und kostet Material."
 UI_FORGE_ABANDONED,"You stopped forging. Half of the materials were saved, rounded down.","Du hast das Schmieden abgebrochen. Die Hälfte des Materials ist abgerundet erhalten geblieben."
@@ -30,6 +31,7 @@ UI_MADE,You made: %s,Hergestellt: %s
 UI_MADE_NEW,New recipe! You made: %s,Neues Rezept! Hergestellt: %s
 UI_FURNACE,Furnace,Schmelzofen
 UI_ANVIL,Anvil,Amboss
+UI_CAMPFIRE,Campfire,Lagerfeuer
 PROMPT_MINE_IRON,Mine iron ore,Eisenerz abbauen
 PROMPT_MINE_COAL,Mine coal,Kohle abbauen
 PROMPT_TAKE_WOOD,Take wood,Holz nehmen
@@ -394,6 +396,9 @@ UI_JOURNAL_MAP_HINT,WASD / left stick: move the map   Mouse wheel / + and - / LB
 UI_FORGE_STOP_KEYBOARD,Esc,Esc
 UI_FORGE_STOP_GAMEPAD,B,B
 UI_DIALOGUE_HINT,%s: choose,%s: auswählen
+ITEM_COOKED_MEAT,Cooked meat,Gebratenes Fleisch
+ITEM_BERRY_COMPOTE,Berry compote,Beerenkompott
+ITEM_HEARTY_STEW,Hearty stew,Kräftiger Eintopf
 PROMPT_READ_SIGN,Read the sign,Das Schild lesen
 PROMPT_READ_NOTE,Read the note,Die Notiz lesen
 PROMPT_READ_BOOK,Read the book,Das Buch lesen

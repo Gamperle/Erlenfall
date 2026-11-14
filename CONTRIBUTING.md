@@ -37,7 +37,7 @@ godot --headless --path . --import
 - Use Godot 4.7.2 and GDScript. C++ needs a profiling result that justifies it.
 - Follow the [GDScript style guide](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html).
 - Keep items, recipes, and quests in data files, not in code.
-- Put optional or tunable features behind [feature flags](docs/FEATURE_FLAGS.md). Mods can override flags, and the mod load order decides which one wins.
+- Put optional or tunable features behind [feature flags](docs/FEATURE_FLAGS.md). Mods can override flags, and the mod load order decides which one wins. See [the mod guide](docs/MODS.md) and its [example mod](docs/example_mods/README.md).
 - Add all player-facing text to `localization/strings.csv`, in English and German.
 - Play sounds on one of the audio buses in `scripts/audio_buses.gd`: `Music`, `Effects`, or `Ambience`, all feeding into `Master`. The buses are created at start-up, and the settings screen sets their volumes. Pick one with `AudioBuses.route(player, AudioBuses.EFFECTS)`.
 - Large binary files go through Git LFS. See `.gitattributes`.

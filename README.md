@@ -5,6 +5,7 @@ A free, open-source 3D fantasy RPG about crafting and rebuilding. A landslide cu
 Erlenfall is a placeholder name. The game is in early development: a first playable version with placeholder art.
 
 - [Game design and milestones](docs/GAME_DESIGN.md)
+- [Making mods](docs/MODS.md), with a [working example](docs/example_mods/README.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## Run it

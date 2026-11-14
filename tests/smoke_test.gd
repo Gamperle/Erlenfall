@@ -889,6 +889,7 @@ func _test_feature_flags() -> void:
 	FeatureFlags.load_layers()
 	_check(not CraftingData.find_recipe("furnace", { "wood": 1, "coal": 1 }).is_empty(), "the torch recipe is on by default")
 	_test_mod_loader()
+	_test_example_mod()
 
 
 func _test_mod_loader() -> void:
@@ -918,6 +919,32 @@ func _test_mod_loader() -> void:
 		DirAccess.remove_absolute(dir.path_join(sub))
 	DirAccess.remove_absolute(dir.path_join(ModLoader.LOAD_ORDER_FILE))
 	DirAccess.remove_absolute(dir)
+
+
+func _test_example_mod() -> void:
+	var dir := "res://docs/example_mods"
+	var files := ModLoader.flag_files(dir)
+	_check(files.size() == 1 and ModLoader.problem_lines().is_empty(), "the example mod is listed and has no problems")
+	FeatureFlags.load_layers(files)
+	_check(FeatureFlags.enabled("torch_burn_time_enabled") and FeatureFlags.enabled("torch_burns_out") and not FeatureFlags.enabled("minimap")
+			and FeatureFlags.value("torch_burn_seconds") == 300 and FeatureFlags.value("health_regen_per_second") == 4.0
+			and FeatureFlags.value("ambient_butterfly_count") == 60 and FeatureFlags.enabled("compass"), "the example mod changes what it says and nothing else")
+	# A broken copy fails safely: an error result, and the game's own values stay.
+	var broken := "user://smoke_test_example_broken"
+	DirAccess.make_dir_recursive_absolute(broken.path_join("cozy_torches"))
+	_write_flags(broken.path_join(ModLoader.LOAD_ORDER_FILE), { "mods": ["cozy_torches"] })
+	var file := FileAccess.open(broken.path_join("cozy_torches/feature_flags.json"), FileAccess.WRITE)
+	file.store_string(FileAccess.get_file_as_string(dir.path_join("cozy_torches/feature_flags.json")).replace("300,", "300"))
+	file.close()
+	FeatureFlags.load_layers(ModLoader.flag_files(broken))
+	_check(ModLoader.results[0]["status"] == ModLoader.ERROR and FeatureFlags.value("torch_burn_seconds") == 600 and FeatureFlags.enabled("minimap"),
+			"a broken example mod errors and changes nothing")
+	DirAccess.remove_absolute(broken.path_join("cozy_torches/feature_flags.json"))
+	DirAccess.remove_absolute(broken.path_join("cozy_torches"))
+	DirAccess.remove_absolute(broken.path_join(ModLoader.LOAD_ORDER_FILE))
+	DirAccess.remove_absolute(broken)
+	FeatureFlags.load_layers()
+	ModLoader.results = []
 
 
 func _test_broken_mods(dir: String) -> void:

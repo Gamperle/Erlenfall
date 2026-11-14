@@ -1,0 +1,11 @@
+{
+	"flags": {
+		"torch_burn_time_enabled": true,
+		"minimap": false
+	},
+	"values": {
+		"torch_burn_seconds": 300,
+		"health_regen_per_second": 4.0,
+		"ambient_butterfly_count": 60
+	}
+}

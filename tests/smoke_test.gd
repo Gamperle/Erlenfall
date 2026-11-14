@@ -1069,6 +1069,19 @@ func _test_crafting(scene: Node, player: Player) -> void:
 	player.skill_xp.clear()
 	_check(player.practice("smithing", 10) == 2 and player.practice("smithing", 1) == 0, "practice reports a rise only once")
 	player.skill_xp.clear()
+	var skill_of := func(recipe_id: String) -> String:
+		for recipe: Dictionary in CraftingData.recipes_for("furnace") + CraftingData.recipes_for("anvil"):
+			if recipe["id"] == recipe_id:
+				return recipe.get("skill", "")
+		return ""
+	_check(skill_of.call("brew_healing_potion") == "alchemy" and skill_of.call("make_short_bow") == "carpentry" and skill_of.call("make_long_bow") == "carpentry" and skill_of.call("make_arrows") == "carpentry" and skill_of.call("make_torch") == "carpentry", "potions use alchemy and bows, arrows and torches carpentry")
+	_check(skill_of.call("forge_sword") == "smithing" and skill_of.call("smelt_iron") == "smithing", "metal work stays smithing")
+	TranslationServer.set_locale("de")
+	_check(CraftingData.skill_name("alchemy") == "Alchemie" and CraftingData.skill_name("carpentry") == "Tischlerei", "the new skills have German names")
+	TranslationServer.set_locale("en")
+	_check(CraftingData.skill_name("carpentry") == "Carpentry", "the new skills have English names")
+	_check(player.practice("carpentry", 10) == 2 and player.skill_xp.get("smithing", 0) == 0, "each skill is practised on its own")
+	player.skill_xp.clear()
 	var clumsy := HammerGame.new(2, 1.0)
 	clumsy.marker = clamp(clumsy.target + 0.5, 0.0, 1.0) if clumsy.target < 0.5 else clumsy.target - 0.5
 	clumsy.strike()
@@ -2421,6 +2434,8 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	var saved_coal := player.inventory.count("coal")
 	var recipes := player.known_recipes.size()
 	player.skill_xp["smithing"] = 27
+	player.skill_xp["alchemy"] = 9
+	player.skill_xp["carpentry"] = 12
 	scene.save_game()
 	player.set_torch_lit(true)
 	player.torch_burned_seconds = 12.0
@@ -2452,6 +2467,7 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	_check(player.inventory.count("coal") == saved_coal, "inventory is restored")
 	_check(player.known_recipes.size() == recipes, "recipes are restored")
 	_check(player.skill_xp.get("smithing", 0) == 27, "skill practice is restored")
+	_check(player.skill_xp.get("alchemy", 0) == 9 and player.skill_xp.get("carpentry", 0) == 12, "alchemy and carpentry practice are restored")
 	_check(player.health.current == 100.0, "health is restored")
 	_check(player.torch_lit and player.torch_burned_seconds == 12.0 and player.torch_given, "the torch is restored")
 	player.set_torch_lit(false)

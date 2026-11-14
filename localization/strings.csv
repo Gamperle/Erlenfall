@@ -123,6 +123,8 @@ UI_QUIT,Quit,Beenden
 UI_LOAD_GAME,Load game,Spiel laden
 UI_SLOT,Slot %d: %s,Spielstand %d: %s
 UI_SLOT_EMPTY,empty,leer
+UI_SLOT_DAMAGED,damaged and unreadable,beschädigt und unlesbar
+UI_SLOT_DAMAGED_BACKUP,damaged - load the backup,beschädigt - Sicherung laden
 UI_SETTINGS,Settings,Einstellungen
 UI_LANGUAGE,Language,Sprache
 UI_LANGUAGE_SYSTEM,System language,Systemsprache

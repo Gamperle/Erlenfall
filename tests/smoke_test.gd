@@ -1118,6 +1118,7 @@ func _test_combat(scene: Node, player: Player) -> void:
 	_check(enemy.state != Enemy.State.IDLE, "goblins notice a nearby player")
 
 	await _test_sneaking(player, enemy)
+	await _test_stamina_costs(scene, player)
 
 	# Hold block through the goblin's attack.
 	Input.action_press("block")
@@ -1216,6 +1217,70 @@ func _test_combat(scene: Node, player: Player) -> void:
 	enemy._home = home
 	enemy.revive()
 	await _physics_frames(1)
+
+
+func _test_stamina_costs(scene: Node, player: Player) -> void:
+	await _physics_frames(20)
+	var bar: ProgressBar = scene.get_node("UI/StaminaBar")
+	_check(bar.visible, "the HUD shows a stamina bar")
+	var from := player.global_position + Vector3(0.0, 0.0, -5.0)
+	player.stamina = Player.MAX_STAMINA
+	_check(player.spend_stamina(Player.DODGE_STAMINA_COST) and player.stamina == Player.MAX_STAMINA - Player.DODGE_STAMINA_COST, "spending stamina lowers it")
+	_check(not player.spend_stamina(Player.MAX_STAMINA), "stamina can't be spent below zero")
+	player._stamina_pause = 0.0
+	player._update_stamina(1.0)
+	_check(player.stamina > Player.MAX_STAMINA - Player.DODGE_STAMINA_COST, "stamina refills when idle")
+
+	# A dodge needs stamina.
+	player._dodge_cooldown = 0.0
+	player.stamina = Player.DODGE_STAMINA_COST - 1.0
+	player.dodge()
+	_check(not player.is_dodging(), "a dodge fails without enough stamina")
+	player.stamina = Player.MAX_STAMINA
+	player.dodge()
+	_check(player.is_dodging() and player.stamina == Player.MAX_STAMINA - Player.DODGE_STAMINA_COST, "a dodge costs stamina")
+	player._dodge_time = 0.0
+	player._dodge_cooldown = 0.0
+
+	# Blocking a hit costs stamina, and a hit that is too strong breaks the block.
+	Input.action_press("block")
+	player.stamina = Player.MAX_STAMINA
+	player.health.restore()
+	player.take_hit(10.0, from)
+	_check(player.stamina == Player.MAX_STAMINA - 10.0 * Player.BLOCK_STAMINA_PER_DAMAGE and player.health.current == 100.0 - 10.0 * Player.BLOCK_DAMAGE_FACTOR, "a blocked hit drains stamina")
+	player.stamina = 5.0
+	player.health.restore()
+	player.take_hit(10.0, from)
+	_check(player.stamina == 0.0 and not player.is_blocking() and player.health.current == 90.0, "with no stamina left the block breaks and the hit lands in full")
+	player._block_broken = 0.0
+	Input.action_release("block")
+
+	# Sprinting drains stamina until the player is winded, and walking pace returns.
+	Input.action_press("sprint")
+	Input.action_press("move_forward")
+	player.velocity = Vector3(0.0, 0.0, -Player.SPRINT_SPEED)
+	player.stamina = 0.1
+	player._stamina_pause = 0.0
+	player._update_stamina(0.1)
+	_check(player.stamina == 0.0 and not player.is_sprinting(), "running dry stops the sprint")
+	Input.action_release("sprint")
+	Input.action_release("move_forward")
+	player.velocity = Vector3.ZERO
+	player._update_stamina(1.0)
+	player._stamina_pause = 0.0
+	player._update_stamina(1.0)
+	_check(player.stamina > Player.SPRINT_RESUME_STAMINA, "stamina comes back after a rest")
+	_check(not player._winded, "sprinting works again after a rest")
+
+	# Without the flag nothing costs stamina.
+	FeatureFlags._flags["stamina"] = false
+	player.stamina = 0.0
+	_check(player.spend_stamina(1000.0), "nothing costs stamina when the flag is off")
+	player._update_stamina(0.1)
+	_check(player.stamina == Player.MAX_STAMINA, "stamina stays full when the flag is off")
+	FeatureFlags._flags["stamina"] = true
+	player.stamina = Player.MAX_STAMINA
+	player.health.restore()
 
 
 func _test_sneaking(player: Player, enemy: Enemy) -> void:

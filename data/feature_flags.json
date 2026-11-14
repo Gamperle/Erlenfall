@@ -16,6 +16,7 @@
 		"screen_ambient_occlusion": true,
 		"ambient_life": true,
 		"sneaking": true,
+		"stamina": true,
 		"crafting_parts": true,
 		"crafting_skill": true,
 		"ranged_weapons": true,

@@ -6,6 +6,7 @@ extends CharacterBody3D
 signal notice(text_key: String)
 signal busy_changed
 signal hurt
+signal stamina_changed
 
 const WALK_SPEED := 3.5
 const SPRINT_SPEED := 6.5
@@ -38,6 +39,18 @@ const BLOCK_FACING := 0.2
 const DODGE_SPEED := 9.0
 const DODGE_SECONDS := 0.25
 const DODGE_COOLDOWN := 0.8
+## Stamina: sprinting and dodging spend it, blocking a hit costs some, and it refills when not spent.
+const MAX_STAMINA := 100.0
+const STAMINA_REGEN := 25.0
+const STAMINA_REGEN_DELAY := 0.8
+const SPRINT_STAMINA_PER_SECOND := 15.0
+## After running dry, sprinting waits until this much has come back.
+const SPRINT_RESUME_STAMINA := 20.0
+const DODGE_STAMINA_COST := 25.0
+## Blocking a hit costs this much stamina per point of damage the hit would have done.
+const BLOCK_STAMINA_PER_DAMAGE := 1.5
+## When a block breaks, the guard stays down this long.
+const BLOCK_BREAK_SECONDS := 1.5
 const INTERACT_DISTANCE := 3.5
 const INTERACT_FACING := 0.3
 const WEAPON_HAND_POSITION := Vector3(0.0, -0.58, -0.05)
@@ -94,6 +107,7 @@ var ranged_given := false
 var torch_burned_seconds := 0.0
 
 var health := Health.new(MAX_HEALTH)
+var stamina := MAX_STAMINA
 
 var _busy := false
 var _look_before_conversation: Variant = null
@@ -102,6 +116,9 @@ var _attack_windup := 0.0
 var _ranged_cooldown := 0.0
 var _dodge_time := 0.0
 var _dodge_cooldown := 0.0
+var _stamina_pause := 0.0
+var _block_broken := 0.0
+var _winded := false
 var _dodge_direction := Vector3.ZERO
 var _roll_left := 0.0
 var _hand_pose: HandPose
@@ -197,7 +214,34 @@ func is_sneaking() -> bool:
 
 
 func is_blocking() -> bool:
-	return not _busy and Input.is_action_pressed("block")
+	return not _busy and _block_broken <= 0.0 and Input.is_action_pressed("block")
+
+
+## Whether stamina limits the player. Off when the `stamina` flag is off.
+func uses_stamina() -> bool:
+	return FeatureFlags.enabled("stamina")
+
+
+## Whether the player is running, which needs stamina.
+func is_sprinting() -> bool:
+	return Input.is_action_pressed("sprint") and not _winded and Input.get_vector(
+			"move_left", "move_right", "move_forward", "move_back") != Vector2.ZERO
+
+
+## Spends stamina if there is enough, and reports whether it did. Always succeeds without the flag.
+func spend_stamina(amount: float) -> bool:
+	if not uses_stamina():
+		return true
+	if stamina < amount:
+		return false
+	_lose_stamina(amount)
+	return true
+
+
+func _lose_stamina(amount: float) -> void:
+	stamina = maxf(stamina - amount, 0.0)
+	_stamina_pause = STAMINA_REGEN_DELAY
+	stamina_changed.emit()
 
 
 ## Puts a tool such as the axe in hand for a while, after which the weapon comes back.
@@ -296,7 +340,7 @@ func attack() -> bool:
 
 ## Rolls in the direction of movement, or backward when standing still. Avoids all damage.
 func dodge() -> void:
-	if _dodge_cooldown > 0.0 or not is_on_floor():
+	if _dodge_cooldown > 0.0 or not is_on_floor() or not spend_stamina(DODGE_STAMINA_COST):
 		return
 	var move := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var backstep := move == Vector2.ZERO
@@ -323,7 +367,13 @@ func take_hit(amount: float, from_position: Vector3) -> void:
 	var offset := from_position - global_position
 	offset.y = 0.0
 	if is_blocking() and _forward().dot(offset.normalized()) > BLOCK_FACING:
-		amount *= BLOCK_DAMAGE_FACTOR
+		if spend_stamina(amount * BLOCK_STAMINA_PER_DAMAGE):
+			amount *= BLOCK_DAMAGE_FACTOR
+		else:
+			# Not enough strength left: the guard breaks and the hit lands in full.
+			_lose_stamina(stamina)
+			_block_broken = BLOCK_BREAK_SECONDS
+			notice.emit("UI_BLOCK_BROKEN")
 	_since_hit = 0.0
 	hurt.emit()
 	health.damage(amount)
@@ -340,6 +390,10 @@ func revive_at(place: Vector3) -> void:
 	velocity = Vector3.ZERO
 	_attack_windup = 0.0
 	_dodge_time = 0.0
+	_block_broken = 0.0
+	_winded = false
+	stamina = MAX_STAMINA
+	stamina_changed.emit()
 	_since_hit = REGEN_DELAY
 	health.restore()
 
@@ -392,7 +446,7 @@ func _physics_process(delta: float) -> void:
 	if not _busy:
 		move = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var direction := Vector3(move.x, 0.0, move.y).rotated(Vector3.UP, _pivot.rotation.y)
-	var speed := SPRINT_SPEED if Input.is_action_pressed("sprint") else WALK_SPEED
+	var speed := SPRINT_SPEED if is_sprinting() else WALK_SPEED
 	if is_sneaking():
 		speed = WALK_SPEED * float(FeatureFlags.value("sneak_speed_factor", 0.5))
 	if is_blocking():
@@ -423,11 +477,33 @@ func _physics_process(delta: float) -> void:
 		_body_mesh.rotation.y = lerp_angle(_body_mesh.rotation.y, target_yaw, TURN_SPEED * delta)
 
 
+func _update_stamina(delta: float) -> void:
+	if not uses_stamina():
+		if stamina < MAX_STAMINA:
+			stamina = MAX_STAMINA
+			stamina_changed.emit()
+		_winded = false
+		return
+	_stamina_pause = maxf(_stamina_pause - delta, 0.0)
+	var running := not _busy and is_sprinting() and Vector2(velocity.x, velocity.z).length() > WALK_SPEED * 0.5
+	if running:
+		_lose_stamina(SPRINT_STAMINA_PER_SECOND * delta)
+		if stamina <= 0.0:
+			_winded = true
+	elif _stamina_pause <= 0.0 and stamina < MAX_STAMINA:
+		stamina = minf(stamina + STAMINA_REGEN * delta, MAX_STAMINA)
+		stamina_changed.emit()
+	if _winded and stamina >= SPRINT_RESUME_STAMINA:
+		_winded = false
+
+
 func _update_combat(delta: float) -> void:
 	_attack_cooldown = maxf(_attack_cooldown - delta, 0.0)
 	_ranged_cooldown = maxf(_ranged_cooldown - delta, 0.0)
 	_dodge_time = maxf(_dodge_time - delta, 0.0)
 	_dodge_cooldown = maxf(_dodge_cooldown - delta, 0.0)
+	_block_broken = maxf(_block_broken - delta, 0.0)
+	_update_stamina(delta)
 	if _tool_seconds > 0.0:
 		_tool_seconds -= delta
 		if _tool_seconds <= 0.0:

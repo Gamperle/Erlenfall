@@ -9,6 +9,7 @@ const COMPASS_HALF_WIDTH := 200.0
 const TOP_ROW := 12.0
 const SECOND_ROW := 52.0
 const HEALTH_INSET := 4.0
+const STAMINA_GAP := 6.0
 const OVERLAY_HEIGHT := 72.0
 const OVERLAY_WIDTH := 344.0
 const QUEST_WIDTH := 544.0
@@ -18,6 +19,7 @@ const PROMPT_GAP := 12.0
 
 @onready var _compass: Control = $Compass
 @onready var _health_bar: Control = $HealthBar
+@onready var _stamina_bar: Control = $StaminaBar
 @onready var _overlay: Control = $PerformanceOverlay
 @onready var _quest: Label = $QuestLabel
 @onready var _prompt: Control = $PromptLabel
@@ -45,6 +47,9 @@ func arrange_for(width: float) -> void:
 	var health_height := _health_bar.offset_bottom - _health_bar.offset_top
 	_health_bar.offset_top = row + HEALTH_INSET
 	_health_bar.offset_bottom = _health_bar.offset_top + health_height
+	var stamina_height := _stamina_bar.offset_bottom - _stamina_bar.offset_top
+	_stamina_bar.offset_top = _health_bar.offset_bottom + STAMINA_GAP
+	_stamina_bar.offset_bottom = _stamina_bar.offset_top + stamina_height
 	_overlay.offset_top = row
 	_overlay.offset_bottom = row + OVERLAY_HEIGHT
 	_overlay.offset_left = -EDGE - minf(OVERLAY_WIDTH, width - _health_bar.offset_right - EDGE * 2.0)
@@ -52,7 +57,7 @@ func arrange_for(width: float) -> void:
 	_quest.offset_left = -EDGE - minf(minf(QUEST_WIDTH, width - EDGE * 2.0), _quest_text_width())
 	var quest_top := _overlay.offset_bottom + QUEST_GAP if _overlay.visible else row
 	if not _overlay.visible and narrow:
-		quest_top = _health_bar.offset_bottom + QUEST_GAP
+		quest_top = (_stamina_bar if _stamina_bar.visible else _health_bar).offset_bottom + QUEST_GAP
 	_quest.offset_top = quest_top
 	_quest.offset_bottom = quest_top
 	_place_prompt()

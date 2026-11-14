@@ -42,6 +42,7 @@ var _hurt_tween: Tween
 @onready var _prompt_label: Label = $UI/PromptLabel
 @onready var _quest_label: Label = $UI/QuestLabel
 @onready var _health_bar: ProgressBar = $UI/HealthBar
+@onready var _stamina_bar: ProgressBar = $UI/StaminaBar
 @onready var _message_label: Label = $UI/MessageLabel
 @onready var _compass: Compass = $UI/Compass
 @onready var _performance_overlay: PerformanceOverlay = $UI/PerformanceOverlay
@@ -74,6 +75,8 @@ func _ready() -> void:
 	_player.inventory.changed.connect(_update_quest_label)
 	_player.health.changed.connect(_update_health_bar)
 	_player.health.died.connect(_on_player_died)
+	_stamina_bar.visible = FeatureFlags.enabled("stamina")
+	_player.stamina_changed.connect(_update_stamina_bar)
 	_player.notice.connect(_show_message)
 	_player.busy_changed.connect(_update_prompt)
 	_player.hurt.connect(_flash_hurt)
@@ -255,6 +258,10 @@ func _update_quest_label() -> void:
 
 func _update_health_bar() -> void:
 	_health_bar.value = _player.health.fraction() * 100.0
+
+
+func _update_stamina_bar() -> void:
+	_stamina_bar.value = _player.stamina / Player.MAX_STAMINA * 100.0
 
 
 func _on_player_died() -> void:

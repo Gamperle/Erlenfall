@@ -52,6 +52,8 @@ const PLANT_DETAIL_DISTANCE := 150.0
 const FAR_FIR_TIERS := 2
 const FAR_FIR_SIDES := 5
 const BUSH_DRAW_DISTANCE := 450.0
+## How far from the mine's plaza and its trail the landslide's loose boulders stay.
+const MINE_BOULDER_MARGIN := 4.0
 const WOOD_PILE_SHAPE := Vector3(1.0, 0.9, 1.5)
 
 @export var terrain: Terrain
@@ -68,6 +70,8 @@ func _ready() -> void:
 	for building: Dictionary in layout["buildings"]:
 		_add_building(building)
 		_building_spots.append(Vector2(building["x"], building["z"]))
+	var mine_data: Dictionary = layout["mine"]
+	_building_spots.append(Vector2(mine_data["x"], mine_data["z"]))
 	for list: String in ["npcs", "enemies", "stations", "beds", "repair_sites", "resources"]:
 		for spot: Dictionary in layout[list]:
 			_busy_spots.append(Vector2(spot["x"], spot["z"]))
@@ -90,7 +94,7 @@ func _ready() -> void:
 		ambient.name = "AmbientLife"
 		ambient.terrain = terrain
 		add_child(ambient)
-	_add_boulders(layout["boulders"])
+	_add_boulders(layout["boulders"], mine_data)
 	var routines := VillagerRoutines.new()
 	routines.name = "VillagerRoutines"
 	add_child(routines)
@@ -125,6 +129,11 @@ func _ready() -> void:
 		_add_box_interactable(Bed.new(), bed_data)
 	for resource: Dictionary in layout["resources"]:
 		_add_resource(resource)
+	var mine := Mine.new()
+	mine.setup(mine_data)
+	mine.position = _ground_position(mine_data["x"], mine_data["z"])
+	mine.rotation_degrees.y = mine_data["rotation"]
+	add_child(mine)
 
 
 ## Returns what changes during play in the world, in the same order as the layout file.
@@ -155,6 +164,15 @@ func load_data(data: Dictionary) -> void:
 			child.load_data(resources.pop_front())
 	if has_node("Forest"):
 		(get_node("Forest") as Forest).load_data(data.get("forest", {}))
+
+
+## Returns the x and z of each place the compass always points out, such as the buried mine.
+func landmark_positions() -> Array[Vector2]:
+	var places: Array[Vector2] = []
+	for child in get_children():
+		if child is Mine and child.landmark:
+			places.append(Vector2(child.position.x, child.position.z))
+	return places
 
 
 ## Returns the x and z of a quest marker: a villager, station, or repair site by name, or a pair of numbers.
@@ -307,7 +325,7 @@ func _road_mesh(samples: PackedVector2Array, width: float) -> MeshInstance3D:
 	return instance
 
 
-func _add_boulders(data: Dictionary) -> void:
+func _add_boulders(data: Dictionary, mine: Dictionary) -> void:
 	var random := RandomNumberGenerator.new()
 	random.seed = data["seed"]
 	var body := StaticBody3D.new()
@@ -324,6 +342,9 @@ func _add_boulders(data: Dictionary) -> void:
 		var size: float = lerpf(data["min_size"], data["max_size"], pow(random.randf(), 2.0))
 		var stretch := Vector3(random.randf_range(0.8, 1.3), random.randf_range(0.6, 1.0), random.randf_range(0.8, 1.3))
 		var basis := Basis.from_euler(Vector3(random.randf(), random.randf() * TAU, random.randf())).scaled(stretch * size)
+		# The mine's plaza and the trail to it stay clear.
+		if point.distance_to(Vector2(mine["x"], mine["z"])) < float(mine["plaza_radius"]) + MINE_BOULDER_MARGIN or _is_on_road(point, MINE_BOULDER_MARGIN):
+			continue
 		var at := _ground_position(point.x, point.y)
 		transforms.append(Transform3D(basis, at))
 
@@ -335,6 +356,14 @@ func _add_boulders(data: Dictionary) -> void:
 
 	mesh.surface_set_material(0, Surfaces.get_material(Surfaces.Pattern.BOULDER, BOULDER_COLOR))
 	_add_multimesh(mesh, transforms, 0.0)
+
+
+func _is_on_road(point: Vector2, margin: float) -> bool:
+	for road in terrain.roads:
+		var found := road.nearest(point.x, point.y)
+		if found.x < found.z + margin:
+			return true
+	return false
 
 
 ## A convex shape that fits the mesh. The basis is built in, because collision shapes can't be stretched.

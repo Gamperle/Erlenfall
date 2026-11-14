@@ -102,6 +102,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_compass.heading = _player.heading_degrees()
 	_compass.objective_bearings = _objective_bearings()
+	_compass.landmark_bearings = _landmark_bearings()
 	_update_prompt()
 	if _playing:
 		_since_save += delta
@@ -114,6 +115,14 @@ func _objective_bearings() -> PackedFloat32Array:
 	if FeatureFlags.enabled("compass_objectives"):
 		for marker in _player.quests.objective_markers(_player.inventory):
 			bearings.append(Compass.bearing_between(Vector2(_player.position.x, _player.position.z), _village.marker_position(marker)))
+	return bearings
+
+
+func _landmark_bearings() -> PackedFloat32Array:
+	var bearings := PackedFloat32Array()
+	if FeatureFlags.enabled("compass_landmarks"):
+		for place in _village.landmark_positions():
+			bearings.append(Compass.bearing_between(Vector2(_player.position.x, _player.position.z), place))
 	return bearings
 
 

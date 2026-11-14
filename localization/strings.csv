@@ -46,6 +46,7 @@ ITEM_IRON_DAGGER,Iron dagger,Eisendolch
 ITEM_IRON_SWORD,Iron sword,Eisenschwert
 ITEM_IRON_AXE,Iron axe,Eisenaxt
 ITEM_TORCH,Torch,Fackel
+UI_PREVIEW,Preview,Vorschau
 SLOT_GRIP,Grip,Griff
 SLOT_LIMB,Limbs,Bogenarme
 SLOT_BLADE,Blade,Klinge
@@ -147,6 +148,7 @@ UI_COLOUR_VISION_DEUTERANOPIA,Deuteranopia (red-green),Deuteranopie (Rot-Grün)
 UI_COLOUR_VISION_PROTANOPIA,Protanopia (red-green),Protanopie (Rot-Grün)
 UI_COLOUR_VISION_TRITANOPIA,Tritanopia (blue-yellow),Tritanopie (Blau-Gelb)
 UI_HIGH_CONTRAST,High contrast,Hoher Kontrast
+UI_REDUCE_MOTION,Reduce motion,Weniger Bewegung
 UI_DIALOGUE_OPACITY,Dialogue panel opacity,Deckkraft des Dialogfelds
 UI_VOLUME_MASTER,Master volume,Gesamtlautstärke
 UI_VOLUME_MUSIC,Music volume,Musiklautstärke

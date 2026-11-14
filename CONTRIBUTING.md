@@ -40,6 +40,7 @@ godot --headless --path . --import
 - Put optional or tunable features behind [feature flags](docs/FEATURE_FLAGS.md). Mods can override flags, and the mod load order decides which one wins.
 - Add all player-facing text to `localization/strings.csv`, in English and German.
 - Play sounds on one of the audio buses in `scripts/audio_buses.gd`: `Music`, `Effects`, or `Ambience`, all feeding into `Master`. The buses are created at start-up, and the settings screen sets their volumes. Pick one with `AudioBuses.route(player, AudioBuses.EFFECTS)`.
+- Respect the accessibility options in `scripts/settings.gd`: text size, colour vision, high contrast, and reduce motion. Check `Settings.reduce_motion` for anything that turns, shakes, flashes, or flickers, and make it still or much milder when it is on. It currently stops the crafting preview from turning, softens the hurt flash and the enemy hit flash, and steadies torch and campfire flames.
 - Large binary files go through Git LFS. See `.gitattributes`.
 
 ## Issue labels

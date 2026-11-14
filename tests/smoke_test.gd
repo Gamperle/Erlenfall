@@ -1358,7 +1358,8 @@ func _test_story(scene: Node, player: Player) -> void:
 		elif part.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY:
 			shadows_only += part.mesh.get_surface_count()
 	_check(casters + shadows_only <= 6, "a villager casts its shadow with few draw calls (%d)" % (casters + shadows_only))
-	_check(shadows_only == 1, "a villager's body casts its shadow from one surface")
+	_check(shadows_only == 0, "a villager's body is one surface, so it needs no separate shadow copy")
+	_check(casters <= 6 and hedda_model.find_child("Human", true, false).mesh.get_surface_count() == 1, "a villager's body skin, lips, nails and ears are drawn as one surface")
 	for villager: String in ["bertram", "mira", "greta", "brandt"]:
 		_check(village.get_node(villager).find_child("Model", true, false) != null, "%s has a model" % villager)
 	_check(not village.get_node("marek").visible and not village.get_node("marek").is_available(), "the peddler stays away while the roof leaks")

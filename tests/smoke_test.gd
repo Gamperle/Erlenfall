@@ -2445,7 +2445,7 @@ func _test_settings(scene: Node, player: Player) -> void:
 	TranslationServer.set_locale("en")
 	menu.open_pause()
 	menu._buttons.get_child(1).pressed.emit()
-	_check(menu._settings_open and menu._buttons.get_child_count() == 7 + AudioBuses.ALL.size(), "the pause menu opens the settings")
+	_check(menu._settings_open and menu._buttons.get_child_count() == 9 + AudioBuses.ALL.size(), "the pause menu opens the settings")
 
 	menu._choose_language(2)
 	await process_frame
@@ -2480,6 +2480,22 @@ func _test_settings(scene: Node, player: Player) -> void:
 	_check(dialogue_ui._speaker.get_theme_font_size("font_size") == roundi(DialogueUI.SPEAKER_FONT_SIZE * 1.5), "a larger text size scales the speaker's name")
 	_check(scene.get_node("UI/QuestLabel").label_settings.font_size == 24, "a larger text size scales the quest text")
 	_check(is_equal_approx(dialogue_ui._panel.self_modulate.a, 0.5), "the dialogue panel's opacity follows the setting")
+	var theme := ThemeDB.get_project_theme()
+	var health_pattern: BarPattern = scene.get_node("UI/HealthBar/Frame/Pattern")
+	var stamina_pattern: BarPattern = scene.get_node("UI/StaminaBar/Frame/Pattern")
+	_check(not health_pattern.visible and not stamina_pattern.visible and theme.get_stylebox("fill", "ProgressBar").modulate_color == Accessibility.PALETTES["off"]["health"], "the bars have no pattern with colour vision off")
+	menu._choose_colour_vision(1)
+	_check(Settings.colour_vision == "deuteranopia" and theme.get_stylebox("fill", "ProgressBar").modulate_color == Accessibility.PALETTES["deuteranopia"]["health"], "a colour vision mode recolors the health bar")
+	_check(theme.get_stylebox("fill", "StaminaBar").modulate_color == Accessibility.PALETTES["deuteranopia"]["stamina"] and health_pattern.visible and stamina_pattern.visible, "a colour vision mode recolors the stamina bar and shows the bar patterns")
+	for mode: String in Accessibility.MODES:
+		var palette: Dictionary = Accessibility.PALETTES[mode]
+		_check(palette["health"] != palette["stamina"] and palette["objective"] != palette["player"], "the %s palette tells the bars and markers apart" % mode)
+	menu._choose_high_contrast(true)
+	var label_settings: LabelSettings = scene.get_node("UI/QuestLabel").label_settings
+	_check(Settings.high_contrast and label_settings.outline_size == Accessibility.HC_OUTLINE_SIZE and theme.get_color("font_color", "Label") == Accessibility.HC_TEXT_COLOR, "high contrast outlines the HUD text and whitens the menu text")
+	_check(theme.get_stylebox("normal", "HudPlate").modulate_color == Accessibility.HC_PLATE_COLOR, "high contrast darkens the HUD plates")
+	menu._choose_colour_vision(0)
+	_check(Settings.high_contrast and stamina_pattern.visible, "high contrast shows the bar patterns on its own")
 	menu._close_settings()
 	_check(menu.is_open() and menu._title.text == tr("UI_PAUSED"), "leaving the settings returns to the pause menu")
 	Settings.look_speed = 1.0
@@ -2490,7 +2506,16 @@ func _test_settings(scene: Node, player: Player) -> void:
 	Settings.load_saved()
 	_check(Settings.language == "de" and Settings.look_speed == 2.0 and Settings.graphics == "high", "settings are remembered")
 	_check(Settings.text_size == 1.5 and is_equal_approx(Settings.dialogue_opacity, 0.5), "the text size and dialogue opacity are remembered")
+	_check(Settings.colour_vision == "off" and Settings.high_contrast, "high contrast is remembered")
 	_check(is_equal_approx(Settings.volumes[AudioBuses.MUSIC], 0.25) and Settings.volumes[AudioBuses.AMBIENCE] == 0.0 and Settings.volumes[AudioBuses.MASTER] == Settings.DEFAULT_VOLUME, "volumes are remembered")
+	var bad_vision := FileAccess.open(TEST_SETTINGS, FileAccess.WRITE)
+	bad_vision.store_string('{"colour_vision": "rainbow", "high_contrast": "yes"}')
+	bad_vision.close()
+	Settings.load_saved()
+	_check(Settings.colour_vision == "off" and not Settings.high_contrast, "invalid accessibility settings fall back to defaults")
+	_check(theme.get_color("font_color", "Label") == Color(0.93, 0.88, 0.76, 1) and theme.get_stylebox("normal", "HudPlate").modulate_color == Color.WHITE, "turning high contrast off puts the theme's colors back")
+	scene.get_node("UI").refresh_accessibility()
+	_check(label_settings.outline_size == 4 and not health_pattern.visible, "turning high contrast off puts the HUD text and bars back")
 	menu.close()
 	player.set_busy(false)
 
@@ -2530,7 +2555,7 @@ func _test_key_bindings(scene: Node) -> void:
 	var menu: GameMenu = scene.get_node("GameMenu")
 	menu.open_pause()
 	menu._buttons.get_child(1).pressed.emit()
-	menu._buttons.get_child(5 + AudioBuses.ALL.size()).pressed.emit()
+	menu._buttons.get_child(7 + AudioBuses.ALL.size()).pressed.emit()
 	await process_frame
 	var page: ControlsMenu = menu._controls
 	_check(menu._title.text == tr("UI_CONTROLS_TITLE") and page != null, "the settings open the Controls page")

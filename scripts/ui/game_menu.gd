@@ -9,6 +9,7 @@ signal quit_chosen
 signal graphics_changed
 signal bindings_changed
 signal text_size_changed
+signal accessibility_changed
 
 const PANEL_WIDTH := 420.0
 const ASSET_LIST_URL := "https://github.com/Gamperle/Erlenfall/blob/main/ASSETS.md"
@@ -113,6 +114,18 @@ func open_settings(leave: Callable) -> void:
 	text_sizes.selected = Settings.TEXT_SIZES.find(Settings.text_size)
 	text_sizes.item_selected.connect(_choose_text_size)
 	_add_setting("UI_TEXT_SIZE", text_sizes)
+
+	var colour_vision := OptionButton.new()
+	for mode: String in Accessibility.MODES:
+		colour_vision.add_item(tr("UI_COLOUR_VISION_" + mode.to_upper()))
+	colour_vision.selected = Accessibility.MODES.find(Settings.colour_vision)
+	colour_vision.item_selected.connect(_choose_colour_vision)
+	_add_setting("UI_COLOUR_VISION", colour_vision)
+
+	var high_contrast := CheckButton.new()
+	high_contrast.button_pressed = Settings.high_contrast
+	high_contrast.toggled.connect(_choose_high_contrast)
+	_add_setting("UI_HIGH_CONTRAST", high_contrast)
 
 	var opacity := HSlider.new()
 	opacity.min_value = Settings.MIN_DIALOGUE_OPACITY
@@ -280,6 +293,22 @@ func _choose_text_size(index: int) -> void:
 	Settings.apply_text_size()
 	Settings.save()
 	text_size_changed.emit()
+
+
+func _choose_colour_vision(index: int) -> void:
+	Settings.colour_vision = Accessibility.MODES[index]
+	_accessibility_changed()
+
+
+func _choose_high_contrast(pressed: bool) -> void:
+	Settings.high_contrast = pressed
+	_accessibility_changed()
+
+
+func _accessibility_changed() -> void:
+	Accessibility.apply_theme()
+	Settings.save()
+	accessibility_changed.emit()
 
 
 func _choose_dialogue_opacity(value: float) -> void:

@@ -109,13 +109,34 @@ Weather is [#241](https://github.com/Gamperle/Erlenfall/issues/241): clear, over
 
 ## Sneaking
 
-Holding the sneak key (Ctrl, or pressing the left stick) slows the player and makes enemies notice them from less far away. It does not stop an enemy that is already chasing, and it can't be used while rolling or blocking.
+Holding the sneak key (Ctrl, or pressing the left stick) slows the player, crouches the model, and makes enemies notice them from less far away. It does not stop an enemy that is already chasing, and it can't be used while rolling or blocking (issue #207).
+
+An enemy notices the player when they are nearer than its `aggro_range` times a factor. The rules are in `scripts/combat/noticing.gd`. The factor is the product of what the player does (stance and speed, then light) and what the enemy sees (facing, then line of sight). A player walking in daylight, in front of the enemy and in the open, is noticed from the full range. Every number below is a default pick, for the maintainer to balance.
 
 | Name | Default | Effect |
 |---|---|---|
 | `sneaking` | `true` | Turns the sneak stance on or off. Off ignores the sneak key |
-| `sneak_speed_factor` | `0.5` | The share of walking speed that a sneaking player moves at. Sneaking replaces sprinting. A default pick, for the maintainer to balance |
-| `sneak_notice_factor` | `0.35` | The share of an enemy's `aggro_range` at which it notices a sneaking player: 14 m becomes 4.9 m for a goblin. A default pick, for the maintainer to balance |
+| `noticing_rules` | `true` | Turns on the rules for standing still, sprinting, light, facing, and line of sight. Off leaves only `sneak_notice_factor` |
+| `sneak_animation` | `true` | A sneaking player crouches and walks in a crouch, using the shared Crouch_Idle and Crouch_Fwd animations |
+| `sneak_indicator` | `true` | Shows the eye and bar above the prompt line while sneaking: hidden (closed eye, dots), risky (half open eye, stripes), seen (open eye with rays, solid). The words are translated, and the colours follow the colour vision and high contrast settings |
+| `sneak_speed_factor` | `0.5` | The share of walking speed that a sneaking player moves at. Sneaking replaces sprinting |
+| `sneak_notice_factor` | `0.35` | The share of an enemy's `aggro_range` at which it notices a sneaking player: 14 m becomes 4.9 m for a goblin |
+| `still_notice_factor` | `0.75` | Applies to a player who stands still, sneaking or not |
+| `sprint_notice_factor` | `1.3` | Applies to a sprinting player |
+| `night_notice_factor` | `0.6` | The light factor in full darkness. It is 1.0 in daylight and blends with the day and night cycle |
+| `torch_notice_bonus` | `0.6` | Added to the light factor by a lit torch at night, so a torch at night is 1.2. In daylight it shows hardly at all, as the torch's own light does |
+| `notice_front_degrees` | `90` | Up to this angle from where the enemy faces, it sees the player in full |
+| `notice_back_degrees` | `150` | From this angle on (nearly behind it), the factor is `notice_back_factor`. In between, it blends |
+| `notice_back_factor` | `0.5` | The factor for a player behind the enemy |
+| `notice_blocked_factor` | `0.4` | The factor when something solid, such as a wall, rock, or prop, lies between the enemy's eyes and the player. Characters in the way don't count |
+| `notice_close_range` | `2.5` | Closer than this, an enemy notices the player whatever they do or whichever way it faces |
+| `notice_eye_height` | `1.4` | How high above its feet the enemy looks from, in meters |
+| `notice_target_height` | `1.0` | How high above their feet the player is looked at, in meters |
+| `sneak_indicator_always` | `false` | Shows the indicator whenever it is not off, not only while sneaking |
+| `visibility_full_factor` | `1.5` | The factor at which the indicator's bar is full |
+| `visibility_hidden_below` | `0.3` | Below this factor, the indicator says hidden |
+| `visibility_seen_above` | `0.6` | Above this factor, the indicator says seen |
+| `sneak_animation_speed` | `0.8` | How fast the crouch walk cycle plays, as a share of its own speed |
 
 ## Heavy swing
 

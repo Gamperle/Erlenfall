@@ -3,7 +3,7 @@ extends RefCounted
 ## The animations shared by all character models, prepared once.
 
 const SOURCE := preload("res://assets/animations/humanoid.glb")
-const LOOPING: Array[StringName] = [&"Idle", &"Idle_Torch", &"Sword_Idle", &"Walk", &"Sprint"]
+const LOOPING: Array[StringName] = [&"Idle", &"Idle_Torch", &"Sword_Idle", &"Walk", &"Sprint", &"Crouch_Idle", &"Crouch_Fwd"]
 
 static var _library: AnimationLibrary
 

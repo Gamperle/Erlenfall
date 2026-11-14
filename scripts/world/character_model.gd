@@ -29,6 +29,9 @@ var _skeleton: Skeleton3D
 var _player: AnimationPlayer
 var _action_left := 0.0
 
+## Meshes with their same-material surfaces joined, shared by every character of a model.
+static var _joined_meshes := {}
+
 
 func load_model(path: String) -> void:
 	_model = (load(path) as PackedScene).instantiate()
@@ -40,6 +43,7 @@ func load_model(path: String) -> void:
 	_player = CharacterAnimations.play(_model, IDLE)
 	posture = PostureModifier.new()
 	add_modifier(posture)
+	_join_surfaces()
 	_copy_materials()
 	_reduce_draw_calls()
 
@@ -100,6 +104,64 @@ func _attach(bone: StringName) -> Node3D:
 		attachment.bone_name = bone
 		_skeleton.add_child(attachment)
 	return attachment
+
+
+## Surfaces that look the same (the body's skin, lips, nails and ears share one material)
+## become one surface, which is one draw call instead of several.
+func _join_surfaces() -> void:
+	for mesh_instance: MeshInstance3D in _model.find_children("*", "MeshInstance3D", true, false):
+		var mesh := mesh_instance.mesh as ArrayMesh
+		if mesh == null or mesh.get_surface_count() < 2 or mesh.get_blend_shape_count() > 0:
+			continue
+		if not _joined_meshes.has(mesh):
+			_joined_meshes[mesh] = _join(mesh)
+		mesh_instance.mesh = _joined_meshes[mesh]
+
+
+func _join(mesh: ArrayMesh) -> ArrayMesh:
+	var groups := {}
+	for surface in mesh.get_surface_count():
+		var key := _material_key(mesh.surface_get_material(surface))
+		if not groups.has(key):
+			groups[key] = []
+		groups[key].append(surface)
+	if groups.size() == mesh.get_surface_count():
+		return mesh
+	var joined := ArrayMesh.new()
+	for surfaces: Array in groups.values():
+		var arrays: Array = mesh.surface_get_arrays(surfaces[0])
+		for index in range(1, surfaces.size()):
+			var more: Array = mesh.surface_get_arrays(surfaces[index])
+			var offset := (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+			for kind in arrays.size():
+				if kind == Mesh.ARRAY_INDEX:
+					var indices: PackedInt32Array = more[kind]
+					for i in indices.size():
+						indices[i] += offset
+					arrays[kind] = (arrays[kind] as PackedInt32Array) + indices
+				elif arrays[kind] != null:
+					arrays[kind] = _append(arrays[kind], more[kind])
+		joined.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		joined.surface_set_material(joined.get_surface_count() - 1, mesh.surface_get_material(surfaces[0]))
+	joined.custom_aabb = mesh.get_aabb()
+	return joined
+
+
+func _append(first: Variant, second: Variant) -> Variant:
+	var result = first
+	result.append_array(second)
+	return result
+
+
+func _material_key(material: Material) -> String:
+	var standard := material as StandardMaterial3D
+	if standard == null:
+		return str(material.get_instance_id())
+	var textures: Array[String] = []
+	for slot in BaseMaterial3D.TEXTURE_MAX:
+		var texture := standard.get_texture(slot as BaseMaterial3D.TextureParam)
+		textures.append(texture.resource_path if texture != null else "")
+	return "%s|%s|%d|%d|%s|%s|%s|%s" % [textures, standard.albedo_color, standard.transparency, standard.cull_mode, standard.roughness, standard.metallic, standard.uv1_scale, standard.alpha_scissor_threshold]
 
 
 func _copy_materials() -> void:

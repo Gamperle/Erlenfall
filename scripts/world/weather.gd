@@ -3,7 +3,8 @@ extends Node
 ## Simple weather: clear, overcast, and rain, changing at random and blending smoothly. It holds three
 ## values that other systems read: how overcast the sky is, how hard it rains, and how windy it is.
 ## DayNight dims the light and greys the sky with them, SkyDome thickens and speeds up the clouds,
-## GrassField sways, and one GPUParticles3D that follows the camera draws the rain.
+## GrassField sways, and one GPUParticles3D that follows the camera draws the rain. The rain shader reads a coarse roof map
+## (RoofMap), so drops stop at house roofs and bridge decks seen from outside too.
 
 const GROUP := "weather"
 const STATES := {
@@ -45,6 +46,10 @@ var _time_left := 0.0
 var _rng := RandomNumberGenerator.new()
 var _rain_particles: GPUParticles3D
 var _rain_material: ParticleProcessMaterial
+var _streak_material: ShaderMaterial
+var _roof_map: RoofMap
+var _roof_texture: ImageTexture
+var _roof_version := -1
 var _sky_dome: SkyDome
 var _grass: GrassField
 
@@ -137,6 +142,24 @@ func is_covered(point: Vector3) -> bool:
 	return not world.direct_space_state.intersect_ray(query).is_empty()
 
 
+## Rebuilds the roof map when the village has new or repaired roofs, then hands it to the rain shader.
+func refresh_roofs() -> void:
+	var village := get_parent().get_node_or_null("Village") as Village if get_parent() else null
+	if _streak_material == null or village == null or village.roof_version == _roof_version:
+		return
+	_roof_version = village.roof_version
+	_roof_map = RoofMap.build(village.roof_covers)
+	_roof_texture = ImageTexture.create_from_image(_roof_map.image)
+	_streak_material.set_shader_parameter("roof_map", _roof_texture)
+	_streak_material.set_shader_parameter("roof_origin", _roof_map.origin)
+	_streak_material.set_shader_parameter("roof_size", _roof_map.size)
+
+
+## The top of the roof or deck above this x and z that keeps the rain off, or RoofMap.NONE in the open.
+func roof_height_at(x: float, z: float) -> float:
+	return _roof_map.height_at(x, z) if _roof_map else RoofMap.NONE
+
+
 func rain_particles() -> GPUParticles3D:
 	return _rain_particles
 
@@ -170,6 +193,7 @@ func _update_cover(delta: float) -> void:
 	_cover_timer -= delta
 	if _cover_timer <= 0.0:
 		_cover_timer = COVER_CHECK_INTERVAL
+		refresh_roofs()
 		var camera := get_viewport().get_camera_3d()
 		_cover_target = 1.0 if rain > 0.02 and camera and is_covered(camera.global_position) else 0.0
 	var before := cover
@@ -206,14 +230,12 @@ func _build_rain() -> void:
 
 	var streak := QuadMesh.new()
 	streak.size = Vector2(0.014, 0.6)
-	var streak_material := StandardMaterial3D.new()
-	streak_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	streak_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	streak_material.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	streak_material.billboard_keep_scale = true
-	streak_material.albedo_color = Color(0.75, 0.82, 0.95, 0.28)
-	streak_material.disable_receive_shadows = true
-	streak.material = streak_material
+	_streak_material = ShaderMaterial.new()
+	_streak_material.shader = load("res://shaders/rain.gdshader")
+	var empty := Image.create_empty(1, 1, false, Image.FORMAT_RF)
+	empty.fill(Color(RoofMap.NONE, 0.0, 0.0))
+	_streak_material.set_shader_parameter("roof_map", ImageTexture.create_from_image(empty))
+	streak.material = _streak_material
 
 	_rain_particles = GPUParticles3D.new()
 	_rain_particles.name = "Rain"

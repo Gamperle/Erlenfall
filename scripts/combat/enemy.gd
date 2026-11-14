@@ -7,6 +7,8 @@ enum State { IDLE, CHASE, WINDUP, RECOVER, DEAD }
 const ATTACK_ANIMATION := &"Punch_Jab"
 const DATA_PATH := "res://data/enemies.json"
 const GROUP := "enemy"
+## The height of a built animal model before it is scaled.
+const BEAST_HEIGHT := 0.75
 const TURN_SPEED := 8.0
 const WINDUP_COLOR := Color(0.95, 0.35, 0.1)
 const HIT_COLOR := Color(1.0, 1.0, 1.0)
@@ -61,6 +63,8 @@ const MAKE_WAY_STEP := 1.0
 
 static var _data: Dictionary = {}
 
+## The key of this enemy's entry in the enemy data.
+var enemy_type := ""
 var health: Health
 var state := State.IDLE
 
@@ -95,10 +99,11 @@ var _collision: CollisionShape3D
 var _bar: MeshInstance3D
 
 
-func setup(enemy_type: String, home: Vector3) -> void:
+func setup(type: String, home: Vector3) -> void:
 	# Walking almost straight into a wall still slides along it, so a body never stops dead at a corner.
 	wall_min_slide_angle = 0.0
-	_stats = _get_data()[enemy_type]
+	enemy_type = type
+	_stats = _get_data()[type]
 	_home = home
 	position = home
 	health = Health.new(_stats["health"])
@@ -584,6 +589,11 @@ func _build() -> void:
 		model.load_model(_stats["model"])
 		model.scale = Vector3.ONE * (height / float(_stats["model_height"]))
 		_body = model
+	elif _stats.get("shape", "") == "quadruped":
+		var beast := BeastModel.new()
+		beast.setup_beast(Color(_stats["color"]), Color(_stats["skin"]))
+		beast.scale = Vector3.ONE * (height / BEAST_HEIGHT)
+		_body = beast
 	else:
 		_body = Humanoid.new()
 		_body.setup(Color(_stats["color"]), Color(_stats["skin"]), Color.BLACK, false, true)

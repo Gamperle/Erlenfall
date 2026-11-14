@@ -36,7 +36,10 @@
 	"enemies": [
 		{ "type": "goblin", "x": 118, "z": -150 },
 		{ "type": "goblin", "x": 124, "z": -142 },
-		{ "type": "goblin", "x": 112, "z": -140 }
+		{ "type": "goblin", "x": 112, "z": -140 },
+		{ "type": "goblin_brute", "x": 108, "z": -168 },
+		{ "type": "wolf", "x": -70, "z": -110 },
+		{ "type": "wolf", "x": -82, "z": -98 }
 	],
 	"repair_sites": [
 		{ "quest": "first_nails", "objective": "repair_roof", "flag": "inn_roof_repaired", "model": "ladder", "rotation": -80, "prompt": "PROMPT_REPAIR_ROOF", "x": 20.6, "z": -11.5, "width": 0.6, "depth": 0.3, "height": 5, "color": "#8a6a42" }
@@ -57,7 +60,9 @@
 		{ "item": "wood", "prompt": "PROMPT_TAKE_WOOD", "x": 22, "z": 28, "size": 0.9, "uses": 5, "respawn_seconds": 90, "color": "#7a5a35" },
 		{ "item": "wood", "prompt": "PROMPT_TAKE_WOOD", "x": -8, "z": -150, "size": 0.9, "uses": 5, "respawn_seconds": 90, "color": "#7a5a35" },
 		{ "item": "iron_ore", "prompt": "PROMPT_MINE_IRON", "x": 51, "z": -212, "size": 1.5, "uses": 4, "respawn_seconds": 120, "color": "#6b4a35" },
-		{ "item": "coal", "prompt": "PROMPT_MINE_COAL", "x": 37, "z": -212, "size": 1.1, "uses": 3, "respawn_seconds": 120, "color": "#17171a" }
+		{ "item": "coal", "prompt": "PROMPT_MINE_COAL", "x": 37, "z": -212, "size": 1.1, "uses": 3, "respawn_seconds": 120, "color": "#17171a" },
+		{ "item": "berries", "prompt": "PROMPT_PICK_BERRIES", "x": 26, "z": 31, "size": 0.7, "uses": 4, "respawn_seconds": 90, "color": "#7a2f4a" },
+		{ "item": "healing_herb", "prompt": "PROMPT_PICK_HERBS", "x": 18, "z": 31, "size": 0.6, "uses": 4, "respawn_seconds": 120, "color": "#4f8a3f" }
 	],
 	"mine": { "id": "buried_mine", "x": 44, "z": -216, "rotation": 0, "width": 13, "height": 7, "opening_width": 4.0, "opening_height": 3.6, "seed": 5, "plaza_radius": 9, "plaza_blend": 14, "compass": true },
 	"roads": [

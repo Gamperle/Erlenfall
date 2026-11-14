@@ -102,7 +102,7 @@ func _ready() -> void:
 		var npc := Npc.new()
 		npc.setup(npc_data)
 		npc.position = _ground_position(npc_data["x"], npc_data["z"])
-		npc.ground_height = terrain.height_at
+		npc.ground_height = walking_height
 		add_child(npc)
 		if not npc.arrival_flag.is_empty():
 			_arrivals.append(npc)
@@ -244,6 +244,31 @@ func _add_roads(roads: Array) -> void:
 
 
 ## Spans each stretch of road that crosses the river.
+## How near the river a walker may be before a bridge deck could be under their feet.
+const WALK_BRIDGE_DISTANCE := 3.0
+## How far above the river bed a walker's feet can be, and how deep below the deck to look.
+const WALK_RAY_ABOVE := 4.0
+const WALK_RAY_BELOW := 1.0
+
+## Where a walker's feet are at an x and a z: on the ground, or on a bridge deck over the river.
+## Looking for the deck takes a ray, so only places near the river do it.
+func walking_height(x: float, z: float) -> float:
+	var ground := terrain.height_at(x, z)
+	if terrain.river_clearance(x, z) > WALK_BRIDGE_DISTANCE:
+		return ground
+	var query := PhysicsRayQueryParameters3D.create(Vector3(x, ground + WALK_RAY_ABOVE, z), Vector3(x, ground - WALK_RAY_BELOW, z))
+	var skipped: Array[RID] = []
+	for i in 4:
+		query.exclude = skipped
+		var hit := get_world_3d().direct_space_state.intersect_ray(query)
+		if hit.is_empty() or hit["collider"] == terrain:
+			break
+		if hit["collider"] is StaticBody3D and not hit["collider"] is Npc and hit["normal"].y >= 0.7:
+			return hit["position"].y
+		skipped.append(hit["collider"].get_rid())
+	return ground
+
+
 func _add_bridges(samples: PackedVector2Array, road_width: float) -> void:
 	var i := 0
 	while i < samples.size():

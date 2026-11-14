@@ -160,9 +160,11 @@ func _check_crafting(data: Dictionary) -> void:
 	var skills := _dict(data.get("skills"))
 	for id: String in _items:
 		var path := "items[%s]" % id
-		if not _fields(file, path, _items[id], { "name": ["text", true], "material": ["bool", false], "damage": ["number", false], "model": ["array", false], "parts": ["object", false] }):
+		if not _fields(file, path, _items[id], { "name": ["text", true], "material": ["bool", false], "damage": ["number", false], "model": ["array", false], "parts": ["object", false], "use": ["object", false] }):
 			continue
 		var item: Dictionary = _items[id]
+		if item.has("use") and _fields(file, path + ".use", item["use"], { "heal": ["number", true] }) and item["use"]["heal"] <= 0:
+			_add(file, path + ".use.heal", "must be more than 0")
 		var model_slots := []
 		for i in _array(item.get("model")).size():
 			var part: Variant = item["model"][i]
@@ -355,7 +357,7 @@ func _check_enemies(data: Dictionary) -> void:
 	for id: String in data:
 		var path := "[%s]" % id
 		_fields(file, path, data[id], {
-			"name": ["text", true], "model": ["string", false], "model_height": ["number", false], "color": ["color", true], "skin": ["color", false],
+			"name": ["text", true], "model": ["string", false], "model_height": ["number", false], "shape": ["string", false], "color": ["color", true], "skin": ["color", false],
 			"height": ["number", true], "radius": ["number", true], "health": ["number", true], "damage": ["number", true], "speed": ["number", true],
 			"aggro_range": ["number", true], "leash_range": ["number", true], "attack_range": ["number", true], "windup_seconds": ["number", true],
 			"recover_seconds": ["number", true], "respawn_seconds": ["number", true], "drops": ["array", false],
@@ -413,9 +415,13 @@ func _check_villager_routines(data: Dictionary) -> void:
 		var previous := -1.0
 		for i in data[id].size():
 			var spath := "%s[%d]" % [path, i]
-			if not _fields(file, spath, data[id][i], { "from": ["number", true], "x": ["number", false], "z": ["number", false], "facing": ["number", false] }):
+			if not _fields(file, spath, data[id][i], { "from": ["number", true], "x": ["number", false], "z": ["number", false], "facing": ["number", false], "via": ["array", false] }):
 				continue
 			var stop: Dictionary = data[id][i]
+			var via: Array = stop.get("via", []) if stop.get("via") is Array else []
+			for j in via.size():
+				if not (via[j] is Array and via[j].size() == 2 and _is_type(via[j][0], "number") and _is_type(via[j][1], "number")):
+					_add(file, "%s.via[%d]" % [spath, j], "must be an [x, z] pair of numbers")
 			if stop.has("x") != stop.has("z"):
 				_add(file, spath, "a stop needs both x and z, or neither")
 			if stop.get("from") is float:

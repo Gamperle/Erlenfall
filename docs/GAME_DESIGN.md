@@ -24,6 +24,8 @@ You walk into a small village with a few outlying farms, surrounded by high, mis
 
 **Tone.** Hopeful, with some darker moments. The world is high fantasy, but magic is limited and solves no problem by itself.
 
+**Lore.** The history, places, the mine, the landslide, and the rules of magic are in [the lore bible](LORE.md), a draft for your review.
+
 **Structure.** A main story of 5-10 hours with player choices that change how the town develops, followed by an endless sandbox.
 
 ## World
@@ -62,7 +64,7 @@ Crafting is the core of the game. It combines **free experimentation** (combine 
 
 Combat is about 15% of play time and is simple, real-time, and often avoidable.
 
-- Attack, block, and dodge, with options to sneak or talk.
+- Attack, block, and dodge, with options to sneak or talk. Sprinting, dodging, and blocking hits spend stamina (`stamina` flag).
 - Melee, bows, thrown potions, and magic, which are added gradually (see Milestones). Crafted items drive combat.
 - Enemies are mostly animals, goblins, and other non-humans. Human enemies are rare.
 - On death, you wake up in the village and lose some gathered materials.

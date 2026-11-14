@@ -81,6 +81,17 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | `screen_ambient_occlusion` | `true` | Darkens corners, eaves, and the ground under things on high graphics. Off never does, which saves about 1.3 ms a frame on a Radeon 680M, most of it for the extra normal buffer that it needs whatever its quality |
 | `ambient_life` | `true` | Adds birds that circle high above by day, butterflies over lush grass by day, and fireflies over lush grass and the river at night. Each kind is one MultiMesh draw call without shadows or collision. Off adds none of them. Low and medium graphics show 40% and 70% of each count |
 
+## Weather flags and values
+
+Weather is [#241](https://github.com/Gamperle/Erlenfall/issues/241): clear, overcast, and rain, which follow each other at random and blend smoothly (`scripts/world/weather.gd`). Overcast skies dim the sun, grey the sky and thicken the fog and clouds, rain adds one `GPUParticles3D` that follows the camera, and wind sways the grass and speeds up the clouds. The weather is saved with the game. The durations are placeholders for the maintainer to tune. Rain shows 33%, 60%, and 100% of its particles (500, 900, 1500) on low, medium, and high graphics.
+
+| Name | Default | Effect |
+|---|---|---|
+| `weather` | `true` | Turns weather on or off. Off keeps the sky clear and the grass in a light breeze, and adds no rain |
+| `weather_min_seconds` | `180` | The shortest time before the weather changes. A game day lasts 600 seconds |
+| `weather_max_seconds` | `420` | The longest time before the weather changes |
+| `weather_blend_seconds` | `20` | How long a change takes to blend fully |
+
 ## Player flags and values
 
 | Name | Default | Effect |
@@ -110,6 +121,15 @@ Bows and thrown flasks are the first slice of [#29](https://github.com/Gamperle/
 | `ranged_starting_items` | `true` | Gives the player a short bow, arrows, and fire flasks once per game, because they can't be crafted yet |
 | `ranged_starting_arrows` | `10` | How many arrows the player starts with |
 | `ranged_starting_flasks` | `3` | How many fire flasks the player starts with |
+
+## Healing flags
+
+| Name | Default | Effect |
+|---|---|---|
+| `health_regen` | `true` | Health regenerates slowly after a few seconds without being hit |
+| `health_regen_delay_seconds` | `8.0` | Seconds without a hit before regeneration starts |
+| `health_regen_per_second` | `2.0` | Health regained per second while regenerating |
+| `healing_items` | `true` | Items with a `use` action in `crafting.json` (berries, healing potion) can be used from the inventory, and the potion can be brewed |
 
 ## Torch flags
 
@@ -180,4 +200,4 @@ Enemies walk straight at their target until something blocks them, then search a
 
 ### Villager routines
 
-A routine is a list of stops in `data/villager_routines.json`, by villager id. A stop starts at an hour (`from`, 0 to 24, increasing) and lasts until the next one, wrapping past midnight. It gives a place (`x`, `z`) and which way to face there (`facing`, degrees). A stop with no place means home, where `data/village_layout.json` puts the villager. Villagers walk in a straight line, stop while a conversation is open, and are put straight at their place if the time jumps by more than two hours, such as when sleeping.
+A routine is a list of stops in `data/villager_routines.json`, by villager id. A stop starts at an hour (`from`, 0 to 24, increasing) and lasts until the next one, wrapping past midnight. It gives a place (`x`, `z`) and which way to face there (`facing`, degrees). A stop with no place means home, where `data/village_layout.json` puts the villager. A stop can also give `via`, a list of `[x, z]` places to walk through on the way to it, so the walk goes around buildings and water, and over the bridge, instead of in a straight line (#222). Each straight part has to be clear for a body of a villager's size, which the smoke test checks. Villagers follow the ground and the bridge deck, stop while a conversation is open, and are put straight at their place if the time jumps by more than two hours, such as when sleeping.

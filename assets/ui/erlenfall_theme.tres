@@ -204,6 +204,20 @@ axis_stretch_horizontal = 1
 axis_stretch_vertical = 1
 modulate_color = Color(0.74, 0.14, 0.1, 1)
 
+[sub_resource type="StyleBoxTexture" id="stamina"]
+texture = ExtResource("9")
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+texture_margin_left = 2.0
+texture_margin_top = 2.0
+texture_margin_right = 2.0
+texture_margin_bottom = 2.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+modulate_color = Color(0.85, 0.7, 0.2, 1)
+
 [sub_resource type="StyleBoxTexture" id="hot"]
 texture = ExtResource("9")
 content_margin_left = 0.0
@@ -358,6 +372,8 @@ ParchmentPanel/base_type = &"PanelContainer"
 ParchmentPanel/styles/panel = SubResource("parchment")
 BarTrough/base_type = &"Panel"
 BarTrough/styles/panel = SubResource("trough")
+StaminaBar/base_type = &"ProgressBar"
+StaminaBar/styles/fill = SubResource("stamina")
 BarFrame/base_type = &"Panel"
 BarFrame/styles/panel = SubResource("frame")
 ForgeTarget/base_type = &"Panel"

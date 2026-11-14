@@ -6,7 +6,8 @@ extends Node
 ## starts at an hour ("from", 0 to 24) and lasts until the next one starts, wrapping past
 ## midnight. It names a place ("x", "z") and which way to face there ("facing", degrees around
 ## the vertical axis, as for a building's rotation). A stop with no place is the villager's home,
-## where the layout file puts them.
+## where the layout file puts them. A stop can also list "via" places ([x, z] pairs) to walk through
+## on the way to it, so the walk goes around buildings and water rather than straight at it (#222).
 ##
 ## To keep it cheap, this checks the clock a couple of times a second, and a villager only does
 ## any work while walking.
@@ -26,6 +27,14 @@ var _tick_left := 0.0
 func _ready() -> void:
 	set_process(FeatureFlags.enabled("villager_routines"))
 	_routines = load_routines()
+
+
+## The places to walk through on the way to a stop.
+static func route_of(stop: Dictionary) -> Array[Vector2]:
+	var route: Array[Vector2] = []
+	for point: Array in stop.get("via", []):
+		route.append(Vector2(point[0], point[1]))
+	return route
 
 
 static func load_routines(path := PATH) -> Dictionary:
@@ -64,6 +73,9 @@ static func problems(routines: Dictionary, npc_ids: Array) -> Array[String]:
 			previous = from
 			if stop.has("x") != stop.has("z"):
 				found.append("%s: a stop needs both x and z, or neither" % id)
+			for point: Variant in stop.get("via", []) as Array:
+				if not (point is Array and point.size() == 2):
+					found.append("%s: via places must be [x, z] pairs" % id)
 	return found
 
 
@@ -103,4 +115,4 @@ func update(hour: float) -> void:
 		if jumped:
 			npc.place_at(spot, facing)
 		else:
-			npc.go_to(spot, facing)
+			npc.go_to(spot, facing, route_of(stop))

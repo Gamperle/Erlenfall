@@ -901,6 +901,8 @@ func _test_villager_routines(scene: Node) -> void:
 	_check(problems.is_empty(), "the villager routines are valid: %s" % [problems])
 	_check(not VillagerRoutines.problems({ "nobody": [{ "from": 5.0 }, { "from": 4.0, "x": 1.0 }] }, ids).is_empty(), "invalid routines are reported")
 
+	await _test_routine_legs(scene, village, data)
+
 	var stops := [{ "from": 6.0, "id": "a" }, { "from": 18.0, "id": "b" }]
 	_check(VillagerRoutines.active_stop(stops, 12.0)["id"] == "a", "a stop lasts until the next begins")
 	_check(VillagerRoutines.active_stop(stops, 23.0)["id"] == "b", "the last stop runs on past midnight")
@@ -917,10 +919,12 @@ func _test_villager_routines(scene: Node) -> void:
 	routines.update(18.4)
 	routines.update(18.6)
 	_check(bertram.is_processing(), "a villager sets off when their stop changes")
-	var start := Vector2(bertram.position.x, bertram.position.z).distance_to(spot)
+	# The walk goes by way of the places the stop names.
+	var first := VillagerRoutines.route_of(evening)[0]
+	var start := Vector2(bertram.position.x, bertram.position.z).distance_to(first)
 	for i in 30:
 		await process_frame
-	_check(Vector2(bertram.position.x, bertram.position.z).distance_to(spot) < start, "and walks towards it")
+	_check(Vector2(bertram.position.x, bertram.position.z).distance_to(first) < start, "and walks towards it, by way of the places the stop names")
 	_check(absf(bertram.position.y - village.terrain.height_at(bertram.position.x, bertram.position.z)) < 0.01, "following the ground")
 	routines.update(6.5)
 	_check(not bertram.is_processing() and Vector2(bertram.position.x, bertram.position.z).is_equal_approx(bertram.home), "a jump in time puts villagers straight at their places")
@@ -935,6 +939,47 @@ func _test_villager_routines(scene: Node) -> void:
 	routines._villagers.erase("absent")
 	absent.free()
 	routines.set_process(FeatureFlags.enabled("villager_routines"))
+
+
+## Every leg of every routine, from one stop's place through the "via" places to the next, has to
+## avoid buildings and water (#222).
+func _test_routine_legs(_scene: Node, village: Village, data: Dictionary) -> void:
+	var walker := CharacterBody3D.new()
+	root.add_child(walker)
+	# Villagers are solid, so they are put out of the way of the search.
+	var villagers: Array[Npc] = []
+	for child in village.get_children():
+		if child is Npc:
+			villagers.append(child)
+			child.position.y -= 100.0
+	await _physics_frames(2)
+	EnemyPath.forget_all()
+	var path := EnemyPath.new(walker, Npc.BODY_RADIUS)
+	var legs := 0
+	var bad := ""
+	for id: String in data:
+		var stops: Array = data[id]
+		var home: Vector2 = village.get_node(id).home
+		for i in stops.size():
+			var previous: Dictionary = stops[(i + stops.size() - 1) % stops.size()]
+			var stop: Dictionary = stops[i]
+			var points: Array[Vector2] = [Vector2(previous["x"], previous["z"]) if previous.has("x") else home]
+			points.append_array(VillagerRoutines.route_of(stop))
+			points.append(Vector2(stop["x"], stop["z"]) if stop.has("x") else home)
+			for j in points.size() - 1:
+				if points[j].is_equal_approx(points[j + 1]):
+					continue
+				legs += 1
+				var from := Vector3(points[j].x, village.walking_height(points[j].x, points[j].y) + 0.1, points[j].y)
+				var to := Vector3(points[j + 1].x, village.walking_height(points[j + 1].x, points[j + 1].y) + 0.1, points[j + 1].y)
+				if not path.is_line_clear(from, to):
+					bad += " %s %s->%s" % [id, points[j], points[j + 1]]
+	for villager in villagers:
+		villager.position.y += 100.0
+	EnemyPath.forget_all()
+	_check(legs > 0, "there are routine legs to check")
+	_check(bad.is_empty(), "villagers' walks avoid buildings and water:%s" % bad)
+	walker.free()
 
 
 func _test_story(scene: Node, player: Player) -> void:

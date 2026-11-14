@@ -16,6 +16,8 @@ var ground_height := Callable()
 
 var _label: Label3D
 var _goal := Vector2.ZERO
+## Places to walk through on the way to the goal, in order, ahead of the goal itself.
+var _route: Array[Vector2] = []
 var _goal_facing := NAN
 var _body: Node3D
 var _dialogue_ui: Node
@@ -97,11 +99,13 @@ func interact(player: Player) -> void:
 
 
 ## Starts walking to a place. Does nothing if they are already there or heading there.
-## A facing (radians around the vertical axis) is taken up on arrival.
-func go_to(spot: Vector2, facing := NAN) -> void:
+## A facing (radians around the vertical axis) is taken up on arrival. `via` lists places to walk
+## through first, so the walk goes around buildings and water (#222).
+func go_to(spot: Vector2, facing := NAN, via: Array[Vector2] = []) -> void:
 	if _is_at(spot) or (is_processing() and _goal.is_equal_approx(spot)):
 		return
 	_goal = spot
+	_route = via.duplicate()
 	_goal_facing = facing
 	set_process(true)
 
@@ -109,6 +113,7 @@ func go_to(spot: Vector2, facing := NAN) -> void:
 ## Puts them at a place at once.
 func place_at(spot: Vector2, facing := NAN) -> void:
 	set_process(false)
+	_route.clear()
 	_body.animate(0.0, 0.0)
 	position.x = spot.x
 	position.z = spot.y
@@ -133,9 +138,12 @@ func _process(delta: float) -> void:
 	if _dialogue_ui != null and _dialogue_ui.is_open():
 		return
 	var speed: float = FeatureFlags.value("villager_walk_speed", 1.2)
-	var to_go := _goal - Vector2(position.x, position.z)
 	var step := speed * delta
-	if to_go.length() <= step:
+	# Each stop on the way counts as reached once a step is enough to get there.
+	while not _route.is_empty() and Vector2(position.x, position.z).distance_to(_route[0]) <= step:
+		_route.remove_at(0)
+	var to_go := (_route[0] if not _route.is_empty() else _goal) - Vector2(position.x, position.z)
+	if _route.is_empty() and to_go.length() <= step:
 		place_at(_goal, _goal_facing)
 		return
 	var heading := to_go.normalized()

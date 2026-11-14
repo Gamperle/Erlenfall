@@ -15,6 +15,7 @@
 		"surface_relief": true,
 		"screen_ambient_occlusion": true,
 		"ambient_life": true,
+		"weather": true,
 		"sneaking": true,
 		"stamina": true,
 		"crafting_parts": true,
@@ -32,6 +33,9 @@
 		"torch_burns_out": { "all": ["torches", "torch_burn_time_enabled"] }
 	},
 	"values": {
+		"weather_min_seconds": 180,
+		"weather_max_seconds": 420,
+		"weather_blend_seconds": 20,
 		"health_regen_delay_seconds": 8.0,
 		"health_regen_per_second": 2.0,
 		"skill_target_width_per_level": 0.015,

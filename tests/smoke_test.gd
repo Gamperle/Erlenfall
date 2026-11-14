@@ -181,6 +181,7 @@ func _run() -> void:
 	await _test_player_fixes(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
 	await _test_ambient_life(scene, day_night)
+	await _test_weather(scene, day_night)
 	await _test_grass_cost(scene)
 	_test_surface_relief(scene)
 	_test_grass_cell_edge(scene)
@@ -2810,6 +2811,65 @@ func _test_data_validation() -> void:
 		_check(found.any(func(line: String) -> bool: return line.begins_with(expected) or line.contains(expected)), "the validator reports: %s" % expected + ("" if found.any(func(line: String) -> bool: return line.contains(expected)) else " (got %s)" % [found]))
 	var empty := DataValidator.new().validate_files({ "quests.json": [] })
 	_check(not empty.is_empty(), "a data file of the wrong kind is reported")
+
+
+func _test_weather(scene: Node, day_night: DayNight) -> void:
+	var weather: Weather = scene.get_node_or_null("Weather")
+	_check(weather != null and FeatureFlags.enabled("weather"), "weather is added when its flag is on")
+	if weather == null:
+		return
+	var sun: DirectionalLight3D = scene.get_node("Sun")
+	var dome: SkyDome = scene.get_node("SkyDome")
+	var environment: Environment = scene.get_node("WorldEnvironment").environment
+	var saved_hour := day_night.hour
+	day_night.hour = 12.0
+	weather.set_state("clear")
+	day_night._apply()
+	var clear_energy := sun.light_energy
+	var clear_fog := environment.fog_density
+	var clear_coverage: float = dome.material_override.get_shader_parameter("cloud_coverage")
+	var clear_top: Color = environment.sky.sky_material.sky_top_color
+	_check(weather.rain_particles().emitting == false, "no rain falls under a clear sky")
+	weather.set_state("rain")
+	day_night._apply()
+	_check(sun.light_energy < clear_energy * 0.5, "rain dims the sun")
+	_check(environment.fog_density > clear_fog, "rain thickens the fog")
+	_check(dome.material_override.get_shader_parameter("cloud_coverage") > clear_coverage, "rain thickens the clouds")
+	_check(environment.sky.sky_material.sky_top_color.v < clear_top.v, "rain darkens the sky")
+	_check(weather.rain_particles().emitting, "rain falls in the rain")
+	_check(scene.get_node("Village/Grass")._material.get_shader_parameter("wind_strength") > 0.6, "the wind shakes the grass in the rain")
+	var rain_nodes := weather.find_children("*", "GPUParticles3D", true, false)
+	_check(rain_nodes.size() == 1 and weather.get_child_count() == 1, "rain is one particle system")
+	weather.set_quality("low")
+	var low_amount: int = weather.rain_particles().amount
+	weather.set_quality("high")
+	_check(low_amount < weather.rain_particles().amount, "lower graphics draw less rain")
+	weather.set_quality(Settings.graphics)
+	# The weather blends instead of jumping.
+	weather.set_state("clear", false)
+	weather.update(1.0)
+	_check(weather.rain < 1.0 and weather.rain > 0.0 and weather.overcast > 0.0, "weather blends smoothly")
+	for step in 40:
+		weather.update(1.0)
+	_check(weather.rain == 0.0 and weather.overcast == 0.0, "weather settles into the new state")
+	# Every state leads somewhere, at every roll.
+	var leads_on := true
+	for from: String in Weather.STATES:
+		for roll in [0.0, 0.3, 0.7, 1.0]:
+			leads_on = leads_on and Weather.STATES.has(Weather.pick_next(from, roll)) and Weather.pick_next(from, roll) != from
+	_check(leads_on, "weather always changes to another known state")
+	# The weather is saved and loaded.
+	weather.set_state("rain")
+	var player: Player = scene.get_node("Player")
+	var village: Village = scene.get_node("Village")
+	SaveGame.write(TEST_SAVE, player, day_night, village)
+	weather.set_state("clear")
+	_check(SaveGame.apply(TEST_SAVE, player, day_night, village) and weather.state == "rain" and weather.rain == 1.0, "the weather is saved and loaded")
+	weather.load_data({})
+	_check(weather.state == "rain", "a save without weather leaves it as it is")
+	weather.set_state("clear")
+	day_night.hour = saved_hour
+	day_night._apply()
 
 
 ## The camp's goblins, which the movement tests use. Other enemy types live elsewhere.

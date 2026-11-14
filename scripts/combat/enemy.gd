@@ -35,6 +35,8 @@ const SIDESTEP_SECONDS := 0.5
 const CROWD_RANGE := 15.0
 ## Room left between this body and one standing still that is planned around.
 const CROWD_MARGIN := 0.3
+## How close to another still enemy counts as touching it, beyond their radii.
+const TOUCH_MARGIN := 0.25
 ## An enemy walking straight looks for water on the way now and then, and plans a path at most
 ## this often when there is some, since it would rather walk around.
 const WATER_SEARCH_WAIT_SECONDS := 2.0
@@ -527,10 +529,15 @@ func _crowd_moved(crowd: PackedVector3Array) -> bool:
 	return false
 
 
+## Whether another still enemy is touching this one or about to be, so it stops short of it instead
+## of pressing against it while it looks for a way (#276).
 func _touches_still_enemy() -> bool:
 	for i in get_slide_collision_count():
 		var other := get_slide_collision(i).get_collider() as Enemy
 		if other != null and other.is_holding_ground():
+			return true
+	for other: Enemy in get_tree().get_nodes_in_group(GROUP):
+		if other != self and other.is_holding_ground() and _flat_distance(other.global_position) < float(_stats["radius"]) + float(other._stats["radius"]) + TOUCH_MARGIN:
 			return true
 	return false
 

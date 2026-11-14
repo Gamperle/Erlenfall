@@ -24,6 +24,7 @@ const MOON_ENERGY := 0.35
 @export var sun: DirectionalLight3D
 @export var world_environment: WorldEnvironment
 @export var mist: Mist
+@export var sky_dome: SkyDome
 @export_range(0.0, 24.0) var hour := 9.0
 
 
@@ -73,6 +74,9 @@ func _apply() -> void:
 		sun.light_energy = sin(night_progress * PI) * MOON_ENERGY
 		sun.light_color = MOON_LIGHT
 
+	if sky_dome:
+		var moon_progress := fposmod(hour - SUNSET, 24.0) / (24.0 - SUNSET + SUNRISE)
+		sky_dome.set_time(hour, light, dusk, sky_direction(moon_progress), moon_progress < 1.0)
 	var environment := world_environment.environment
 	var sky: ProceduralSkyMaterial = environment.sky.sky_material
 	var top := NIGHT_TOP.lerp(DAY_TOP, light).lerp(DUSK_TOP, dusk)

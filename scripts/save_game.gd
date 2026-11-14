@@ -6,7 +6,8 @@ extends RefCounted
 
 const BELOW_GROUND_MARGIN := 1.5
 const DEFAULT_PATH := "user://save.json"
-const VERSION := 1
+## Bump this when the save format changes, and add a _migrate_<n>_to_<n+1> function below.
+const VERSION := 2
 const SLOTS := 3
 const BACKUP_SUFFIX := ".bak"
 const TEMP_SUFFIX := ".tmp"
@@ -47,6 +48,12 @@ static func is_damaged(path: String) -> bool:
 	return FileAccess.file_exists(path) and _read(path).is_empty()
 
 
+## True if the file was written by a newer build than this one, so it can't be read safely.
+static func is_too_new(path: String) -> bool:
+	var data := _parse(path)
+	return not data.is_empty() and int(data["version"]) > VERSION
+
+
 ## True if the previous save of this slot is still readable.
 static func has_backup(path: String) -> bool:
 	return not _read(path + BACKUP_SUFFIX).is_empty()
@@ -76,7 +83,7 @@ static func write(path: String, player: Player, day_night: DayNight, village: Vi
 	file.store_string(JSON.stringify(data, "\t"))
 	file.close()
 	# An unreadable file must not replace a good backup.
-	if not _read(path).is_empty():
+	if not _read(path).is_empty() or is_too_new(path):
 		DirAccess.copy_absolute(path, path + BACKUP_SUFFIX)
 	var error := DirAccess.rename_absolute(temp_path, path)
 	if error != OK:
@@ -126,10 +133,39 @@ static func apply(path: String, player: Player, day_night: DayNight, village: Vi
 	return true
 
 
+## Reads a save and upgrades it to the current format. Returns {} if it is missing, damaged or too new.
 static func _read(path: String) -> Dictionary:
+	var data := _parse(path)
+	if data.is_empty() or int(data["version"]) > VERSION:
+		return {}
+	return _migrate(data)
+
+
+## Returns the save as written, or {} if it is missing, damaged or has no version number.
+static func _parse(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
 		return {}
 	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if data is Dictionary and data.get("version") == VERSION:
+	if data is Dictionary and (data.get("version") is float or data.get("version") is int):
 		return data
 	return {}
+
+
+## Upgrades one version at a time: v1 becomes v2, v2 becomes v3, and so on.
+static func _migrate(data: Dictionary) -> Dictionary:
+	while int(data["version"]) < VERSION:
+		match int(data["version"]):
+			1:
+				_migrate_1_to_2(data)
+			_:
+				return {}
+		data["version"] = int(data["version"]) + 1
+	return data
+
+
+## Version 1 saves may predate skills, torches and ranged weapons, so they get explicit defaults.
+static func _migrate_1_to_2(data: Dictionary) -> void:
+	var defaults := {"skill_xp": {}, "torch_given": false, "ranged_given": false, "torch_lit": false, "torch_burned_seconds": 0.0}
+	for key: String in defaults:
+		if not data.has(key):
+			data[key] = defaults[key]

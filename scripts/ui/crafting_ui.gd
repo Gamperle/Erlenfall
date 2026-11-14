@@ -413,7 +413,7 @@ func _build() -> void:
 
 	_title = Label.new()
 	_title.theme_type_variation = &"TitleLabel"
-	_title.add_theme_font_size_override("font_size", 26)
+	_title.add_theme_font_size_override("font_size", Settings.scaled_font_size(26))
 	_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_title)
 	column.add_child(HSeparator.new())

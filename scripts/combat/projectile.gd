@@ -74,7 +74,9 @@ func _physics_process(delta: float) -> void:
 			target = null
 	global_position = end
 	if velocity.length() > 0.01 and not end.is_equal_approx(end + velocity):
-		look_at(end + velocity, Vector3.UP)
+		# Straight up or down has no sideways direction to turn towards, so another up vector is used.
+		var up := Vector3.UP if absf(velocity.normalized().dot(Vector3.UP)) < 0.99 else Vector3.RIGHT
+		look_at(end + velocity, up)
 	if target != null or not ground.is_empty():
 		_land(target)
 

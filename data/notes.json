@@ -1,0 +1,33 @@
+{
+	"village_sign": {
+		"type": "sign",
+		"title": "NOTE_VILLAGE_SIGN_TITLE",
+		"text": "NOTE_VILLAGE_SIGN_TEXT"
+	},
+	"notice_board": {
+		"type": "sign",
+		"title": "NOTE_NOTICE_BOARD_TITLE",
+		"text": "NOTE_NOTICE_BOARD_TEXT"
+	},
+	"north_road_sign": {
+		"type": "sign",
+		"title": "NOTE_NORTH_ROAD_TITLE",
+		"text": "NOTE_NORTH_ROAD_TEXT"
+	},
+	"mine_notice": {
+		"type": "note",
+		"title": "NOTE_MINE_NOTICE_TITLE",
+		"text": "NOTE_MINE_NOTICE_TEXT"
+	},
+	"grandfather_letter": {
+		"type": "note",
+		"title": "NOTE_GRANDFATHER_LETTER_TITLE",
+		"text": "NOTE_GRANDFATHER_LETTER_TEXT",
+		"sets_flag": "read_grandfather_letter"
+	},
+	"village_chronicle": {
+		"type": "book",
+		"title": "NOTE_CHRONICLE_TITLE",
+		"text": "NOTE_CHRONICLE_TEXT"
+	}
+}

@@ -50,7 +50,7 @@ const ROAD_BLEND := 11.0
 ## How many meters of valley side the river gets per meter the land lies above its banks, so the
 ## sides stay below the player's 45 degree floor limit, and the most they spread.
 const VALLEY_RUN_PER_DROP := 3.4
-const MAX_VALLEY_WIDTH := 160.0
+const MAX_VALLEY_WIDTH := 240.0
 const ROAD_SMOOTH_SAMPLES := 14
 const ROAD_SMOOTH_PASSES := 3
 const RIVER_SPACING := 8.0
@@ -224,8 +224,8 @@ func _add_flat_areas(layout: Dictionary) -> void:
 		_add_flat_area(field["x"], field["z"], Vector2(field["width"], field["depth"]).length() / 2.0 + BUILDING_FLAT_MARGIN, FIELD_FLAT_BLEND)
 	for building: Dictionary in layout["buildings"]:
 		_add_flat_area(building["x"], building["z"], Vector2(building["width"], building["depth"]).length() / 2.0 + BUILDING_FLAT_MARGIN, BUILDING_FLAT_BLEND)
-	for list in ["npcs", "enemies", "repair_sites", "beds", "stations", "resources"]:
-		for spot: Dictionary in layout[list]:
+	for list in ["npcs", "enemies", "repair_sites", "beds", "stations", "resources", "readables"]:
+		for spot: Dictionary in layout.get(list, []):
 			_add_flat_area(spot["x"], spot["z"], SPOT_FLAT_RADIUS, SPOT_FLAT_BLEND)
 
 

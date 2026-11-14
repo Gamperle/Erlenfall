@@ -2120,6 +2120,12 @@ func _test_buried_mine(scene: Node, player: Player) -> void:
 	var data: Dictionary = layout["mine"]
 	var mine: Mine = village.get_node_or_null(data["id"])
 	_check(mine != null and mine.get_node("Collision").get_child_count() > 10, "the buried mine stands at its place in the layout, with collision")
+	# The cliff is a sculpted face (#307): irregular and low in triangles, not a few boxes.
+	var cliff_mesh: ArrayMesh = (mine.get_node("Look/Mesh") as MeshInstance3D).mesh
+	var cliff_triangles := 0
+	for surface in cliff_mesh.get_surface_count():
+		cliff_triangles += (cliff_mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() / 3
+	_check(cliff_triangles > 1500 and cliff_triangles < 8000, "the mine's cliff is a sculpted face with few triangles (%d)" % cliff_triangles)
 	var at := Vector2(data["x"], data["z"])
 	_check(village.marker_position(data["id"]).distance_to(at) < 0.1 and village.landmark_positions() == [at], "the mine is a quest marker and a compass landmark")
 	var steepest := 0.0

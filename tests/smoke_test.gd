@@ -176,6 +176,7 @@ func _run() -> void:
 	await _test_enemies_make_way(player)
 	await _test_enemies_go_around_a_corridor(player)
 	await _test_gathering_collision(scene, player)
+	await _test_buried_mine(scene, player)
 	await _test_forest(scene, player)
 	await _test_player_fixes(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
@@ -1613,6 +1614,79 @@ func _test_gathering_collision(scene: Node, player: Player) -> void:
 	await _physics_frames(1)
 
 
+## The buried mine (#249): a blocked entrance on level ground, reachable from the road by walking and by enemy paths.
+func _test_buried_mine(scene: Node, player: Player) -> void:
+	var terrain: Terrain = scene.get_node("Terrain")
+	var village: Village = scene.get_node("Village")
+	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Village.LAYOUT_PATH))
+	var data: Dictionary = layout["mine"]
+	var mine: Mine = village.get_node_or_null(data["id"])
+	_check(mine != null and mine.get_node("Collision").get_child_count() > 10, "the buried mine stands at its place in the layout, with collision")
+	var at := Vector2(data["x"], data["z"])
+	_check(village.marker_position(data["id"]).distance_to(at) < 0.1 and village.landmark_positions() == [at], "the mine is a quest marker and a compass landmark")
+	var steepest := 0.0
+	for i in 16:
+		for distance in range(0, int(data["plaza_radius"]) + 1, 3):
+			var point := at + Vector2.from_angle(TAU * i / 16.0) * distance
+			steepest = maxf(steepest, _slope_degrees(terrain, point.x, point.y))
+	_check(steepest < 12.0, "the ground before the mine is level (steepest %.1f degrees)" % steepest)
+	var trail: TerrainPath = terrain.roads[1]
+	var trail_steepest := 0.0
+	for point in trail.positions:
+		trail_steepest = maxf(trail_steepest, _slope_degrees(terrain, point.x, point.y))
+	_check(trail_steepest < 20.0 and trail.positions[trail.positions.size() - 1].distance_to(at) < float(data["plaza_radius"]), "a gentle trail leads from the road to the mine (steepest %.1f degrees)" % trail_steepest)
+	_check(Compass.bearing_between(Vector2(0.0, 0.0), at) < 30.0 or Compass.bearing_between(Vector2(0.0, 0.0), at) > 330.0, "the mine lies to the north of the village")
+
+	# The rubble blocks the opening: a player walking at it from the front stops outside the tunnel.
+	var saved_position := player.position
+	var front := mine.front_point()
+	var stopped := 0
+	for across: float in [-1.2, 0.0, 1.2]:
+		var from: Vector3 = mine.global_transform * Vector3(across, 0.0, 6.0)
+		from.y = terrain.height_at(from.x, from.z) + 0.1
+		var motion: Vector3 = mine.global_basis * Vector3(0.0, 0.0, -9.0)
+		var result := PhysicsTestMotionResult3D.new()
+		var hit := PhysicsServer3D.body_test_motion(player.get_rid(), _motion_params(Transform3D(player.global_basis, from), motion), result)
+		if hit and mine.to_local(from + result.get_travel()).z > 0.0 and result.get_travel().length() < 8.0:
+			stopped += 1
+	_check(stopped == 3, "rubble blocks the mine's opening (%d of 3 walks stopped)" % stopped)
+
+	# Enemies plan a way from the start of the trail to the mine's front.
+	var enemy: Enemy = root.get_tree().get_first_node_in_group(Enemy.GROUP)
+	var home := enemy._home
+	var others: Array[Enemy] = []
+	for other: Enemy in root.get_tree().get_nodes_in_group(Enemy.GROUP):
+		if other != enemy:
+			others.append(other)
+			other.process_mode = Node.PROCESS_MODE_DISABLED
+			other.position.y -= 100.0
+	var start := Vector3(12.0, terrain.height_at(12.0, -165.0) + 0.3, -165.0)
+	var goal := Vector3(front.x, terrain.height_at(front.x, front.z) + 0.3, front.z)
+	EnemyPath.forget_all()
+	enemy.position = start
+	await physics_frame
+	var path := EnemyPath.new(enemy, enemy._stats["radius"])
+	path.begin(start, goal, 0.5)
+	while not path.advance():
+		await physics_frame
+	_check(path.reached, "enemies can find their way from the road to the mine's front")
+	EnemyPath.forget_all()
+	enemy._home = home
+	enemy.revive()
+	for other in others:
+		other.process_mode = Node.PROCESS_MODE_INHERIT
+		other.revive()
+	player.position = saved_position
+	await _physics_frames(10)
+
+
+func _motion_params(from: Transform3D, motion: Vector3) -> PhysicsTestMotionParameters3D:
+	var params := PhysicsTestMotionParameters3D.new()
+	params.from = from
+	params.motion = motion
+	return params
+
+
 func _test_interface_fit(scene: Node) -> void:
 	_check(InterfaceScale.factor_for(Vector2(1152.0, 648.0), Vector2(1152.0, 648.0), 0.9) == 1.0, "the base window size lays out the interface at full size")
 	_check(InterfaceScale.factor_for(Vector2(1920.0, 1080.0), Vector2(1152.0, 648.0), 0.9) == 1.0, "large windows keep stretching the interface")
@@ -2519,13 +2593,14 @@ func _test_data_validation() -> void:
 	broken["enemies.json"]["goblin"]["health"] = "lots"
 	broken["village_layout.json"]["enemies"][0]["type"] = "dragon"
 	broken["villager_routines.json"]["bertram"][1].erase("z")
+	broken["village_layout.json"]["mine"].erase("opening_width")
 	broken["projectiles.json"]["arrow"]["ammo_item"] = "arrows"
 	var found := DataValidator.new().validate_files(broken)
 	for expected in [
 		"crafting.json: recipes[forge_axe]", "crafting.json: items[torch]: missing \"name\"", "quests.json: [arrival].objectives[see_grandmother].marker: unknown marker place \"nobody\"",
 		"dialogue.json: hedda[0].when.objective", "dialogue.json: hedda[0].nodes[send].effects[0].quest: unknown quest \"no_quest\"",
 		"dialogue.json: hedda[0].nodes[how_bad].next", "dialogue.json: [stranger]: unknown villager", "enemies.json: [goblin].drops[0].item: unknown item \"gold\"",
-		"enemies.json: [goblin].health", "village_layout.json: enemies[0].type", "villager_routines.json: [bertram][1]: a stop needs both", "projectiles.json: [arrow].ammo_item",
+		"enemies.json: [goblin].health", "village_layout.json: enemies[0].type", "village_layout.json: mine: missing \"opening_width\"", "villager_routines.json: [bertram][1]: a stop needs both", "projectiles.json: [arrow].ammo_item",
 	]:
 		_check(found.any(func(line: String) -> bool: return line.begins_with(expected) or line.contains(expected)), "the validator reports: %s" % expected + ("" if found.any(func(line: String) -> bool: return line.contains(expected)) else " (got %s)" % [found]))
 	var empty := DataValidator.new().validate_files({ "quests.json": [] })

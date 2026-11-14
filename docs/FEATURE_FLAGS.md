@@ -62,6 +62,7 @@ For example, a mod that loads last can give torches a burn time of five minutes 
 | Name | Default | Effect |
 |---|---|---|
 | `compass` | `true` | Shows the compass at the top of the screen |
+| `compass_landmarks` | `true` | Shows a ring on the compass for landmarks such as the buried mine |
 | `villager_routines` | `true` | Villagers follow their daily routines from [`data/villager_routines.json`](../data/villager_routines.json), walking to a place at the hours it names. Off keeps everyone where the layout puts them |
 | `realistic_villagers` | `true` | Uses the MakeHuman models for villagers who have one, instead of the simple figures |
 | `realistic_enemies` | `true` | Uses rigged models for enemies who have one |

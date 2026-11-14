@@ -105,7 +105,7 @@ func _init() -> void:
 	_hills.fractal_octaves = 3
 	_peaks.seed = 2
 	_peaks.frequency = 0.004
-	_peaks.fractal_octaves = 5
+	_peaks.fractal_octaves = 3
 	_rubble.seed = 3
 	_rubble.frequency = 0.04
 	_rubble.fractal_type = FastNoiseLite.FRACTAL_RIDGED
@@ -169,13 +169,15 @@ func wading_factor(feet: Vector3) -> float:
 func _natural_height(x: float, z: float) -> float:
 	var distance := Vector2(x, z).length()
 	var fade := lerpf(VILLAGE_HILLS, 1.0, smoothstep(VILLAGE_RADIUS * 0.6, VILLAGE_RADIUS * 2.5, distance))
-	var hills := _hills.get_noise_2d(x, z) * HILL_HEIGHT * fade
+	var mountain := smoothstep(VALLEY_RADIUS, MOUNTAIN_RADIUS, distance)
+	var hills := _hills.get_noise_2d(x, z) * HILL_HEIGHT * fade * (1.0 - mountain)
 	for hill: Dictionary in _rounded_hills:
 		var from_hill := Vector2(x, z).distance_to(Vector2(hill["x"], hill["z"]))
 		if from_hill < hill["radius"]:
 			hills += hill["height"] * (1.0 - smoothstep(0.0, hill["radius"], from_hill))
-	var mountain := smoothstep(VALLEY_RADIUS, MOUNTAIN_RADIUS, distance)
-	var peaks := mountain * mountain * (MOUNTAIN_HEIGHT + _peaks.get_noise_2d(x, z) * 110.0)
+	var rise := clampf(inverse_lerp(VALLEY_RADIUS, MOUNTAIN_RADIUS, distance), 0.0, 1.0)
+	var wall := lerpf(mountain * mountain, rise * rise, 0.5)
+	var peaks := wall * (MOUNTAIN_HEIGHT + _peaks.get_noise_2d(x, z) * 45.0)
 	return hills + peaks + _landslide_height(x, z)
 
 

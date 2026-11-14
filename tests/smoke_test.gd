@@ -2527,6 +2527,8 @@ func _test_interface_fit(scene: Node) -> void:
 	await process_frame
 	await process_frame
 	_check(window.content_scale_factor > 1.0, "a small window raises the interface scale")
+	var hint: Control = scene.get_node("UI/ControlsLabel")
+	_check(scene.get_node("UI/PromptLabel").offset_bottom <= hint.offset_top - 1.0, "the interact prompt stays above the wrapped controls hint")
 	var menu: GameMenu = scene.get_node("GameMenu")
 	menu.slot_paths = [TEST_SAVE, TEST_SLOT_2, TEST_SLOT_3]
 	menu.open_title()

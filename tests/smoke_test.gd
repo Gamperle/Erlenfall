@@ -3654,6 +3654,33 @@ func _test_rain_cover(scene: Node, weather: Weather) -> void:
 	weather._push()
 
 
+## Seen from outside, rain must stop at roofs and bridge decks (#312): the rain shader reads a coarse map.
+func _test_rain_roofs(scene: Node, weather: Weather) -> void:
+	var terrain: Terrain = scene.get_node("Terrain")
+	var village: Village = scene.get_node("Village")
+	weather.refresh_roofs()
+	var hall_top := weather.roof_height_at(0.0, -28.0)
+	var hall_floor := terrain.height_at(0.0, -28.0)
+	_check(hall_top > hall_floor + 6.0 and hall_top < hall_floor + 6.0 + ModelBuilder.ROOF_HEIGHT + 0.01, "rain stops at the town hall roof (%.1f over %.1f)" % [hall_top, hall_floor])
+	_check(weather.roof_height_at(0.0, -34.0) < hall_top and weather.roof_height_at(0.0, -34.0) > hall_floor + 6.0 or weather.roof_height_at(0.0, -34.0) == RoofMap.NONE, "the roof slopes down to its eaves")
+	_check(weather.roof_height_at(0.0, -10.0) == RoofMap.NONE and weather.roof_height_at(300.0, 300.0) == RoofMap.NONE, "open ground has no roof over it")
+	_check(weather.roof_height_at(-36.0, 28.0) == RoofMap.NONE, "a ruined house keeps no rain off")
+	var bridge_covers := village.roof_covers.filter(func(cover: Dictionary) -> bool: return cover["shape"] == "arch")
+	_check(not bridge_covers.is_empty(), "bridges are in the rain map")
+	for cover: Dictionary in bridge_covers:
+		var middle: Vector2 = cover["center"]
+		_check(weather.roof_height_at(middle.x, middle.y) > cover["base"], "rain stops at a bridge deck")
+	_check(weather.roof_height_at(25.0, -14.0) == RoofMap.NONE, "the inn's broken roof lets the rain in")
+	village.apply_flags({ "inn_roof_repaired": true })
+	weather.refresh_roofs()
+	_check(weather.roof_height_at(25.0, -14.0) > terrain.height_at(25.0, -14.0) + 5.0, "a repaired roof keeps the rain off")
+	village.apply_flags({})
+	weather.refresh_roofs()
+	_check(weather.roof_height_at(25.0, -14.0) == RoofMap.NONE, "the map follows the roof back to broken")
+	var drop_material: ShaderMaterial = weather.rain_particles().draw_pass_1.material
+	_check(drop_material.get_shader_parameter("roof_size") == weather._roof_map.size, "the rain shader gets the roof map")
+
+
 func _test_weather(scene: Node, day_night: DayNight) -> void:
 	var weather: Weather = scene.get_node_or_null("Weather")
 	_check(weather != null and FeatureFlags.enabled("weather"), "weather is added when its flag is on")
@@ -3680,6 +3707,7 @@ func _test_weather(scene: Node, day_night: DayNight) -> void:
 	_check(weather.rain_particles().emitting, "rain falls in the rain")
 	_check(scene.get_node("Village/Grass")._material.get_shader_parameter("wind_strength") > 0.6, "the wind shakes the grass in the rain")
 	await _test_rain_cover(scene, weather)
+	_test_rain_roofs(scene, weather)
 	var rain_nodes := weather.find_children("*", "GPUParticles3D", true, false)
 	_check(rain_nodes.size() == 1 and weather.get_child_count() == 1, "rain is one particle system")
 	weather.set_quality("low")

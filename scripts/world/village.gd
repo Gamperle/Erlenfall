@@ -63,6 +63,10 @@ var _repairs: Array[Dictionary] = []
 var _arrivals: Array[Npc] = []
 var _building_spots: Array[Vector2] = []
 var _busy_spots: Array[Vector2] = []
+## What keeps the rain off: a footprint and height for each house roof and bridge deck (see RoofMap).
+## roof_version changes whenever one is added or a roof is repaired, so the rain knows to redraw its map.
+var roof_covers: Array[Dictionary] = []
+var roof_version := 0
 
 
 func _ready() -> void:
@@ -189,6 +193,9 @@ func apply_flags(flags: Dictionary) -> void:
 		var repaired: bool = flags.has(repair["flag"])
 		repair["repaired"].visible = repaired
 		repair["damaged"].visible = not repaired
+		if repair["cover"]["active"] != repaired:
+			repair["cover"]["active"] = repaired
+			roof_version += 1
 	for npc in _arrivals:
 		npc.apply_flags(flags)
 
@@ -290,6 +297,11 @@ func _add_bridges(samples: PackedVector2Array, road_width: float) -> void:
 		bridge.position = Vector3(middle.x, height + BRIDGE_LIFT, middle.y)
 		bridge.rotation.y = atan2(along.x, along.y)
 		add_child(bridge, true)
+		roof_covers.append({
+			"center": middle, "half": Vector2((road_width + BRIDGE_WIDTH_MARGIN) / 2.0, start.distance_to(end) / 2.0),
+			"yaw": bridge.rotation.y, "base": bridge.position.y, "rise": BRIDGE_RISE, "shape": "arch", "active": true,
+		})
+		roof_version += 1
 
 
 func _road_mesh(samples: PackedVector2Array, width: float) -> MeshInstance3D:
@@ -429,11 +441,25 @@ func _add_building(data: Dictionary) -> void:
 		body.add_child(full_roof)
 		var damaged := ModelBuilder.damaged_roof(width, depth, height)
 		body.add_child(damaged)
-		_repairs.append({ "flag": data["repaired_by_flag"], "repaired": full_roof, "damaged": damaged })
+		_repairs.append({ "flag": data["repaired_by_flag"], "repaired": full_roof, "damaged": damaged, "cover": _add_roof_cover(data, body, false) })
 	else:
 		walls.add_child(ModelBuilder.house_roof(width, depth, height))
 		walls.add_child(ModelBuilder.chimney(width, depth, height))
+		_add_roof_cover(data, body, true)
 	ModelBuilder.merged(walls)
+
+
+## Notes where a house roof keeps the rain off, and returns that entry so a repair can switch it on.
+func _add_roof_cover(data: Dictionary, body: Node3D, active: bool) -> Dictionary:
+	var cover := {
+		"center": Vector2(body.position.x, body.position.z),
+		"half": Vector2(data["width"] + ModelBuilder.ROOF_OVERHANG, data["depth"] + ModelBuilder.ROOF_OVERHANG) / 2.0,
+		"yaw": body.rotation.y, "base": body.position.y + float(data["height"]), "rise": ModelBuilder.ROOF_HEIGHT,
+		"shape": "ridge", "active": active,
+	}
+	roof_covers.append(cover)
+	roof_version += 1
+	return cover
 
 
 ## Places the generated props. "building" makes x and z relative to that building, and "on"

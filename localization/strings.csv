@@ -18,6 +18,8 @@ UI_SKILLS,Skills: %s,Fertigkeiten: %s
 UI_SKILL_MAX,highest level,höchste Stufe
 UI_SKILL_UP,Your %s skill rose to level %d.,Deine Fertigkeit %s ist auf Stufe %d gestiegen.
 SKILL_SMITHING,Smithing,Schmieden
+SKILL_ALCHEMY,Alchemy,Alchemie
+SKILL_CARPENTRY,Carpentry,Tischlerei
 UI_FORGING,Forging %s: strike %d of %d,Schmieden: %s – Schlag %d von %d
 UI_FORGE_HINT,Press %s when the white marker is over the orange target. %s stops and loses materials.,"Drücke %s, wenn die weiße Markierung über dem orangen Ziel ist. %s bricht ab und kostet Material."
 UI_FORGE_ABANDONED,"You stopped forging. Half of the materials were saved, rounded down.","Du hast das Schmieden abgebrochen. Die Hälfte des Materials ist abgerundet erhalten geblieben."

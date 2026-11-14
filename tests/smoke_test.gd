@@ -2293,7 +2293,7 @@ func _test_key_bindings(scene: Node) -> void:
 	var menu: GameMenu = scene.get_node("GameMenu")
 	menu.open_pause()
 	menu._buttons.get_child(1).pressed.emit()
-	menu._buttons.get_child(5).pressed.emit()
+	menu._buttons.get_child(5 + AudioBuses.ALL.size()).pressed.emit()
 	await process_frame
 	var page: ControlsMenu = menu._controls
 	_check(menu._title.text == tr("UI_CONTROLS_TITLE") and page != null, "the settings open the Controls page")

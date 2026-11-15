@@ -14,11 +14,15 @@ one texture sample:
 
 import io
 import json
+import sys
 import urllib.request
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "asset_pipeline"))
+import provenance
 
 OUTPUT = Path("assets/textures")
 DOWNLOADS = Path("tools/texture_pipeline/downloads")
@@ -77,6 +81,20 @@ def download(asset, kind):
     return Image.open(io.BytesIO(path.read_bytes()))
 
 
+def write_provenance(name, asset):
+    """Records the Poly Haven texture and the exact downloaded maps this relief map was packed from."""
+    target = f"assets/textures/{name}_relief.png"
+    maps = {kind: provenance.sha256(str(DOWNLOADS / asset / f"{kind}.jpg")) for kind in ("nor_gl", "arm")}
+    stage = {
+        "step": "pack", "tool": "build_relief_maps.py", "date": provenance.today(),
+        "versions": {"python": sys.version.split()[0], "numpy": np.__version__, "Pillow": provenance.module_version("Pillow")},
+        "source": f"https://polyhaven.com/a/{asset}", "polyhaven_asset": asset, "resolution": RESOLUTION, "source_maps_sha256": maps,
+        "output_sha256": provenance.sha256(str(OUTPUT / f"{name}_relief.png")),
+    }
+    provenance.save(provenance.record_path("derived_texture", target), provenance.new_record(
+        "derived_texture", target, name=f"{name}_relief", stages=[stage]))
+
+
 def build(name, asset):
     size = Image.open(OUTPUT / f"{name}.jpg").size
     normal = np.asarray(download(asset, "nor_gl").convert("RGB").resize(size, Image.LANCZOS))
@@ -84,6 +102,7 @@ def build(name, asset):
     arm = np.asarray(download(asset, "arm").convert("RGB").resize(size, Image.LANCZOS))
     packed = np.dstack([normal[:, :, 0], normal[:, :, 1], arm[:, :, 1], arm[:, :, 0]])
     Image.fromarray(packed, "RGBA").save(OUTPUT / f"{name}_relief.png", optimize=True)
+    write_provenance(name, asset)
     print(f"{name}_relief.png from {asset}")
 
 

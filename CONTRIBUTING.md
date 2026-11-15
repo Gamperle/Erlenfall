@@ -43,7 +43,7 @@ godot --headless --path . --import
 - Use Godot 4.7.2 and GDScript. C++ needs a profiling result that justifies it.
 - Follow the [GDScript style guide](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html).
 - Keep items, recipes, and quests in data files, not in code.
-- Put optional or tunable features behind [feature flags](docs/FEATURE_FLAGS.md). Mods can override flags, and the mod load order decides which one wins.
+- Put optional or tunable features behind [feature flags](docs/FEATURE_FLAGS.md). Mods can override flags, and the mod load order decides which one wins. See [the mod guide](docs/MODS.md) and its [example mod](docs/example_mods/README.md).
 - Add all player-facing text to `localization/strings.csv`, in English and German.
 - Play sounds on one of the audio buses in `scripts/audio_buses.gd`: `Music`, `Effects`, or `Ambience`, all feeding into `Master`. The buses are created at start-up, and the settings screen sets their volumes. Pick one with `AudioBuses.route(player, AudioBuses.EFFECTS)`.
 - Respect the accessibility options in `scripts/settings.gd`: text size, colour vision, high contrast, and reduce motion. Check `Settings.reduce_motion` for anything that turns, shakes, flashes, or flickers, and make it still or much milder when it is on. It currently stops the crafting preview from turning, softens the hurt flash and the enemy hit flash, and steadies torch and campfire flames.

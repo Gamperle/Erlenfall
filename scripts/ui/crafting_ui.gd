@@ -171,7 +171,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	if _preview_box.is_visible_in_tree():
+	if not Settings.reduce_motion and _preview_box.is_visible_in_tree():
 		_preview_pivot.rotate_y(delta * PREVIEW_TURN_SPEED)
 	if not is_forging():
 		return

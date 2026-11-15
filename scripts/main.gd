@@ -13,6 +13,8 @@ const AUTOSAVE_SECONDS := 60.0
 const WAKE_UP_HOUR := 7.0
 const HURT_COLOR := Color(0.6, 0.05, 0.02, 0.28)
 const HURT_FADE_SECONDS := 0.35
+## How strong the hurt flash is with reduce motion on.
+const REDUCED_HURT_ALPHA := 0.35
 const DEATH_BLACK_SECONDS := 0.5
 const DEATH_FADE_SECONDS := 1.5
 const HUD_FONT_SIZE := 16
@@ -315,9 +317,10 @@ func _flash_hurt() -> void:
 	# The previous hit's fade would otherwise keep running and cut this flash short.
 	if _hurt_tween != null:
 		_hurt_tween.kill()
-	_hurt_overlay.modulate.a = 1.0
+	# Reduce motion makes the flash faint and slow, so the screen does not blink.
+	_hurt_overlay.modulate.a = REDUCED_HURT_ALPHA if Settings.reduce_motion else 1.0
 	_hurt_tween = create_tween()
-	_hurt_tween.tween_property(_hurt_overlay, "modulate:a", 0.0, HURT_FADE_SECONDS)
+	_hurt_tween.tween_property(_hurt_overlay, "modulate:a", 0.0, HURT_FADE_SECONDS * (3.0 if Settings.reduce_motion else 1.0))
 
 
 ## A full-screen color for effects, hidden until needed, that doesn't catch the mouse.

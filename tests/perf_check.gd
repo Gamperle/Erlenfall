@@ -48,6 +48,9 @@ const PATH := [
 	{"name": "village_edge_forest", "x": -60.0, "z": -60.0, "yaw": 225.0},
 ]
 
+## Every run keeps its save in its own folder, so overlapping runs (other worktrees, CI) and the
+## player's real saves in user:// never share a file (#386). The folder is deleted at the end.
+var _save_dir := "user://perf_check_%d" % OS.get_process_id()
 var _failures := 0
 var _gate_frame_time := false
 
@@ -68,7 +71,10 @@ func _run() -> void:
 
 	var scene: Node = load("res://scenes/main.tscn").instantiate()
 	scene.show_menu = false
-	scene.save_path = "user://perf_check_save.json"
+	# A leftover folder from an earlier run that had the same process id would be stale.
+	_remove_dir(_save_dir)
+	DirAccess.make_dir_recursive_absolute(_save_dir)
+	scene.save_path = _save_dir.path_join("save.json")
 	root.add_child(scene)
 	for i in 90:
 		await physics_frame
@@ -103,6 +109,7 @@ func _run() -> void:
 		_check_budgets(results)
 	scene.queue_free()
 	await process_frame
+	_remove_dir(_save_dir)
 	print("perf check: %s" % ("FAILED" if _failures > 0 else "PASSED"))
 	quit(1 if _failures > 0 else 0)
 
@@ -285,6 +292,15 @@ func _check_budgets(results: Dictionary) -> void:
 				continue
 			var value = results["points"][point_name][metric]
 			_check(value <= limit, "%s %s %s is within the budget of %s" % [point_name, metric, value, limit])
+
+
+## Deletes a folder and everything in it.
+func _remove_dir(path: String) -> void:
+	for sub in DirAccess.get_directories_at(path):
+		_remove_dir(path.path_join(sub))
+	for file in DirAccess.get_files_at(path):
+		DirAccess.remove_absolute(path.path_join(file))
+	DirAccess.remove_absolute(path)
 
 
 func _check(condition: bool, label: String) -> void:

@@ -8,6 +8,21 @@ Contributions are welcome. For anything larger than a small fix, please open an 
 2. Make your change, run the game to confirm it works, and run the smoke test: `godot --headless --path . --script res://tests/smoke_test.gd`.
 3. Open a pull request that describes what changed and how you tested it.
 
+## Setting up a fresh checkout or worktree
+
+A new clone or worktree has the Git LFS files (models, textures, audio, fonts) as small pointer files until you fetch them. Without the real files the game and the smoke test fail with "Failed loading resource" and misleading parse errors. In a fresh checkout, run:
+
+```
+git lfs install   # once per machine
+git lfs pull
+godot --headless --path . --import
+git checkout -- '*.import'   # revert .import files the import rewrote
+```
+
+Import after `git lfs pull`, never before: importing pointer files rewrites many tracked `.import` files, and any import run can rewrite some. Those rewrites are not part of your change. Revert them with the last command unless you changed an asset on purpose, and check `git status` before you commit. If the import crashes (#196), run it again; it worked on a second run.
+
+The smoke test checks for pointer files first and stops with a message telling you to run `git lfs pull`.
+
 ## Performance check
 
 `godot --headless --path . --script res://tests/perf_check.gd` flies a fixed camera path through the village and compares the result with the budgets in `tests/perf_budgets.json`. CI runs it after the smoke test, and it takes about a minute.

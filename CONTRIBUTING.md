@@ -8,6 +8,21 @@ Contributions are welcome. For anything larger than a small fix, please open an 
 2. Make your change, run the game to confirm it works, and run the smoke test: `godot --headless --path . --script res://tests/smoke_test.gd`.
 3. Open a pull request that describes what changed and how you tested it.
 
+## Setting up a fresh checkout or worktree
+
+A new clone or worktree has the Git LFS files (models, textures, audio, fonts) as small pointer files until you fetch them. Without the real files the game and the smoke test fail with "Failed loading resource" and misleading parse errors. In a fresh checkout, run:
+
+```
+git lfs install   # once per machine
+git lfs pull
+godot --headless --path . --import
+git checkout -- '*.import'   # revert .import files the import rewrote
+```
+
+Import after `git lfs pull`, never before: importing pointer files rewrites many tracked `.import` files, and any import run can rewrite some. Those rewrites are not part of your change. Revert them with the last command unless you changed an asset on purpose, and check `git status` before you commit. If the import crashes (#196), run it again; it worked on a second run.
+
+The smoke test checks for pointer files first and stops with a message telling you to run `git lfs pull`.
+
 ## Performance check
 
 `godot --headless --path . --script res://tests/perf_check.gd` flies a fixed camera path through the village and compares the result with the budgets in `tests/perf_budgets.json`. CI runs it after the smoke test, and it takes about a minute.
@@ -43,9 +58,10 @@ godot --headless --path . --import
 - Use Godot 4.7.2 and GDScript. C++ needs a profiling result that justifies it.
 - Follow the [GDScript style guide](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html).
 - Keep items, recipes, and quests in data files, not in code.
-- Put optional or tunable features behind [feature flags](docs/FEATURE_FLAGS.md). Mods can override flags, and the mod load order decides which one wins.
+- Put optional or tunable features behind [feature flags](docs/FEATURE_FLAGS.md). Mods can override flags, and the mod load order decides which one wins. See [the mod guide](docs/MODS.md) and its [example mod](docs/example_mods/README.md).
 - Add all player-facing text to `localization/strings.csv`, in English and German.
 - Play sounds on one of the audio buses in `scripts/audio_buses.gd`: `Music`, `Effects`, or `Ambience`, all feeding into `Master`. The buses are created at start-up, and the settings screen sets their volumes. Pick one with `AudioBuses.route(player, AudioBuses.EFFECTS)`.
+- Respect the accessibility options in `scripts/settings.gd`: text size, colour vision, high contrast, and reduce motion. Check `Settings.reduce_motion` for anything that turns, shakes, flashes, or flickers, and make it still or much milder when it is on. It currently stops the crafting preview from turning, softens the hurt flash and the enemy hit flash, and steadies torch and campfire flames.
 - Large binary files go through Git LFS. See `.gitattributes`.
 
 ## Issue labels
@@ -76,5 +92,8 @@ Give every issue at least one area label. Add more when it fits, for example `gr
 By contributing, you agree that your code is licensed under [MIT](LICENSE) and your creative content under [CC BY-SA 4.0](LICENSE-ASSETS), unless the file is listed otherwise in [ASSETS.md](ASSETS.md).
 
 Add every asset you did not create entirely yourself to [ASSETS.md](ASSETS.md), including AI-generated ones.
+
+Every AI-generated asset also needs a provenance record in [`provenance/`](provenance), with the prompt, seed, tool versions, dates, and manual edits. The pipeline scripts write it, and `python3 tools/asset_pipeline/provenance.py validate` checks it against ASSETS.md (CI runs this). If you change a generated asset by hand, add the change with `provenance.py note`. See [the asset pipeline](docs/ASSET_PIPELINE.md#provenance-records).
+The smoke test checks ASSETS.md against `assets/` (see `scripts/asset_ledger.gd`), and you can run the check alone with `godot --headless --path . --script res://tools/check_assets.gd`. It fails when a file under `assets/` matches no row, when a row has no source or license, or when a row names a file that does not exist. A row's first column may hold several backticked paths and patterns with `*` (a bare pattern such as `*.jpg` applies to the folder of the path before it). Exempt are Godot's `.import` and `.uid` files, hand-written `.tres` and `.res` resources, and the font license text `assets/ui/fonts/OFL.txt`. Run `godot --headless --path . --import` first, because rows such as `assets/props/*.png` describe textures that Godot extracts on import.
 
 Scripts that run inside Blender and import `bpy` (`tools/asset_pipeline/render_preview.py`, `adjust_glb.py`, `cleanup_mesh.py`, `size_glb.py`, and `tools/character_pipeline/build_character.py`, `build_goblin.py`) stay under MIT, like the rest of the code. [Blender says](https://www.blender.org/about/license/) that published scripts using its Python API must be shared under a GPL-compliant license. MIT is widely regarded as GPL-compatible, so MIT is kept, but the maintainer hasn't confirmed this, and it isn't legal advice ([#67](https://github.com/Gamperle/Erlenfall/issues/67)). For a new Blender script, write it yourself, don't copy code from add-ons or forum posts without checking their license, and if you do copy code, note its source and license in the file's header.

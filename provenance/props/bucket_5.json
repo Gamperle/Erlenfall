@@ -1,0 +1,50 @@
+{
+	"schema": 1,
+	"asset": "assets/props/bucket_5.glb",
+	"kind": "ai_prop",
+	"origin": "backfill",
+	"batch": "klein2",
+	"object": "bucket",
+	"name": "bucket_5",
+	"chosen_by": "Claude for Markus Gamperle",
+	"subject": "wooden bucket made of staves with two iron bands and a rope handle",
+	"prompt": "A single wooden bucket made of staves with two iron bands and a rope handle, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
+	"seed": 7065,
+	"stages": [
+		{
+			"step": "image",
+			"tool": "FLUX.2 klein 4B",
+			"versions": {},
+			"date": null,
+			"width": 1024,
+			"height": 1024,
+			"steps": 4,
+			"guidance": 1.0,
+			"candidate": 5
+		},
+		{
+			"step": "mesh",
+			"tool": "TRELLIS.2 (Comfy-Org int8 build)",
+			"versions": {
+				"ComfyUI": "0.43.0"
+			},
+			"helpers": [
+				"BiRefNet",
+				"DINOv3"
+			],
+			"date": null,
+			"faces": 1500
+		},
+		{
+			"step": "size",
+			"tool": "Blender",
+			"versions": {
+				"Blender": "5.2"
+			},
+			"date": null,
+			"meters": 0.4
+		}
+	],
+	"manual_edits": [],
+	"backfill_note": "Rebuilt from ASSETS.md and the batch file. Dates and tool versions it doesn't state are null."
+}

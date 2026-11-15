@@ -1,0 +1,55 @@
+{
+	"schema": 1,
+	"asset": "assets/props/furnace_0.glb",
+	"kind": "ai_prop",
+	"origin": "backfill",
+	"batch": "klein2",
+	"object": "furnace",
+	"name": "furnace_0",
+	"chosen_by": "Claude for Markus Gamperle",
+	"subject": "squat round smelting furnace of clay and fieldstone with a small arched opening at the bottom",
+	"prompt": "A single squat round smelting furnace of clay and fieldstone with a small arched opening at the bottom, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
+	"seed": 7110,
+	"stages": [
+		{
+			"step": "image",
+			"tool": "FLUX.2 klein 4B",
+			"versions": {},
+			"date": null,
+			"width": 1024,
+			"height": 1024,
+			"steps": 4,
+			"guidance": 1.0,
+			"candidate": 0
+		},
+		{
+			"step": "mesh",
+			"tool": "TRELLIS.2 (Comfy-Org int8 build)",
+			"versions": {
+				"ComfyUI": "0.43.0"
+			},
+			"helpers": [
+				"BiRefNet",
+				"DINOv3"
+			],
+			"date": null,
+			"faces": 5000
+		},
+		{
+			"step": "size",
+			"tool": "Blender",
+			"versions": {
+				"Blender": "5.2"
+			},
+			"date": null,
+			"meters": 2.2
+		}
+	],
+	"manual_edits": [
+		{
+			"text": "The color texture was desaturated to 40% and darkened by 18% afterward (issue #151)",
+			"date": null
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the batch file. Dates and tool versions it doesn't state are null."
+}

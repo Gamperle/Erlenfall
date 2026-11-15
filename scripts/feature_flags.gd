@@ -37,12 +37,18 @@ static func _ensure_loaded() -> void:
 
 
 static func _apply_layer(path: String) -> void:
-	var layer: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not layer is Dictionary:
-		push_error("Could not read the feature flags in %s" % path)
+	var is_mod := path != BASE_PATH
+	var layer: Variant = ModLoader.read_json(path)
+	var checked: Dictionary = { "error": layer } if layer is String else ModLoader.check_flag_layer(layer)
+	if checked.has("error"):
+		push_error("Could not read the feature flags in %s: %s" % [path, checked["error"]])
+		if is_mod:
+			ModLoader.report(ModLoader.mod_of(path), ModLoader.FLAGS_FILE, ModLoader.ERROR, checked["error"])
 		return
-	_flags.merge(layer.get("flags", {}), true)
-	_values.merge(layer.get("values", {}), true)
+	_flags.merge(checked["flags"], true)
+	_values.merge(checked["values"], true)
+	if is_mod and not checked["notes"].is_empty():
+		ModLoader.report(ModLoader.mod_of(path), ModLoader.FLAGS_FILE, ModLoader.OK, "", checked["notes"])
 
 
 static func _evaluate_flag(flag: String, visiting: Array) -> bool:

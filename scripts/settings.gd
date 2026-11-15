@@ -30,6 +30,8 @@ static var dialogue_opacity := 1.0
 static var colour_vision := "off"
 ## Outlined text and darker panels in the HUD, the menus, and the compass.
 static var high_contrast := false
+## Stops the crafting preview from turning, and tones down screen flashes and flame flicker.
+static var reduce_motion := false
 ## Volume per audio bus (see AudioBuses), from 0 to 1.
 static var volumes: Dictionary = default_volumes()
 
@@ -44,6 +46,7 @@ static func load_saved() -> void:
 	dialogue_opacity = 1.0
 	colour_vision = "off"
 	high_contrast = false
+	reduce_motion = false
 	volumes = default_volumes()
 	if FileAccess.file_exists(path):
 		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
@@ -62,6 +65,8 @@ static func load_saved() -> void:
 				colour_vision = data["colour_vision"]
 			if data.get("high_contrast") is bool:
 				high_contrast = data["high_contrast"]
+			if data.get("reduce_motion") is bool:
+				reduce_motion = data["reduce_motion"]
 			var saved_volumes: Variant = data.get("volumes")
 			if saved_volumes is Dictionary:
 				for bus_name: String in AudioBuses.ALL:
@@ -84,7 +89,7 @@ static func save() -> void:
 	file.store_string(JSON.stringify({
 		"language": language, "look_speed": look_speed, "graphics": graphics,
 		"text_size": text_size, "dialogue_opacity": dialogue_opacity,
-		"colour_vision": colour_vision, "high_contrast": high_contrast,
+		"colour_vision": colour_vision, "high_contrast": high_contrast, "reduce_motion": reduce_motion,
 		"volumes": volumes,
 		"bindings": KeyBindings.to_data(),
 	}, "\t"))

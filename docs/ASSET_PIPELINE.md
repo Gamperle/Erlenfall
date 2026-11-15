@@ -2,7 +2,7 @@
 
 This pipeline makes 3D props from text. FLUX.2 klein 4B draws a picture, TRELLIS.2 turns it into a textured, game-ready mesh through ComfyUI, and Blender scales it to real size. It runs on a Windows PC with an AMD Radeon RX 7900 XT, controlled over SSH. TripoSR, the earlier image-to-3D model, remains as a fallback.
 
-**Status: in use for props.** Every generated prop in the game is listed in [ASSETS.md](../ASSETS.md). SDXL output is not used ([#60](https://github.com/Gamperle/Erlenfall/issues/60)). [The pipeline's README](../tools/asset_pipeline/README.md) walks through a batch with pictures.
+**Status: in use for props.** Every generated prop in the game is listed in [ASSETS.md](../ASSETS.md). SDXL output is not used (see "SDXL license" below). [The pipeline's README](../tools/asset_pipeline/README.md) walks through a batch with pictures.
 
 ## Workflow
 
@@ -32,6 +32,36 @@ The scripts are in [tools/asset_pipeline](../tools/asset_pipeline):
 | `clean_models.ps1`, `cleanup_mesh.py`, `adjust_glb.py` | Clean TripoSR models, and reshape ones it gets out of proportion |
 | `check_mesh.py` | Prints a raw model's face count and whether it's watertight |
 | `draw_pictures.py` | The older SDXL drawing script, kept for reference |
+
+## Provenance records
+
+Each generated asset has a small JSON record in [`provenance/`](../provenance) at the repository root, named after the asset: `provenance/props/anvil_2.json`, `provenance/characters/hedda.json`, `provenance/textures/grass_relief.json`. It sits outside `assets/` so that [ASSETS.md](../ASSETS.md) doesn't need a row for it. ASSETS.md stays the human-readable list, with the license. The record is the same facts as data, so a script can check them and an asset can be remade or replaced.
+
+A prop's record holds the subject, the full prompt, the seed, the chosen candidate, and one stage for each step with its tool, tool versions, date, and settings:
+
+| Stage | Written by | Records |
+| --- | --- | --- |
+| `image` | `draw_klein.py` | FLUX.2 klein model, model revision, Python, PyTorch, and diffusers versions, size, steps, guidance, candidate number, the picture's SHA-256 |
+| `mesh` | `make_trellis.py` | TRELLIS.2 build, ComfyUI and PyTorch versions from the running server, face budget, SHA-256 of `trellis2_api.json` (which fixes BiRefNet, DINOv3, and the other settings), the picture's SHA-256 |
+| `cleanup` | Backfill only | TripoSR props' automatic cleanup |
+| `size` | `size_glb.py` | Blender version, size in meters, turn |
+
+Characters (`build_character.py`, `build_goblin.py`) record the recipe, the Blender and MPFB versions, and SHA-256 of the output. The relief maps (`build_relief_maps.py`) record the Poly Haven texture, the downloaded maps' SHA-256, and the library versions. `manual_edits` lists changes made by hand afterward, each with its text and date, and is empty when none are known. `origin` is `pipeline` for a record a script wrote as the asset was made, and `backfill` for one rebuilt from ASSETS.md.
+
+The scripts write the records on the asset PC, in `<batch>\provenance\<name>.json`, each step adding its stage. After the models are sized, copy them next to the models:
+
+```bash
+scp ASSET_PC:D:/erlenfall-assets/my_batch/provenance/*.json provenance/props/
+```
+
+Only copy the records of the pictures you chose, because the folder also holds one for every candidate. Add `chosen_by` by hand, and run `python3 tools/asset_pipeline/provenance.py validate`. After editing an asset by hand, record it with `python3 tools/asset_pipeline/provenance.py note assets/props/anvil_2.glb "what you changed and why"`, and mention it in the ASSETS.md notes too.
+
+`tools/asset_pipeline/provenance.py` also has:
+
+- `validate` checks each record's fields, that its asset exists and has an ASSETS.md row, that every AI-generated prop in ASSETS.md has a record, and that seed and subject agree with ASSETS.md. CI runs it, with the unit checks in `test_provenance.py`.
+- `backfill` writes records for props that have none, from the ASSETS.md row and the batch file, and never overwrites an existing record (`--force` does). Nothing is guessed: the 59 existing props have `null` for dates and for tool versions ASSETS.md doesn't give (the FLUX.2 revision, PyTorch, diffusers). They were drawn before the pipeline wrote records.
+
+The records of the first run on the asset PC haven't been seen yet: the pipeline changes were written and checked with sample data, but not run on the GPU ([#273](https://github.com/Gamperle/Erlenfall/issues/273)). The TripoSR fallback scripts and the UI textures don't write records.
 
 ## Access
 
@@ -122,7 +152,7 @@ The picture matters more than anything else, because the model sees only that on
 - **BiRefNet:** the code ([ZhengPeng7/BiRefNet](https://github.com/ZhengPeng7/BiRefNet)) is MIT, and the Hugging Face model card for the weights also declares MIT. See "Background removal licenses" below for what that does and doesn't cover.
 - **DINOv3**, which TRELLIS.2 uses to read the picture, is under Meta's DINOv3 License. It allows commercial use but asks for "Built with DINOv3" attribution. [ASSETS.md](../ASSETS.md) carries it, and whether the game needs it too belongs with [#73](https://github.com/Gamperle/Erlenfall/issues/73).
 - **Blender and the scripts that import `bpy`:** Blender is GPL (version 2 or later for its source), and its license page says published scripts using the Python API must be shared under a GPL-compliant license. The six `bpy` scripts in `tools/` were written for this project (the history shows no copied third-party code) and are under the repository's MIT license, which is generally regarded as GPL-compatible. Nobody has confirmed this with legal advice, so the maintainer still has to decide ([#67](https://github.com/Gamperle/Erlenfall/issues/67)). `build_character.py` also drives the MPFB add-on, whose own license wasn't checked here. The rule for new scripts is in [CONTRIBUTING.md](../CONTRIBUTING.md).
-- **TripoSR:** MIT. **SDXL:** CreativeML Open RAIL++-M, still being checked ([#60](https://github.com/Gamperle/Erlenfall/issues/60)).
+- **TripoSR:** MIT. **SDXL:** CreativeML Open RAIL++-M, not used for any shipped asset. See "SDXL license" below.
 
 Every generated file added to the repository must go through Git LFS if it's a large binary, and be listed in [ASSETS.md](../ASSETS.md) with the tools and versions, the full prompt, the seed, and any manual edits. To reproduce a picture, use the same prompt, seed, and package versions.
 
@@ -146,3 +176,41 @@ What this means for the game:
 - **Which props are affected:** the TripoSR props in [ASSETS.md](../ASSETS.md) list "rembg u2net" in their tools column. The TRELLIS.2 props use BiRefNet.
 
 Still to do: compare BiRefNet (and BEN2 Base, MIT) with u2net on thin parts such as tongs, chains, and handles. That needs the asset PC, so it is tracked in [#218](https://github.com/Gamperle/Erlenfall/issues/218).
+
+### SDXL license
+
+Checked on 2026-11-14 for [#60](https://github.com/Gamperle/Erlenfall/issues/60), from the text of the [CreativeML Open RAIL++-M License](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/main/LICENSE.md) (26 July 2023, Stability AI) that ships with SDXL base 1.0. This is a reading of the text, not legal advice, and a court or a lawyer could read it differently.
+
+**Is SDXL still used?** No. Every prop in [ASSETS.md](../ASSETS.md) lists FLUX.2 klein 4B as its picture source, and none lists SDXL. The SDXL environment (`setup_pc.ps1`) and the old `draw_pictures.py` remain only for reference. Nothing generated with SDXL is in the repository, so the license does not currently touch any shipped file.
+
+**What the license says about output:**
+
+- "Output" is "the results of operating a Model", and "Derivatives of the Model" covers modified versions, works based on the Model, and models created by transferring patterns from it (for example by distillation). The text does not name Output as a Derivative.
+- "Licensor claims no rights in the Output You generate using the Model." You are accountable for the Output and its later uses, and "no use of the output can contravene any provision as stated in the License."
+- The conditions on redistribution (pass on the use restrictions as an enforceable term, give recipients the license, mark changes) apply to distributing the Model or Derivatives of it, meaning weights, fine-tunes, and the like. This repository distributes none of them.
+- Nothing in the text forbids putting Output under another license, and nothing requires the license to travel with Output.
+
+**Use restrictions (Attachment A).** You agree not to use the Model or its Derivatives:
+
+1. in any way that violates applicable law or regulation;
+2. to exploit or harm minors;
+3. to generate or disseminate verifiably false information meant to harm others;
+4. to generate or disseminate personal identifiable information that can be used to harm an individual;
+5. to defame, disparage, or harass others;
+6. for fully automated decisions that adversely affect a person's legal rights or create a binding obligation;
+7. to discriminate against or harm people based on social behavior or known or predicted personal characteristics;
+8. to exploit the vulnerabilities of a group (age, social, physical, or mental) to materially distort behavior in a harmful way;
+9. to discriminate based on legally protected characteristics;
+10. to give medical advice or interpret medical results;
+11. to generate or disseminate information for justice, law enforcement, immigration, or asylum processes, such as predicting that someone will commit fraud or crime.
+
+**Conclusion.** Props, textures, and pictures made with SDXL could be released under CC BY-SA 4.0. The only restrictions are use-based and don't conflict with CC BY-SA's terms, and a fantasy game's props don't fall under any of the eleven items. CC BY-SA 4.0 lets anyone reuse the files for any purpose, including a restricted one, but the license puts that duty on the person doing the use, and the repository does not redistribute the model. This follows the maintainer's decision on #60 that assets need not be defensible, only that others' rights and licenses are respected.
+
+**Rule for the repository:**
+
+- Prefer the tools in "Choosing the models". SDXL is not needed.
+- If SDXL is used anyway, name it and its version in the Source column of [ASSETS.md](../ASSETS.md), and use only for content that stays clear of Attachment A.
+- Never commit SDXL weights, LoRAs, or checkpoints fine-tuned from it, and never train a model on its output and publish that model. Those are Derivatives, and the use restrictions would have to travel with them as an enforceable term.
+- Keep the license link above with any SDXL use.
+
+**Open question for the maintainer.** The text does not say whether Output is a Derivative, nor whether the use restrictions bind later users of Output ("no use of the output can contravene any provision"). The reading above, that they don't and the game is fine, is the common one but is untested in court. The maintainer decides whether to accept it if SDXL is ever used again, or to get legal advice together with [#73](https://github.com/Gamperle/Erlenfall/issues/73). Until then the safe rule is not to use SDXL.

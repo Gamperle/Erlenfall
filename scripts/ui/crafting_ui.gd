@@ -7,6 +7,8 @@ const BAR_HEIGHT := 36.0
 const TARGET_EDGE_WIDTH := 4.0
 const MARKER_COLOR := Color(1.0, 1.0, 0.95)
 const RESULT_SECONDS := 1.0
+const PREVIEW_SIZE := Vector2(170.0, 150.0)
+const PREVIEW_TURN_SPEED := 0.8
 
 var _player: Player
 var _station := ""
@@ -25,7 +27,13 @@ var _materials_label: Label
 var _materials: HFlowContainer
 var _use_row: HFlowContainer
 var _selection_label: Label
+var _parts_row: HFlowContainer
 var _parts: GridContainer
+var _preview_box: VBoxContainer
+var _preview: SubViewportContainer
+var _preview_pivot: Node3D
+var _preview_camera: Camera3D
+var _preview_model: Node3D
 var _actions: HBoxContainer
 var _clear_button: Button
 var _craft_button: Button
@@ -83,6 +91,7 @@ func choose_part(slot: String, option_id: String) -> void:
 		return
 	_choices[slot] = option_id
 	_update_part_buttons()
+	_update_preview()
 
 
 ## Eats or drinks one of the item to regain health. Public so the buttons and tests share one path.
@@ -162,6 +171,8 @@ func _input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	if not Settings.reduce_motion and _preview_box.is_visible_in_tree():
+		_preview_pivot.rotate_y(delta * PREVIEW_TURN_SPEED)
 	if not is_forging():
 		return
 	_game.update(delta)
@@ -199,7 +210,7 @@ func _refresh() -> void:
 	_close_button.visible = not forging
 	_known_page.visible = at_station and not forging
 	if not at_station or forging:
-		_parts.visible = false
+		_parts_row.visible = false
 		if not forging:
 			# An item to use comes first, so that the A button does not close the screen at once.
 			var first: Control = _use_row.get_child(0) if _use_row.get_child_count() > 0 else _close_button
@@ -283,7 +294,7 @@ func _refresh_parts() -> void:
 	var slots: Array[String] = []
 	if item_id != "":
 		slots = CraftingData.part_slots(item_id)
-	_parts.visible = not slots.is_empty()
+	_parts_row.visible = not slots.is_empty()
 	if item_id == _parts_item:
 		return
 	_parts_item = item_id
@@ -302,6 +313,31 @@ func _refresh_parts() -> void:
 			picker.set_item_metadata(picker.item_count - 1, option_id)
 		picker.item_selected.connect(func(index: int): choose_part(slot, picker.get_item_metadata(index)))
 		_parts.add_child(picker)
+	_update_preview()
+
+
+## Shows the item about to be made with the chosen parts. Hidden when it has no parts or no model.
+func _update_preview() -> void:
+	if _preview_model != null:
+		_preview_pivot.remove_child(_preview_model)
+		_preview_model.queue_free()
+		_preview_model = null
+	var item_id := _parts_item
+	if item_id != "":
+		_preview_model = CraftingData.item_model(item_id, CraftingData.variant_key(item_id, _choices))
+	_preview_box.visible = _preview_model != null
+	if _preview_model == null:
+		return
+	var length := CraftingData.item_length(item_id)
+	var reach := 0.0
+	for part: MeshInstance3D in _preview_model.get_children():
+		var box := (part.mesh as BoxMesh).size
+		reach = maxf(reach, maxf(absf(part.position.x) + box.x / 2.0, absf(part.position.z) + box.z / 2.0))
+	_preview_model.position = Vector3.DOWN * length / 2.0
+	_preview_pivot.add_child(_preview_model)
+	var radius := maxf(length / 2.0, reach)
+	_preview_camera.position = Vector3(0.0, 0.0, radius * 3.2 + 0.2)
+	_preview_camera.size = radius * 2.4
 
 
 func _update_part_buttons() -> void:
@@ -472,10 +508,14 @@ func _build() -> void:
 
 	_selection_label = _wrapped_label(column)
 
+	_parts_row = HFlowContainer.new()
+	_parts_row.add_theme_constant_override("h_separation", 16)
+	column.add_child(_parts_row)
 	_parts = GridContainer.new()
 	_parts.columns = 2
 	_parts.add_theme_constant_override("h_separation", 12)
-	column.add_child(_parts)
+	_parts_row.add_child(_parts)
+	_build_preview(_parts_row)
 
 	_bar = Control.new()
 	_bar.custom_minimum_size = Vector2(0.0, BAR_HEIGHT)
@@ -524,6 +564,42 @@ func _build() -> void:
 	column.add_child(_known_page)
 	_known_label = _wrapped_label(_known_page)
 	_known_label.theme_type_variation = &"InkLabel"
+
+
+## A small 3D view of its own, so the preview never touches the game world.
+func _build_preview(parent: Control) -> void:
+	_preview_box = VBoxContainer.new()
+	_preview_box.visible = false
+	parent.add_child(_preview_box)
+	var caption := Label.new()
+	caption.text = "UI_PREVIEW"
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_preview_box.add_child(caption)
+	_preview = SubViewportContainer.new()
+	_preview.stretch = true
+	_preview.custom_minimum_size = PREVIEW_SIZE
+	_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_preview_box.add_child(_preview)
+	var viewport := SubViewport.new()
+	viewport.own_world_3d = true
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+	_preview.add_child(viewport)
+	_preview_camera = Camera3D.new()
+	_preview_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	viewport.add_child(_preview_camera)
+	_preview_pivot = Node3D.new()
+	viewport.add_child(_preview_pivot)
+	var light := DirectionalLight3D.new()
+	light.rotation = Vector3(-0.7, 0.6, 0.0)
+	viewport.add_child(light)
+	var environment := Environment.new()
+	environment.background_mode = Environment.BG_CLEAR_COLOR
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.ambient_light_color = Color(0.6, 0.6, 0.65)
+	var world_environment := WorldEnvironment.new()
+	world_environment.environment = environment
+	viewport.add_child(world_environment)
 
 
 func _action_button(text_key: String, action: Callable) -> Button:

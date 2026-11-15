@@ -160,7 +160,7 @@ static func palisade(length: float, height: float, seed_value: int) -> StaticBod
 		var x := -length / 2.0 + (i + 0.5) * step
 		var color := PALISADE_COLOR.lightened(WALL_TINTS[rng.randi() % WALL_TINTS.size()])
 		var shaft := post_height - PALISADE_TIP
-		fence.add_child(box(Vector3(step - 0.02, shaft, PALISADE_POST_WIDTH), Surfaces.Pattern.WOOD, color, Vector3(x, shaft / 2.0, 0.0)))
+		fence.add_child(box(Vector3(step - 0.02, shaft, PALISADE_POST_WIDTH), Surfaces.Pattern.UPRIGHT_WOOD, color, Vector3(x, shaft / 2.0, 0.0)))
 		# Each log is sharpened to a point, a four-sided pyramid turned to sit on the log's square top.
 		var tip_mesh := CylinderMesh.new()
 		tip_mesh.top_radius = 0.0
@@ -168,7 +168,7 @@ static func palisade(length: float, height: float, seed_value: int) -> StaticBod
 		tip_mesh.height = PALISADE_TIP
 		tip_mesh.radial_segments = 4
 		tip_mesh.rings = 1
-		tip_mesh.material = Surfaces.get_material(Surfaces.Pattern.WOOD, color)
+		tip_mesh.material = Surfaces.get_material(Surfaces.Pattern.UPRIGHT_WOOD, color)
 		var tip := MeshInstance3D.new()
 		tip.mesh = tip_mesh
 		tip.position = Vector3(x, shaft + PALISADE_TIP / 2.0, 0.0)

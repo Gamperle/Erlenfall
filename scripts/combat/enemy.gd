@@ -594,7 +594,7 @@ func _stop() -> void:
 func _update_color(delta: float) -> void:
 	_flash = maxf(_flash - delta, 0.0)
 	if _flash > 0.0:
-		_body.set_glow(HIT_COLOR, 1.5)
+		_body.set_glow(HIT_COLOR, 0.6 if Settings.reduce_motion else 1.5)
 	elif state == State.WINDUP:
 		_body.set_glow(Accessibility.color("warning"), 1.2)
 	else:

@@ -1,0 +1,306 @@
+{
+	"seed": 8000,
+	"objects": {
+		"bellows": {
+			"subject": "blacksmith forge bellows: a flat pear-shaped accordion of dark folded leather between two wooden boards, a wooden handle at the wide end and an iron nozzle at the narrow end, seen from the side",
+			"faces": 3000,
+			"meters": 1.0
+		},
+		"tongs": {
+			"subject": "one pair of blacksmith tongs seen from above, two long iron arms crossed and joined by a rivet in the middle, flat jaws at one end, handles at the other",
+			"faces": 800,
+			"meters": 0.6
+		},
+		"quench_trough": {
+			"subject": "long low wooden trough of dark water, bound with iron bands",
+			"faces": 2500,
+			"meters": 1.2
+		},
+		"grindstone": {
+			"subject": "round stone grinding wheel on a wooden frame with a foot treadle",
+			"faces": 3500,
+			"meters": 1.1
+		},
+		"anvil_stump_small": {
+			"subject": "small bench anvil with a flat top on a short oak block",
+			"faces": 1500,
+			"meters": 0.5
+		},
+		"tool_rack_forge": {
+			"subject": "wooden wall rack holding hammers, tongs, and chisels",
+			"faces": 3000,
+			"meters": 1.2
+		},
+		"coal_bin": {
+			"subject": "open wooden bin heaped with black coal lumps",
+			"faces": 2500,
+			"meters": 1.0
+		},
+		"ingot_stack": {
+			"subject": "neat stack of rough iron ingots",
+			"faces": 1500,
+			"meters": 0.5
+		},
+		"blade_rack": {
+			"subject": "upright wooden rack holding three unfinished sword blades",
+			"faces": 2500,
+			"meters": 1.0
+		},
+		"workbench_forge": {
+			"subject": "heavy scarred timber workbench with an iron vise bolted on one side",
+			"faces": 4000,
+			"meters": 1.6
+		},
+		"hot_iron_stand": {
+			"subject": "iron stand holding a glowing bar, for the forging minigame",
+			"faces": 1500,
+			"meters": 0.8
+		},
+		"forge_hood": {
+			"subject": "tapered stone and iron smoke hood over a hearth",
+			"faces": 3500,
+			"meters": 1.8
+		},
+		"chopping_block": {
+			"subject": "thick round oak chopping block, scarred on top",
+			"faces": 1500,
+			"meters": 0.5
+		},
+		"axe_in_block": {
+			"subject": "woodcutter's axe stuck upright in a chopping block",
+			"faces": 2000,
+			"meters": 0.9
+		},
+		"splitting_maul": {
+			"subject": "heavy splitting maul with a wedge-shaped iron head",
+			"faces": 1000,
+			"meters": 0.9
+		},
+		"felled_log": {
+			"subject": "long felled fir log with bark and a clean cut end",
+			"faces": 3000,
+			"meters": 3.5
+		},
+		"log_stack": {
+			"subject": "stack of whole round logs piled and chocked at the ends",
+			"faces": 5000,
+			"meters": 2.4
+		},
+		"tree_stump": {
+			"subject": "wide stump of a felled fir with roots and an axe-cut top",
+			"faces": 3000,
+			"meters": 1.0
+		},
+		"sawbuck": {
+			"subject": "X-legged wooden sawbuck holding a log",
+			"faces": 2500,
+			"meters": 1.3
+		},
+		"crosscut_saw": {
+			"subject": "long two-man crosscut saw with two wooden handles",
+			"faces": 1000,
+			"meters": 1.5
+		},
+		"log_sled": {
+			"subject": "low wooden log sled with iron-shod runners",
+			"faces": 3500,
+			"meters": 2.2
+		},
+		"log_cart": {
+			"subject": "two-wheeled timber cart loaded with logs",
+			"faces": 6000,
+			"meters": 3.0
+		},
+		"sawpit_frame": {
+			"subject": "wooden sawpit frame with a log held on top and a pit saw",
+			"faces": 5000,
+			"meters": 3.0
+		},
+		"cant_hook": {
+			"subject": "long wooden cant hook with an iron hook",
+			"faces": 800,
+			"meters": 1.5
+		},
+		"workbench_carpenter": {
+			"subject": "long heavy woodworking bench with a front vise and a tail vise",
+			"faces": 4500,
+			"meters": 2.0
+		},
+		"sawhorse": {
+			"subject": "pair of simple wooden sawhorses with a plank across",
+			"faces": 2000,
+			"meters": 1.0
+		},
+		"plank_stack": {
+			"subject": "tidy stack of rough sawn planks, spaced with sticks",
+			"faces": 3500,
+			"meters": 2.0
+		},
+		"timber_beams": {
+			"subject": "pile of squared timber beams, end on",
+			"faces": 3000,
+			"meters": 2.5
+		},
+		"toolbox_carpenter": {
+			"subject": "open wooden carpenter's toolbox with saw, plane, and chisels",
+			"faces": 3000,
+			"meters": 0.7
+		},
+		"hand_plane": {
+			"subject": "wooden hand plane with a curled shaving",
+			"faces": 800,
+			"meters": 0.3
+		},
+		"hand_saw": {
+			"subject": "wooden-handled hand saw",
+			"faces": 600,
+			"meters": 0.7
+		},
+		"shaving_horse": {
+			"subject": "long wooden shaving horse bench with a foot clamp",
+			"faces": 2500,
+			"meters": 1.3
+		},
+		"pole_lathe": {
+			"subject": "simple wooden pole lathe: two upright timber posts on a long low bench holding a horizontal wooden spindle between iron points, a springy wooden pole bent overhead with a cord running down to a foot pedal",
+			"faces": 4500,
+			"meters": 1.8
+		},
+		"chair": {
+			"subject": "plain wooden chair with a rush-free solid seat",
+			"faces": 2000,
+			"meters": 0.9
+		},
+		"table": {
+			"subject": "sturdy rectangular plank table on trestle legs",
+			"faces": 2500,
+			"meters": 1.6
+		},
+		"open_shelf": {
+			"subject": "open wooden shelf unit with three empty shelves",
+			"faces": 2500,
+			"meters": 1.5
+		},
+		"spoked_wheel": {
+			"subject": "large wooden cart wheel with spokes and an iron rim, for wheelwrighting",
+			"faces": 3500,
+			"meters": 1.2
+		},
+		"mine_cart": {
+			"subject": "small wooden and iron mine cart with four flanged wheels",
+			"faces": 4000,
+			"meters": 1.4
+		},
+		"mine_cart_ore": {
+			"subject": "the same cart, full of rough iron ore",
+			"faces": 4500,
+			"meters": 1.4
+		},
+		"wheelbarrow": {
+			"subject": "wooden wheelbarrow with one iron-rimmed wheel",
+			"faces": 3500,
+			"meters": 1.5
+		},
+		"pickaxe": {
+			"subject": "miner's pickaxe with a long wooden handle and iron head",
+			"faces": 800,
+			"meters": 0.9
+		},
+		"ore_pile": {
+			"subject": "heap of crushed rust-brown ore chunks",
+			"faces": 2500,
+			"meters": 1.2
+		},
+		"ore_baskets": {
+			"subject": "two wicker baskets filled with ore",
+			"faces": 3000,
+			"meters": 0.8
+		},
+		"ore_sacks": {
+			"subject": "two heavy stacked sacks of ore",
+			"faces": 2500,
+			"meters": 0.8
+		},
+		"windlass_well": {
+			"subject": "wooden windlass with a crank, rope, and bucket over a shaft",
+			"faces": 4500,
+			"meters": 1.8
+		},
+		"mine_support_frame": {
+			"subject": "rough timber mine support: two posts and a lintel",
+			"faces": 2500,
+			"meters": 3.0
+		},
+		"hanging_lantern_mine": {
+			"subject": "iron mining lantern with a hook and a cage",
+			"faces": 1500,
+			"meters": 0.4
+		},
+		"miner_sledge": {
+			"subject": "stonemason's short heavy iron sledgehammer with a short wooden handle, single object",
+			"faces": 1200,
+			"meters": 0.7
+		},
+		"rubble_pile": {
+			"subject": "heap of fallen angular grey rocks",
+			"faces": 3000,
+			"meters": 1.8
+		},
+		"barrel_stack": {
+			"subject": "pyramid of stacked wooden barrels, three over two",
+			"faces": 5000,
+			"meters": 1.8
+		},
+		"crate_stack": {
+			"subject": "tower of stacked wooden crates of different sizes",
+			"faces": 4500,
+			"meters": 1.6
+		},
+		"grain_bin": {
+			"subject": "tall square wooden grain bin with a hinged lid",
+			"faces": 3000,
+			"meters": 1.4
+		},
+		"storage_shelf": {
+			"subject": "tall open wooden storage shelf with jars and baskets",
+			"faces": 4000,
+			"meters": 1.8
+		},
+		"big_chest": {
+			"subject": "large iron-bound storage chest with a domed lid",
+			"faces": 3500,
+			"meters": 1.2
+		},
+		"clay_jar": {
+			"subject": "large unglazed clay storage jar with a wooden lid",
+			"faces": 1500,
+			"meters": 0.8
+		},
+		"staddle_stone": {
+			"subject": "mushroom-shaped stone that lifts a granary off the ground",
+			"faces": 1000,
+			"meters": 0.6
+		},
+		"hay_bale": {
+			"subject": "square tied bale of straw",
+			"faces": 1500,
+			"meters": 0.7
+		},
+		"hanging_rack": {
+			"subject": "wooden rack of hanging dried herbs and onions",
+			"faces": 3000,
+			"meters": 1.2
+		},
+		"pallet": {
+			"subject": "low wooden pallet of rough boards, for lifting goods off the floor",
+			"faces": 1200,
+			"meters": 1.2
+		},
+		"cellar_hatch": {
+			"subject": "sloped double wooden cellar hatch set in stone",
+			"faces": 2500,
+			"meters": 1.6
+		}
+	},
+	"turns": {}
+}

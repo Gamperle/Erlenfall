@@ -871,12 +871,12 @@ func _test_generated_props() -> void:
 		var meshes := prop.find_children("*", "MeshInstance3D", true, false)
 		_check(meshes.size() == 1, file + " has one mesh")
 		var size: Vector3 = meshes[0].get_aabb().size
-		_check(size.length() > 0.2 and maxf(size.x, maxf(size.y, size.z)) < 2.6, file + " has a believable size")
+		_check(size.length() > 0.2 and maxf(size.x, maxf(size.y, size.z)) < 3.6, file + " has a believable size")
 		_check(meshes[0].mesh.get_surface_count() == 1 and (meshes[0].mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture != null, file + " is textured")
 		# The model file itself, before data/prop_tuning.json, whose lifts are deliberate, such as a haystack set into the ground.
 		_check(absf(meshes[0].get_aabb().position.y) < PROP_GROUND_TOLERANCE, file + " stands on the ground")
 		prop.free()
-	_check(count == 59, "all generated props are present")
+	_check(count == 179, "all generated props are present")
 	var tuner: Node = load("res://tools/prop_tuner/prop_tuner.tscn").instantiate()
 	_check(tuner != null, "the prop tuner scene loads")
 	tuner.free()

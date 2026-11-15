@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cgum4sqedx8uk"
-path="res://.godot/imported/bertram_short02_diffuse.png-555cc07b037b18bb97840a26564ba469.ctex"
+path.bptc="res://.godot/imported/bertram_short02_diffuse.png-555cc07b037b18bb97840a26564ba469.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "17bc1aa93e3f7f86971c3c45159cb802"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/characters/bertram_short02_diffuse.png"
-dest_files=["res://.godot/imported/bertram_short02_diffuse.png-555cc07b037b18bb97840a26564ba469.ctex"]
+dest_files=["res://.godot/imported/bertram_short02_diffuse.png-555cc07b037b18bb97840a26564ba469.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

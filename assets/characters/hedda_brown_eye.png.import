@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c6h2662aqx65q"
-path="res://.godot/imported/hedda_brown_eye.png-504d26a3bdf839d66bfa36020d3d3358.ctex"
+path.bptc="res://.godot/imported/hedda_brown_eye.png-504d26a3bdf839d66bfa36020d3d3358.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "1b93ce1fc9dfa16177a6d61005cdb4fd"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/characters/hedda_brown_eye.png"
-dest_files=["res://.godot/imported/hedda_brown_eye.png-504d26a3bdf839d66bfa36020d3d3358.ctex"]
+dest_files=["res://.godot/imported/hedda_brown_eye.png-504d26a3bdf839d66bfa36020d3d3358.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

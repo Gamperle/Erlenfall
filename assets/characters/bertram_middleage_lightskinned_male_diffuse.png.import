@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://kwhsi0oc5fqe"
-path="res://.godot/imported/bertram_middleage_lightskinned_male_diffuse.png-a7d92f0b53557fad570f7708b61c4220.ctex"
+path.bptc="res://.godot/imported/bertram_middleage_lightskinned_male_diffuse.png-a7d92f0b53557fad570f7708b61c4220.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "6ecc39d6f9d8ebba28cbb29d1e07b495"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/characters/bertram_middleage_lightskinned_male_diffuse.png"
-dest_files=["res://.godot/imported/bertram_middleage_lightskinned_male_diffuse.png-a7d92f0b53557fad570f7708b61c4220.ctex"]
+dest_files=["res://.godot/imported/bertram_middleage_lightskinned_male_diffuse.png-a7d92f0b53557fad570f7708b61c4220.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

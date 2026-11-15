@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://2uygvuihji8a"
-path="res://.godot/imported/hedda_shirt-knit-NORM.jpg-d4acaf581d5c09df0561213c03f312bc.ctex"
+path.bptc="res://.godot/imported/hedda_shirt-knit-NORM.jpg-d4acaf581d5c09df0561213c03f312bc.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ffc7fce8645278c6ded3716d4d6fea71"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/characters/hedda_shirt-knit-NORM.jpg"
-dest_files=["res://.godot/imported/hedda_shirt-knit-NORM.jpg-d4acaf581d5c09df0561213c03f312bc.ctex"]
+dest_files=["res://.godot/imported/hedda_shirt-knit-NORM.jpg-d4acaf581d5c09df0561213c03f312bc.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

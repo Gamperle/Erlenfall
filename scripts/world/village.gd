@@ -49,9 +49,9 @@ const WALL_JOINT_OVERLAP := 0.12
 const PROP_FOLDER := "res://assets/props/"
 ## Smaller props have no collision, so they never block the player.
 const PROP_SOLID_SIZE := 0.6
-## Props that keep the rain off (by the start of their model name), and the share of their height
-## below which a drop can still pass under them.
-const ROOFED_PROPS := ["goblin_tent"]
+## A prop entry in the layout with "roof_cover": true keeps the rain off. This is the share of its
+## height below which a drop can still pass under it. "roof_cover" may also be a dictionary with
+## "start" to change that share for one prop.
 const PROP_COVER_START := 0.6
 const PLANT_CHUNK_SIZE := 128.0
 const FOREST_ATTEMPTS_PER_TREE := 12
@@ -550,8 +550,9 @@ func _add_props(props: Array, buildings: Array) -> void:
 		# In the body's space, so the tuned scale and lift count for collision and for props set on top.
 		var bounds: AABB = (body.global_transform.affine_inverse() * mesh.global_transform) * mesh.get_aabb()
 		placed[data["model"]] = { "position": at, "height": bounds.end.y }
-		if not data.has("tilt") and ROOFED_PROPS.any(func(prefix: String) -> bool: return String(data["model"]).begins_with(prefix)):
-			_add_prop_cover(body, bounds)
+		if not data.has("tilt") and data.get("roof_cover", false):
+			var cover_data: Variant = data["roof_cover"]
+			_add_prop_cover(body, bounds, float(cover_data.get("start", PROP_COVER_START)) if cover_data is Dictionary else PROP_COVER_START)
 		_busy_spots.append(Vector2(at.x, at.z))
 		# Small props are specks from far away, and drawing them and their shadows costs as much as a house.
 		if bounds.get_longest_axis_size() < PROP_SOLID_SIZE:
@@ -616,9 +617,9 @@ func _wall_piece(data: Dictionary, start: Vector2, end: Vector2, joined_start: b
 
 
 ## Notes where a tent or other roofed prop keeps the rain off: its top third, as a ridge along its length.
-func _add_prop_cover(body: Node3D, bounds: AABB) -> void:
+func _add_prop_cover(body: Node3D, bounds: AABB, start: float) -> void:
 	var middle := body.position + Basis(Vector3.UP, body.rotation.y) * bounds.get_center()
-	var low := bounds.end.y * PROP_COVER_START
+	var low := bounds.end.y * start
 	roof_covers.append({
 		"center": Vector2(middle.x, middle.z), "half": Vector2(bounds.size.x, bounds.size.z) / 2.0,
 		"yaw": body.rotation.y, "base": body.position.y + low, "rise": bounds.end.y - low,

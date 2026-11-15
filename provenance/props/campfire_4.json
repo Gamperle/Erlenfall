@@ -1,0 +1,54 @@
+{
+	"schema": 1,
+	"asset": "assets/props/campfire_4.glb",
+	"kind": "ai_prop",
+	"origin": "backfill",
+	"batch": "klein2",
+	"object": "campfire",
+	"name": "campfire_4",
+	"chosen_by": "Claude for Markus Gamperle",
+	"subject": "unlit campfire of stacked logs inside a ring of grey stones",
+	"prompt": "A single unlit campfire of stacked logs inside a ring of grey stones, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
+	"seed": 7084,
+	"stages": [
+		{
+			"step": "image",
+			"tool": "FLUX.2 klein 4B",
+			"versions": {},
+			"date": null,
+			"width": 1024,
+			"height": 1024,
+			"steps": 4,
+			"guidance": 1.0,
+			"candidate": 4
+		},
+		{
+			"step": "mesh",
+			"tool": "TripoSR",
+			"versions": {
+				"TripoSR": "107cefd"
+			},
+			"helpers": [
+				"rembg u2net"
+			],
+			"date": null
+		},
+		{
+			"step": "cleanup",
+			"tool": "Automatic cleanup (cleanup_mesh.py)",
+			"versions": {},
+			"date": null
+		},
+		{
+			"step": "size",
+			"tool": "Blender",
+			"versions": {
+				"Blender": "5.2"
+			},
+			"date": null,
+			"meters": 1.2
+		}
+	],
+	"manual_edits": [],
+	"backfill_note": "Rebuilt from ASSETS.md and the batch file. Dates and tool versions it doesn't state are null."
+}

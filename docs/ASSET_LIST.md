@@ -9,7 +9,7 @@ Variants are the number of different models to make, not how many appear in the 
 | Key | Source | Best for |
 | --- | --- | --- |
 | **Build** | Modeled by hand or in code, with CC0 surface textures ([#61](https://github.com/Gamperle/Erlenfall/issues/61), [#45](https://github.com/Gamperle/Erlenfall/issues/45)) | Buildings, walls, roads, and anything that must fit exact sizes |
-| **Gen** | The [TripoSR pipeline](ASSET_PIPELINE.md), after cleanup ([#55](https://github.com/Gamperle/Erlenfall/issues/55)) and the SDXL license check ([#60](https://github.com/Gamperle/Erlenfall/issues/60)) | Solid, standalone props |
+| **Gen** | The [picture-to-model pipeline](ASSET_PIPELINE.md) (FLUX.2 klein and TRELLIS.2; SDXL is not used, see [its license note](ASSET_PIPELINE.md#sdxl-license)) | Solid, standalone props |
 | **CC0** | A CC0 library such as Poly Haven, Kenney, or Quaternius, if a suitable model exists | Plants, rocks, and rigged characters and animals |
 
 TripoSR doesn't produce rigged models, so anything that walks or fights needs a CC0 model or manual rigging. Every asset goes in [ASSETS.md](../ASSETS.md).

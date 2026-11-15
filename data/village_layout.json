@@ -108,7 +108,8 @@
 		{ "x": -105, "z": -10, "radius": 28, "height": 9 }
 	],
 	"flat_areas": [
-		{ "x": 118, "z": -145, "radius": 14, "blend": 22 }
+		{ "x": 118, "z": -145, "radius": 14, "blend": 22 },
+		{ "x": 150, "z": -65, "radius": 20, "blend": 45 }
 	],
 	"trees": {
 		"seed": 7,
@@ -246,7 +247,7 @@
     {"model": "well_1", "building": "west_farm", "x": -3, "z": 9},
     {"model": "well_1", "building": "south_farm", "x": 6, "z": 9},
     {"model": "campfire_4", "x": 118, "z": -145},
-    {"model": "goblin_tent_2", "x": 126, "z": -153, "rotation": -40},
-    {"model": "goblin_tent_3", "x": 109, "z": -151, "rotation": 40}
+    {"model": "goblin_tent_2", "roof_cover": true, "x": 126, "z": -153, "rotation": -40},
+    {"model": "goblin_tent_3", "roof_cover": true, "x": 109, "z": -151, "rotation": 40}
   ]
 }

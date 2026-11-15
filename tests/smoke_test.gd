@@ -1387,12 +1387,15 @@ func _test_routine_activities(village: Village, routines: VillagerRoutines) -> v
 func _test_routine_legs(_scene: Node, village: Village, data: Dictionary) -> void:
 	var walker := CharacterBody3D.new()
 	root.add_child(walker)
-	# Villagers are solid, so they are put out of the way of the search.
+	# Villagers are solid, so they are taken out of the way of the search. Moving them down would not
+	# do, because a villager puts itself back on the ground each physics frame.
 	var villagers: Array[Npc] = []
+	var layers := {}
 	for child in village.get_children():
 		if child is Npc:
 			villagers.append(child)
-			child.position.y -= 100.0
+			layers[child] = child.collision_layer
+			child.collision_layer = 0
 	await _physics_frames(2)
 	EnemyPath.forget_all()
 	var path := EnemyPath.new(walker, Npc.BODY_RADIUS)
@@ -1416,7 +1419,7 @@ func _test_routine_legs(_scene: Node, village: Village, data: Dictionary) -> voi
 				if not path.is_line_clear(from, to, 0.0, false):
 					bad += " %s %s->%s" % [id, points[j], points[j + 1]]
 	for villager in villagers:
-		villager.position.y += 100.0
+		villager.collision_layer = layers[villager]
 	EnemyPath.forget_all()
 	_check(legs > 0, "there are routine legs to check")
 	_check(bad.is_empty(), "villagers' walks avoid buildings and water:%s" % bad)

@@ -68,7 +68,7 @@ func _run() -> void:
 	var bowl: MeshInstance3D = village.get_node("Props/bowl_1").find_children("*", "MeshInstance3D", true, false)[0]
 	var door: MeshInstance3D = village.get_node("Props/door_3").find_children("*", "MeshInstance3D", true, false)[0]
 	_check(bowl.visibility_range_end > 0.0 and door.visibility_range_end == 0.0, "only small props stop being drawn far away")
-	_check(village.get_node("Roads").get_child_count() == 3, "roads load from data")
+	_check(village.get_node("Roads").get_child_count() == 6, "roads load from data")
 	_check(village.get_node("Boulders").get_child_count() > 0, "boulders have collision")
 	_check(village.get_node("Boulders").get_child(0).shape is ConvexPolygonShape3D, "boulders collide with their real shape")
 	_check(terrain.is_on_landslide(40.0, -300.0) and not terrain.is_on_landslide(0.0, 0.0), "landslide stays out of the village")
@@ -184,6 +184,7 @@ func _run() -> void:
 	await _test_gathering_collision(scene, player)
 	await _test_buried_mine(scene, player)
 	await _test_walls(scene, player)
+	_test_farms(scene)
 	await _test_forest(scene, player)
 	await _test_player_fixes(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
@@ -608,7 +609,7 @@ func _test_map(scene: Node, player: Player) -> void:
 	_check(_close_color(image.get_pixel(int(road_pixel.x), int(road_pixel.y)), MapData.ROAD_COLOR), "a road is drawn on the map")
 	var uv := MapData.world_to_uv(Vector2(-800.0, 800.0))
 	_check(uv.is_equal_approx(Vector2(0.0, 1.0)) and MapData.uv_to_world(Vector2(0.5, 0.5)).is_equal_approx(Vector2.ZERO), "the map has north at the top and the world's middle at its center")
-	_check(data.places.size() >= 11 and data.places.all(func(place: Dictionary) -> bool: return tr(place["name"]) != place["name"]), "every place on the map has a translated name")
+	_check(data.places.size() >= 14 and data.places.all(func(place: Dictionary) -> bool: return tr(place["name"]) != place["name"]), "every place on the map has a translated name")
 	var forge: Dictionary = data.places.filter(func(place: Dictionary) -> bool: return place["id"] == "forge")[0]
 	for place in data.places:
 		place["discovered"] = false
@@ -863,7 +864,7 @@ func _test_generated_props() -> void:
 	_check(tuner != null, "the prop tuner scene loads")
 	tuner.free()
 	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/village_layout.json"))
-	_check((layout["props"] as Array).size() == 57, "57 generated props are placed, and the anvil, furnace, and bed are separate")
+	_check((layout["props"] as Array).size() == 60, "60 generated props are placed, and the anvil, furnace, and bed are separate")
 
 
 func _test_feature_flags() -> void:
@@ -2384,6 +2385,42 @@ func _test_buried_mine(scene: Node, player: Player) -> void:
 
 ## The stone walls and the fort's palisade (#209): placed on gentle ground clear of roads and everything
 ## people use, solid, open at their gates, and cheap to draw.
+## Each outlying farm has a barn on level ground, and a path that joins a main road and stays on gentle, dry ground (#251).
+func _test_farms(scene: Node) -> void:
+	var terrain: Terrain = scene.get_node("Terrain")
+	var village: Village = scene.get_node("Village")
+	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Village.LAYOUT_PATH))
+	var barns: Array = layout["buildings"].filter(func(building: Dictionary) -> bool: return building.get("barn", false))
+	_check(barns.size() >= 3, "the outlying farms have barns (%d)" % barns.size())
+	for barn: Dictionary in barns:
+		var meshes := village.get_node(barn["id"]).find_children("*", "MeshInstance3D", true, false)
+		var low := INF
+		var high := -INF
+		for step_x in range(-3, 4):
+			for step_z in range(-2, 3):
+				var at := Vector2(barn["x"], barn["z"]) + Vector2(step_x * barn["width"] / 6.0, step_z * barn["depth"] / 4.0).rotated(-deg_to_rad(barn["rotation"]))
+				low = minf(low, terrain.height_at(at.x, at.y))
+				high = maxf(high, terrain.height_at(at.x, at.y))
+		_check(meshes.size() == 1 and high - low < 1.0, "%s is one mesh on level ground (%d meshes, %.2f m relief)" % [barn["id"], meshes.size(), high - low])
+	var branches := 0
+	for i in layout["roads"].size():
+		if not layout["roads"][i].get("branch", false):
+			continue
+		branches += 1
+		var samples: PackedVector2Array = terrain.roads[i].positions
+		var steepest := 0.0
+		var nearest_river := INF
+		for at in samples:
+			steepest = maxf(steepest, _slope_degrees(terrain, at.x, at.y))
+			nearest_river = minf(nearest_river, terrain.river_clearance(at.x, at.y))
+		var meets_main := false
+		for j in layout["roads"].size():
+			if not layout["roads"][j].get("branch", false):
+				meets_main = meets_main or terrain.roads[j].nearest(samples[samples.size() - 1].x, samples[samples.size() - 1].y).x < 1.0 or terrain.roads[j].nearest(samples[0].x, samples[0].y).x < 1.0
+		_check(steepest < 15.0 and nearest_river > 4.0 and meets_main, "farm path %d joins a main road on gentle, dry ground (steepest %.1f, river %.1f)" % [i, steepest, nearest_river])
+	_check(branches >= 3, "each outlying farm has a path (%d)" % branches)
+
+
 func _test_walls(scene: Node, player: Player) -> void:
 	var terrain: Terrain = scene.get_node("Terrain")
 	var village: Village = scene.get_node("Village")

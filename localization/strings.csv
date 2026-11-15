@@ -293,6 +293,9 @@ MAP_ABANDONED_HOUSE_3,Abandoned house,Verlassenes Haus
 MAP_NORTH_FARM,North farm,Nordhof
 MAP_WEST_FARM,West farm,Westhof
 MAP_SOUTH_FARM,South farm,Südhof
+MAP_NORTH_BARN,North barn,Nordscheune
+MAP_WEST_BARN,West barn,Westscheune
+MAP_SOUTH_BARN,South barn,Südscheune
 MAP_IRON_ORE,Iron ore,Eisenerz
 UI_CONTROLS_TITLE,Controls,Steuerung
 UI_CONTROLS_KEYBOARD,Keyboard and mouse,Tastatur und Maus

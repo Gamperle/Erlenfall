@@ -470,7 +470,9 @@ func _add_building(data: Dictionary) -> void:
 	var depth: float = data["depth"]
 	var height: float = data["height"]
 	var ruined: bool = data.get("ruined", false)
-	var walls := ModelBuilder.house_walls(Vector3(width, height, depth), Color(data["color"]), ruined)
+	# A barn is a big plain house: a wide gable, no chimney, and no windows.
+	var barn: bool = data.get("barn", false)
+	var walls := ModelBuilder.house_walls(Vector3(width, height, depth), Color(data["color"]), ruined, not barn)
 	body.add_child(walls)
 
 	var shape := BoxShape3D.new()
@@ -492,7 +494,8 @@ func _add_building(data: Dictionary) -> void:
 		_repairs.append({ "flag": data["repaired_by_flag"], "repaired": full_roof, "damaged": damaged, "cover": _add_roof_cover(data, body, false) })
 	else:
 		walls.add_child(ModelBuilder.house_roof(width, depth, height))
-		walls.add_child(ModelBuilder.chimney(width, depth, height))
+		if not barn:
+			walls.add_child(ModelBuilder.chimney(width, depth, height))
 		_add_roof_cover(data, body, true)
 	ModelBuilder.merged(walls)
 

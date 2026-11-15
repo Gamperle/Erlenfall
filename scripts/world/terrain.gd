@@ -47,6 +47,10 @@ const SPOT_FLAT_BLEND := 7.0
 const ROAD_SPACING := 2.0
 const ROAD_SHOULDER := 1.0
 const ROAD_BLEND := 11.0
+## A branch road's end within this distance of a main road counts as joining it, and its last stretch
+## of this length is eased to the main road's height.
+const BRANCH_JOIN_REACH := 3.0
+const BRANCH_JOIN_LENGTH := 30.0
 ## How many meters of valley side the river gets per meter the land lies above its banks, so the
 ## sides stay below the player's 45 degree floor limit, and the most they spread.
 const VALLEY_RUN_PER_DROP := 3.4
@@ -79,6 +83,9 @@ const WADING_FULL_DEPTH := 0.6
 
 ## The roads in the layout file's order.
 var roads: Array[TerrainPath] = []
+## The roads in the order they shape the ground: branch roads (side paths) first, so the main road they meet is
+## laid over their ends and keeps its own height, instead of being bent into a ramp at the junction.
+var _roads_by_layer: Array[TerrainPath] = []
 var river: TerrainPath
 var _water_material: ShaderMaterial
 ## The places kept free for future buildings, from the layout file.
@@ -140,7 +147,7 @@ func _process(_delta: float) -> void:
 
 func height_at(x: float, z: float) -> float:
 	var height := _flattened_height(x, z)
-	for road in roads:
+	for road in _roads_by_layer:
 		height = _along_road(road, height, x, z)
 	return _along_river(height, x, z)
 
@@ -253,7 +260,34 @@ func _add_roads(data: Array) -> void:
 			points.append([point[0], point[1], 0.0, half_width])
 		var path := TerrainPath.new(points, ROAD_SPACING, half_width + ROAD_BLEND)
 		path.heights = _smoothed_road_heights(path.positions)
+		if road.get("branch", false):
+			_meet_main_roads(path)
 		roads.append(path)
+		if road.get("branch", false):
+			_roads_by_layer.push_front(path)
+		else:
+			_roads_by_layer.append(path)
+
+
+## Eases the ends of a branch road to the height of the main road it touches, over BRANCH_JOIN_LENGTH meters,
+## so the two meet at one height and the junction is not a step.
+func _meet_main_roads(branch: TerrainPath) -> void:
+	var count := branch.positions.size()
+	var span := mini(int(BRANCH_JOIN_LENGTH / ROAD_SPACING), count / 2)
+	for end in [0, count - 1]:
+		var at := branch.positions[end]
+		var meets := INF
+		var meet_height := 0.0
+		for road in roads:
+			var found := road.nearest(at.x, at.y)
+			if found.x < meets:
+				meets = found.x
+				meet_height = found.y
+		if meets > BRANCH_JOIN_REACH:
+			continue
+		for i in span:
+			var index := i if end == 0 else count - 1 - i
+			branch.heights[index] = lerpf(meet_height, branch.heights[index], smoothstep(0.0, 1.0, float(i) / span))
 
 
 ## Follows the land along the road, but evens out its bumps so the road climbs steadily.

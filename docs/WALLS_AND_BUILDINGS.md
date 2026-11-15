@@ -41,3 +41,10 @@ Placed: a ring of palisade on the wooden fort's flat top with a 2.9 m gate towar
 ## Open decisions
 
 Tracked in [#209](https://github.com/Gamperle/Erlenfall/issues/209) (look and placement) and [#210](https://github.com/Gamperle/Erlenfall/issues/210) (whether to use a kit).
+
+## Outlying farms (#251)
+
+Each of the three farms (north, west, south) has a house, a crop field, a barn, a well, a low palisade fence, and a dirt path to a main road, all from `data/village_layout.json`. A barn is a `buildings` entry with `"barn": true`: the same code-built house (`ModelBuilder.house_walls` and `house_roof`), but bigger and with no windows or chimney. It is flattened, kept clear of trees and grass, and gets a map name (`MAP_<ID>`) like any building. The fences are `walls` of kind `palisade` at 1.2 to 1.3 m: a pen behind each barn, and fences along the sides of the fields that the stone walls of #209 leave open, with gaps as gates.
+
+The farm paths are `roads` with `"branch": true`. `Terrain` shapes the ground under branch roads first and eases each end that touches a main road to that road's height, so the main road keeps its own slope and the junction is not a ramp. Keep a path's start about 14 m or more from the nearest house or barn, or the ground it shapes tilts the building's footprint. The smoke test checks that each barn stands on level ground and that each path is gentle, dry, and joins a main road.
+

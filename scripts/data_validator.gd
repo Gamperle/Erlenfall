@@ -498,7 +498,7 @@ func _check_village_layout(data: Dictionary) -> void:
 	var file := "village_layout.json"
 	var placed := { "x": ["number", true], "z": ["number", true] }
 	var lists := {
-		"buildings": { "id": ["string", true], "width": ["number", true], "depth": ["number", true], "height": ["number", true], "rotation": ["number", true], "color": ["color", true], "ruined": ["bool", false], "repaired_by_flag": ["string", false] },
+		"buildings": { "id": ["string", true], "width": ["number", true], "depth": ["number", true], "height": ["number", true], "rotation": ["number", true], "color": ["color", true], "ruined": ["bool", false], "barn": ["bool", false], "repaired_by_flag": ["string", false] },
 		"fields": { "width": ["number", true], "depth": ["number", true], "rotation": ["number", true], "color": ["color", true] },
 		"npcs": { "id": ["string", true], "name": ["text", true], "color": ["color", true], "hair": ["color", false], "model": ["string", false], "appears_when": ["object", false] },
 		"enemies": { "type": ["string", true] },
@@ -537,7 +537,7 @@ func _check_village_layout(data: Dictionary) -> void:
 	_check_walls(file, data.get("walls"))
 	for i in _array(data.get("roads")).size():
 		var road: Variant = data["roads"][i]
-		if _fields(file, "roads[%d]" % i, road, { "width": ["number", true], "points": ["array", true] }) and road.has("points") and road["points"].size() < 2:
+		if _fields(file, "roads[%d]" % i, road, { "width": ["number", true], "points": ["array", true], "branch": ["bool", false] }) and road.has("points") and road["points"].size() < 2:
 			_add(file, "roads[%d].points" % i, "a road needs at least two points")
 
 

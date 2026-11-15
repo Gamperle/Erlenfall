@@ -205,6 +205,8 @@ func _run() -> void:
 	_test_dialogue_data()
 	_test_dialogue_conditions()
 	_test_data_validation()
+	var asset_problems := AssetLedger.problems()
+	_check(asset_problems.is_empty(), "every asset has a source and license in ASSETS.md (#271) %s" % str(asset_problems))
 
 	_remove_dir(_test_dir)
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")

@@ -410,7 +410,7 @@ UI_JOURNAL_NO_NOTES,You have not found any notes yet. Notes you read in the worl
 UI_JOURNAL_NO_MAP,The map is not available.,Die Karte ist nicht verfügbar.
 UI_JOURNAL_HINT,Arrow keys / d-pad: choose a tab   Enter / A: select   J / Esc / B: close,Pfeiltasten / Steuerkreuz: Reiter wählen   Eingabe / A: auswählen   J / Esc / B: schließen
 UI_JOURNAL_HINT_QUESTS,Select an active quest to track it and select it again to stop. Only the tracked quest shows on the compass and the map.   J / Esc / B: close,Wähle eine aktive Aufgabe, um sie zu verfolgen, und wähle sie erneut zum Beenden. Nur die verfolgte Aufgabe erscheint auf Kompass und Karte.   J / Esc / B: schließen
-UI_JOURNAL_MAP_HINT,WASD / left stick: move the map   Mouse wheel / + and - / LB and RB: zoom   Esc / B: close,WASD / linker Stick: Karte verschieben   Mausrad / + und - / LB und RB: zoomen   Esc / B: schließen
+UI_JOURNAL_MAP_HINT,WASD / left stick: move the map   D-pad / arrow keys: choose a tab   Mouse wheel / + and - / LB and RB: zoom   Esc / B: close,WASD / linker Stick: Karte verschieben   Steuerkreuz / Pfeiltasten: Reiter wählen   Mausrad / + und - / LB und RB: zoomen   Esc / B: schließen
 UI_FORGE_STOP_KEYBOARD,Esc,Esc
 UI_FORGE_STOP_GAMEPAD,B,B
 UI_DIALOGUE_HINT,%s: choose,%s: auswählen

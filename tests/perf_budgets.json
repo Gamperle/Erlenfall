@@ -22,7 +22,7 @@
 			"mesh_surfaces": 808,
 			"multimesh_instances": 5151,
 			"multimesh_nodes": 289,
-			"nodes": 3429,
+			"nodes": 3450,
 			"triangles": 1320260
 		},
 		"village_across_river": {
@@ -32,7 +32,7 @@
 			"mesh_surfaces": 808,
 			"multimesh_instances": 5151,
 			"multimesh_nodes": 289,
-			"nodes": 3429,
+			"nodes": 3450,
 			"triangles": 1320260
 		},
 		"village_center": {
@@ -42,7 +42,7 @@
 			"mesh_surfaces": 808,
 			"multimesh_instances": 5151,
 			"multimesh_nodes": 289,
-			"nodes": 3429,
+			"nodes": 3450,
 			"triangles": 1320260
 		},
 		"village_edge_forest": {
@@ -52,7 +52,7 @@
 			"mesh_surfaces": 808,
 			"multimesh_instances": 5151,
 			"multimesh_nodes": 289,
-			"nodes": 3429,
+			"nodes": 3450,
 			"triangles": 1320260
 		}
 	},

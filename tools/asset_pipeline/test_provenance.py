@@ -5,6 +5,7 @@ and a prop) and runs backfill, validation, and the stage-writing code the pipeli
 """
 import json
 import os
+import struct
 import sys
 import tempfile
 import unittest
@@ -12,6 +13,7 @@ import unittest
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import provenance
+import shrink_textures
 
 SOURCE = "FLUX.2 klein 4B, TRELLIS.2 (Comfy-Org int8 build) in ComfyUI 0.43.0, BiRefNet, DINOv3, Blender 5.2"
 ASSETS = """# Assets
@@ -244,6 +246,60 @@ class PipelineStagesTest(unittest.TestCase):
         for step in ("size", "image", "mesh"):
             record["stages"].append({"step": step, "tool": "t", "versions": {"x": "1"}, "date": "2026-11-14"})
         self.assertIn("stages are out of order", provenance.check_record(record, "a_1"))
+
+
+def fake_png(edge):
+    """A PNG header with this size; the check reads only the header."""
+    return b"\x89PNG\r\n\x1a\n" + struct.pack(">I", 13) + b"IHDR" + struct.pack(">II", edge, edge) + b"\x08\x02\0\0\0"
+
+
+def write_glb(path, meters, edges):
+    """A one-triangle GLB whose longest side is meters, with a PNG of each edge as an embedded image."""
+    binary = b"".join(fake_png(e) for e in edges)
+    views = [{"buffer": 0, "byteOffset": i * 29, "byteLength": 29} for i in range(len(edges))]
+    document = {"asset": {"version": "2.0"}, "scene": 0, "scenes": [{"nodes": [0]}], "nodes": [{"mesh": 0}],
+                "meshes": [{"primitives": [{"attributes": {"POSITION": 0}}]}],
+                "accessors": [{"min": [0, 0, 0], "max": [meters, 0.1, 0.1]}], "bufferViews": views,
+                "images": [{"bufferView": i, "mimeType": "image/png"} for i in range(len(edges))],
+                "buffers": [{"byteLength": len(binary)}]}
+    shrink_textures.write_glb(path, document, binary)
+
+
+class TextureTierTest(unittest.TestCase):
+    def setUp(self):
+        self.root = make_repo()
+        self.props = os.path.join(self.root, "assets", "props")
+
+    def test_tier_from_size(self):
+        self.assertEqual(shrink_textures.texture_edge(1.25), 512)
+        self.assertEqual(shrink_textures.texture_edge(1.26), 1024)
+
+    def test_small_prop_at_1024_is_reported(self):
+        write_glb(os.path.join(self.props, "bowl_1.glb"), 0.2, [512, 1024])
+        problems = shrink_textures.check_props(self.root)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("bowl_1.glb: texture 1 is 1024 x 1024 px, above the 512 px", problems[0])
+
+    def test_right_sizes_pass(self):
+        write_glb(os.path.join(self.props, "bowl_1.glb"), 0.2, [512, 256])
+        write_glb(os.path.join(self.props, "house_1.glb"), 4.0, [1024, 1024])
+        self.assertEqual(shrink_textures.check_props(self.root), [])
+
+    def test_large_prop_at_2048_is_reported(self):
+        write_glb(os.path.join(self.props, "house_1.glb"), 4.0, [2048])
+        self.assertEqual(len(shrink_textures.check_props(self.root)), 1)
+
+    def test_lfs_pointer_is_skipped(self):
+        write(os.path.join(self.props, "bowl_1.glb"), "version https://git-lfs.github.com/spec/v1\n")
+        self.assertEqual(shrink_textures.check_props(self.root), [])
+
+    def test_validate_fails_on_oversized_textures(self):
+        out = []
+        provenance.backfill(self.root, out=quiet(out))
+        write_glb(os.path.join(self.props, "bowl_1.glb"), 0.2, [1024])
+        out.clear()
+        self.assertEqual(provenance.validate(self.root, out=quiet(out)), 1)
+        self.assertTrue(any("bowl_1.glb" in line for line in out), out)
 
 
 if __name__ == "__main__":

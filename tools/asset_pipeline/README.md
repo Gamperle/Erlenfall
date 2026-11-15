@@ -96,6 +96,7 @@ It does worse on loose, fibrous materials. It turned haystacks into brown lumps 
 ## 5. Size the models
 
 ```bash
+scp tools/asset_pipeline/{size_models.ps1,shrink_textures.py,provenance.py} ASSET_PC:D:/erlenfall-assets/
 ssh ASSET_PC "powershell -NoProfile -ExecutionPolicy Bypass -File D:\erlenfall-assets\size_models.ps1 -Batch klein2"
 ```
 
@@ -103,11 +104,14 @@ ssh ASSET_PC "powershell -NoProfile -ExecutionPolicy Bypass -File D:\erlenfall-a
 
 ![Some of the TRELLIS.2 props, as they face in the game](examples/4_trellis_models.jpg)
 
-Then shrink the textures to what the prop's size needs. TRELLIS.2 bakes every model at 1024 px, but a bowl is never seen that large, and each 1024 px set (color, normal, roughness/occlusion) costs about 4.6 MB of video memory. `shrink_textures.py` picks the edge from the sized model's longest side: **512 px up to 1.25 m, 1024 px above**. It only shrinks, so running it again changes nothing, and it works on the GLBs in `assets/props` on any machine with Pillow, with no Blender:
+`size_models.ps1` ends by running `shrink_textures.py` on the batch's `props` folder (#445), so new models arrive at their tier. This needs `shrink_textures.py` and `provenance.py` copied next to `size_models.ps1` and Pillow and numpy in the PC's `python` (both are installed there); without the script it prints a warning and leaves 1024 px. `provenance.py validate` (and CI) fails on any prop in `assets/props` whose textures exceed its tier, so a model that skipped this step is caught when it is copied in.
+
+By hand, shrink the textures to what the prop's size needs. TRELLIS.2 bakes every model at 1024 px, but a bowl is never seen that large, and each 1024 px set (color, normal, roughness/occlusion) costs about 4.6 MB of video memory. `shrink_textures.py` picks the edge from the sized model's longest side: **512 px up to 1.25 m, 1024 px above**. It only shrinks, so running it again changes nothing, and it works on the GLBs in `assets/props` on any machine with Pillow, with no Blender:
 
 ```bash
 python3 tools/asset_pipeline/shrink_textures.py                         # report only
 python3 tools/asset_pipeline/shrink_textures.py --apply --records --ledger
+python3 tools/asset_pipeline/shrink_textures.py --check                 # exit 1 if any prop is above its tier
 ```
 
 `--records` adds a `textures` stage to each changed prop's provenance record and `--ledger` adds a note to its ASSETS.md row. Change the thresholds (`SMALL_MAX_METERS`, `SMALL_EDGE`, `LARGE_EDGE`) at the top of the script. To compare before and after, `shoot_models.gd` photographs single props up close: `DISPLAY=:0 godot --path . --script res://tools/asset_pipeline/shoot_models.gd -- out_dir bucket_1 bowl_1` (#426).

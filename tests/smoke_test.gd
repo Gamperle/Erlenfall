@@ -22,6 +22,11 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	var pointers := _lfs_pointer_files("res://assets")
+	if not pointers.is_empty():
+		printerr("FAIL: %d asset files are Git LFS pointers, for example %s. Run 'git lfs pull' and then 'godot --headless --path . --import' (see CONTRIBUTING.md, Setting up a fresh checkout). Revert any .import files the import rewrote." % [pointers.size(), pointers[0]])
+		quit(1)
+		return
 	# A leftover folder from an earlier run that had the same process id would be stale.
 	_remove_dir(_test_dir)
 	DirAccess.make_dir_recursive_absolute(_test_dir)
@@ -76,7 +81,7 @@ func _run() -> void:
 	var bowl: MeshInstance3D = village.get_node("Props/bowl_1").find_children("*", "MeshInstance3D", true, false)[0]
 	var door: MeshInstance3D = village.get_node("Props/door_3").find_children("*", "MeshInstance3D", true, false)[0]
 	_check(bowl.visibility_range_end > 0.0 and door.visibility_range_end == 0.0, "only small props stop being drawn far away")
-	_check(village.get_node("Roads").get_child_count() == 3, "roads load from data")
+	_check(village.get_node("Roads").get_child_count() == 6, "roads load from data")
 	_check(village.get_node("Boulders").get_child_count() > 0, "boulders have collision")
 	_check(village.get_node("Boulders").get_child(0).shape is ConvexPolygonShape3D, "boulders collide with their real shape")
 	_check(terrain.is_on_landslide(40.0, -300.0) and not terrain.is_on_landslide(0.0, 0.0), "landslide stays out of the village")
@@ -192,6 +197,7 @@ func _run() -> void:
 	await _test_gathering_collision(scene, player)
 	await _test_buried_mine(scene, player)
 	await _test_walls(scene, player)
+	_test_farms(scene)
 	await _test_forest(scene, player)
 	await _test_player_fixes(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
@@ -626,7 +632,7 @@ func _test_map(scene: Node, player: Player) -> void:
 	_check(_close_color(image.get_pixel(int(road_pixel.x), int(road_pixel.y)), MapData.ROAD_COLOR), "a road is drawn on the map")
 	var uv := MapData.world_to_uv(Vector2(-800.0, 800.0))
 	_check(uv.is_equal_approx(Vector2(0.0, 1.0)) and MapData.uv_to_world(Vector2(0.5, 0.5)).is_equal_approx(Vector2.ZERO), "the map has north at the top and the world's middle at its center")
-	_check(data.places.size() >= 11 and data.places.all(func(place: Dictionary) -> bool: return tr(place["name"]) != place["name"]), "every place on the map has a translated name")
+	_check(data.places.size() >= 14 and data.places.all(func(place: Dictionary) -> bool: return tr(place["name"]) != place["name"]), "every place on the map has a translated name")
 	var forge: Dictionary = data.places.filter(func(place: Dictionary) -> bool: return place["id"] == "forge")[0]
 	for place in data.places:
 		place["discovered"] = false
@@ -760,6 +766,12 @@ func _test_journal(scene: Node, player: Player) -> void:
 	map_press.pressed = true
 	journal._input(map_press)
 	_check(journal.current_tab() == Journal.TAB_MAP and journal.is_open(), "the map key shows the map tab while the journal is open")
+	var stick := InputEventJoypadMotion.new()
+	stick.axis = JOY_AXIS_LEFT_X
+	stick.axis_value = 1.0
+	journal.get_viewport().set_input_as_handled()
+	journal._input(stick)
+	_check(journal.get_viewport().is_input_handled(), "on the map tab the left stick pans the map without moving the menu focus")
 	var cancel := InputEventAction.new()
 	cancel.action = "ui_cancel"
 	cancel.pressed = true
@@ -843,6 +855,7 @@ func _test_hud(scene: Node, player: Player) -> void:
 	await _test_item_models(scene)
 	await _test_interface_fit(scene)
 	await _test_controls_hint(scene)
+	await _test_credits(scene)
 	_test_input_device_prompts(scene)
 	_test_input_glyphs(scene)
 	await _test_ground_dryness()
@@ -881,7 +894,7 @@ func _test_generated_props() -> void:
 	_check(tuner != null, "the prop tuner scene loads")
 	tuner.free()
 	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/village_layout.json"))
-	_check((layout["props"] as Array).size() == 57, "57 generated props are placed, and the anvil, furnace, and bed are separate")
+	_check((layout["props"] as Array).size() == 60, "60 generated props are placed, and the anvil, furnace, and bed are separate")
 
 
 func _test_feature_flags() -> void:
@@ -2415,7 +2428,7 @@ func _test_buried_mine(scene: Node, player: Player) -> void:
 	var cliff_triangles := 0
 	for surface in cliff_mesh.get_surface_count():
 		cliff_triangles += (cliff_mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() / 3
-	_check(cliff_triangles > 1500 and cliff_triangles < 8000, "the mine's cliff is a sculpted face with few triangles (%d)" % cliff_triangles)
+	_check(cliff_triangles > 1500 and cliff_triangles < 10000, "the mine's cliff, headframe and rubble are built from few triangles (%d)" % cliff_triangles)
 	var at := Vector2(data["x"], data["z"])
 	_check(village.marker_position(data["id"]).distance_to(at) < 0.1 and village.landmark_positions() == [at], "the mine is a quest marker and a compass landmark")
 	var steepest := 0.0
@@ -2476,6 +2489,42 @@ func _test_buried_mine(scene: Node, player: Player) -> void:
 
 ## The stone walls and the fort's palisade (#209): placed on gentle ground clear of roads and everything
 ## people use, solid, open at their gates, and cheap to draw.
+## Each outlying farm has a barn on level ground, and a path that joins a main road and stays on gentle, dry ground (#251).
+func _test_farms(scene: Node) -> void:
+	var terrain: Terrain = scene.get_node("Terrain")
+	var village: Village = scene.get_node("Village")
+	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Village.LAYOUT_PATH))
+	var barns: Array = layout["buildings"].filter(func(building: Dictionary) -> bool: return building.get("barn", false))
+	_check(barns.size() >= 3, "the outlying farms have barns (%d)" % barns.size())
+	for barn: Dictionary in barns:
+		var meshes := village.get_node(barn["id"]).find_children("*", "MeshInstance3D", true, false)
+		var low := INF
+		var high := -INF
+		for step_x in range(-3, 4):
+			for step_z in range(-2, 3):
+				var at := Vector2(barn["x"], barn["z"]) + Vector2(step_x * barn["width"] / 6.0, step_z * barn["depth"] / 4.0).rotated(-deg_to_rad(barn["rotation"]))
+				low = minf(low, terrain.height_at(at.x, at.y))
+				high = maxf(high, terrain.height_at(at.x, at.y))
+		_check(meshes.size() == 1 and high - low < 1.0, "%s is one mesh on level ground (%d meshes, %.2f m relief)" % [barn["id"], meshes.size(), high - low])
+	var branches := 0
+	for i in layout["roads"].size():
+		if not layout["roads"][i].get("branch", false):
+			continue
+		branches += 1
+		var samples: PackedVector2Array = terrain.roads[i].positions
+		var steepest := 0.0
+		var nearest_river := INF
+		for at in samples:
+			steepest = maxf(steepest, _slope_degrees(terrain, at.x, at.y))
+			nearest_river = minf(nearest_river, terrain.river_clearance(at.x, at.y))
+		var meets_main := false
+		for j in layout["roads"].size():
+			if not layout["roads"][j].get("branch", false):
+				meets_main = meets_main or terrain.roads[j].nearest(samples[samples.size() - 1].x, samples[samples.size() - 1].y).x < 1.0 or terrain.roads[j].nearest(samples[0].x, samples[0].y).x < 1.0
+		_check(steepest < 15.0 and nearest_river > 4.0 and meets_main, "farm path %d joins a main road on gentle, dry ground (steepest %.1f, river %.1f)" % [i, steepest, nearest_river])
+	_check(branches >= 3, "each outlying farm has a path (%d)" % branches)
+
+
 func _test_walls(scene: Node, player: Player) -> void:
 	var terrain: Terrain = scene.get_node("Terrain")
 	var village: Village = scene.get_node("Village")
@@ -2673,6 +2722,30 @@ func _test_controls_hint(scene: Node) -> void:
 	_check(is_zero_approx(label.modulate.a), "the controls fade after the pause menu")
 	scene.open_pause_menu()
 	_check(label.modulate.a == 1.0, "the controls come back in the pause menu")
+	scene.resume()
+
+
+func _test_credits(scene: Node) -> void:
+	var data := CreditsData.parse("| File | Source | Author | License | Notes |\n| --- | --- | --- | --- | --- |\n| `a/x.jpg` | [Site: x](https://e.com) | Ann | CC0 | n |\n| `a/y.jpg` | [Site: x](https://e.com) | Ann | CC0 | n |\n\nAfter [link](u).")
+	_check(data["entries"].size() == 1 and data["entries"][0]["files"].size() == 2, "credits merge rows with the same source")
+	_check(data["entries"][0]["source"] == "Site: x" and data["notes"] == ["After link."], "credits drop Markdown links")
+	var real := CreditsData.load_assets()
+	var rows := CreditsData.read_text(CreditsData.ASSETS_PATH).count("| `assets/")
+	var files := 0
+	for entry: Dictionary in real["entries"]:
+		files += entry["files"].size()
+	_check(files >= rows and rows > 0, "every asset row reaches the credits (%d rows, %d files)" % [rows, files])
+	scene.open_pause_menu()
+	var menu: GameMenu = scene.get_node("GameMenu")
+	menu.open_credits(menu.open_pause)
+	await process_frame
+	await process_frame
+	var credits: CreditsMenu = menu._credits
+	_check(credits != null and credits.is_inside_tree(), "the pause menu opens the credits")
+	credits.scroll_by(120.0)
+	_check(credits.scroll_position() > 0, "the credits scroll")
+	credits.back_chosen.emit()
+	_check(menu._credits == null and menu.is_open(), "back leaves the credits for the menu")
 	scene.resume()
 
 
@@ -2944,7 +3017,7 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	DirAccess.remove_absolute(TEST_SLOT_2)
 	DirAccess.remove_absolute(TEST_SLOT_2 + SaveGame.BACKUP_SUFFIX)
 	menu.open_title()
-	_check(not menu._asset_note.get_parent() == null and menu._buttons.get_child_count() == 3, "with no saves, the title offers new game, settings, and quit")
+	_check(not menu._asset_note.get_parent() == null and menu._buttons.get_child_count() == 4, "with no saves, the title offers new game, settings, credits, and quit")
 	started[0] = ""
 	menu._buttons.get_child(0).pressed.emit()
 	_check(started[0] == TEST_SAVE, "with no save, new game starts at once")
@@ -3682,6 +3755,20 @@ func _check_water_ripples(terrain: Terrain, player: Player) -> void:
 	_check(terrain._stir_water() == 0, "low graphics skips the ripples")
 	Settings.graphics = saved_graphics
 	player.global_position = before
+
+
+## Files under `dir` that are still Git LFS pointer text instead of the real asset (#172).
+func _lfs_pointer_files(dir: String) -> PackedStringArray:
+	var found := PackedStringArray()
+	for sub in DirAccess.get_directories_at(dir):
+		found.append_array(_lfs_pointer_files(dir.path_join(sub)))
+	for file in DirAccess.get_files_at(dir):
+		if file.get_extension() in ["import", "uid", "md", "txt", "json", "tres", "gd"]:
+			continue
+		var f := FileAccess.open(dir.path_join(file), FileAccess.READ)
+		if f != null and f.get_buffer(23).get_string_from_ascii() == "version https://git-lfs":
+			found.append(dir.path_join(file))
+	return found
 
 
 func _check(condition: bool, label: String) -> void:

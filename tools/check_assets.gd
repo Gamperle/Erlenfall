@@ -3,7 +3,7 @@ extends SceneTree
 ## every row names files that exist. Usage:
 ##   godot --headless --path . --script res://tools/check_assets.gd
 ## Run it after `godot --headless --path . --import`, which writes the textures that rows such as
-## `assets/props/*.png` describe. Exits with 1 if anything is wrong.
+## `assets/characters/*.png` describe. Exits with 1 if anything is wrong.
 
 
 func _init() -> void:

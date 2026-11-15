@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b0xj2ofqy2ced"
-path="res://.godot/imported/bertram_BootsViking.png-14e9b5b5f008c4f5753a1d7887968984.ctex"
+path.bptc="res://.godot/imported/bertram_BootsViking.png-14e9b5b5f008c4f5753a1d7887968984.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "c3e14a4697d599e6dd14322bef92655b"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/characters/bertram_BootsViking.png"
-dest_files=["res://.godot/imported/bertram_BootsViking.png-14e9b5b5f008c4f5753a1d7887968984.ctex"]
+dest_files=["res://.godot/imported/bertram_BootsViking.png-14e9b5b5f008c4f5753a1d7887968984.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ciiw0yrseldu7"
-path="res://.godot/imported/mira_brown_eye.png-69220a4adb40c58dbd3ada8fe4d0c0a0.ctex"
+path.bptc="res://.godot/imported/mira_brown_eye.png-69220a4adb40c58dbd3ada8fe4d0c0a0.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "1b93ce1fc9dfa16177a6d61005cdb4fd"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/characters/mira_brown_eye.png"
-dest_files=["res://.godot/imported/mira_brown_eye.png-69220a4adb40c58dbd3ada8fe4d0c0a0.ctex"]
+dest_files=["res://.godot/imported/mira_brown_eye.png-69220a4adb40c58dbd3ada8fe4d0c0a0.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

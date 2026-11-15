@@ -3,9 +3,13 @@
 Run with:
 blender --background --python build_goblin.py -- <Goblin.blend> <palette.png> <output.glb>
 """
+import os
 import sys
 
 import bpy
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "asset_pipeline"))
+import provenance
 
 HELPER_BONES = ("IKLegPole", "IKTarget")
 
@@ -39,6 +43,12 @@ def main():
     bpy.ops.object.mode_set(mode="OBJECT")
     mesh.select_set(True)
     bpy.ops.export_scene.gltf(filepath=output, use_selection=True, export_animations=False, export_image_format="JPEG", export_jpeg_quality=90)
+    asset = "assets/characters/" + os.path.basename(output)
+    stage = {
+        "step": "export", "tool": "build_goblin.py", "date": provenance.today(), "versions": {"Blender": bpy.app.version_string},
+        "source_sha256": {"blend": provenance.sha256(source), "palette": provenance.sha256(palette)}, "output_sha256": provenance.sha256(output),
+    }
+    provenance.save(provenance.record_path("character", asset), provenance.new_record("character", asset, name="goblin", stages=[stage]))
     print("BUILT goblin", sum(len(polygon.vertices) - 2 for polygon in mesh.data.polygons), "triangles", tuple(round(size, 2) for size in mesh.dimensions))
 
 

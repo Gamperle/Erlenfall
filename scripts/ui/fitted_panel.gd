@@ -24,6 +24,13 @@ func _init(width: float, reserved_height := 0.0) -> void:
 	_scroll.add_child(content)
 
 
+## Changes the width the panel aims for, for a page that needs more room.
+func set_width(width: float) -> void:
+	_width = width
+	if is_node_ready():
+		_fit()
+
+
 func _ready() -> void:
 	get_viewport().size_changed.connect(_fit)
 	_fit()

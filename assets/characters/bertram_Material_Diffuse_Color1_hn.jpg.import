@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d4jj4h5t3yfap"
-path="res://.godot/imported/bertram_Material_Diffuse_Color1_hn.jpg-ba8e708d3c97fb3a21577041974e3f97.ctex"
+path.bptc="res://.godot/imported/bertram_Material_Diffuse_Color1_hn.jpg-ba8e708d3c97fb3a21577041974e3f97.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "8b2cb8e5d4224938d1cc6ece0a7d1a13"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/characters/bertram_Material_Diffuse_Color1_hn.jpg"
-dest_files=["res://.godot/imported/bertram_Material_Diffuse_Color1_hn.jpg-ba8e708d3c97fb3a21577041974e3f97.ctex"]
+dest_files=["res://.godot/imported/bertram_Material_Diffuse_Color1_hn.jpg-ba8e708d3c97fb3a21577041974e3f97.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

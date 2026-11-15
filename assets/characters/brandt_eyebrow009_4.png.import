@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d7684hf7h660"
-path="res://.godot/imported/brandt_eyebrow009_4.png-73b2ac7299d49c0e3e6e1f012028e14e.ctex"
+path.bptc="res://.godot/imported/brandt_eyebrow009_4.png-73b2ac7299d49c0e3e6e1f012028e14e.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "bcef0fb1f3992a84cc0f7a7aa27adcc2"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/characters/brandt_eyebrow009_4.png"
-dest_files=["res://.godot/imported/brandt_eyebrow009_4.png-73b2ac7299d49c0e3e6e1f012028e14e.ctex"]
+dest_files=["res://.godot/imported/brandt_eyebrow009_4.png-73b2ac7299d49c0e3e6e1f012028e14e.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

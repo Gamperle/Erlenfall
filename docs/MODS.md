@@ -25,9 +25,24 @@ Each mod's `feature_flags.json` uses the [flag file format](FEATURE_FLAGS.md#fil
 
 - A mod is only loaded if it is listed. Folders not in the list are ignored.
 - Names must be plain folder names. Names with `/`, `\`, or `:`, or starting with `.`, are skipped.
-- A mod that is missing, has no `feature_flags.json`, or is listed twice is skipped, with an error in the log. The other mods still load.
-- A load order file that is not valid logs an error and no mods load.
 - Mods load once, when the game first reads a flag.
+
+## When a mod is broken
+
+A broken mod never stops the game or changes it halfway. Each listed mod gets a load result in `ModLoader.results`: `ok`, `skipped` (the mod was not loaded), or `error` (its file was unusable). Every problem names the mod, the file, and the reason.
+
+| Problem | What happens |
+|---|---|
+| `load_order.json` is not valid JSON or not an object with a `mods` list | `error`, no mods load |
+| A listed name is invalid, listed twice, has no folder, or has no `feature_flags.json` | `skipped`; the other mods still load |
+| `feature_flags.json` is not valid JSON (the message gives the line), is not an object, or `flags` or `values` is not an object | `error`; nothing from that file is applied |
+| An unknown top-level key (only `flags` and `values` exist) | ignored; the rest of the file applies |
+| A flag that is not `true`/`false`, a flag name, or a valid rule, or a value that is not a number, text, or `true`/`false` | that one entry is ignored; the rest of the file applies |
+
+Where you see the results:
+
+- **Log file:** errors are logged as errors and everything else as warnings, for example `Mod faster_torches (feature_flags.json): error, invalid JSON at line 3: ...`. Godot writes the log to `user://logs/godot.log` (on Linux `~/.local/share/godot/app_userdata/<project name>/logs`). On Windows and the Web, use the in-game list below.
+- **In game:** a short notice when the game starts says how many mod problems there are, and the settings screen lists each one under "Mod problems".
 
 The code is in `scripts/mod_loader.gd`.
 

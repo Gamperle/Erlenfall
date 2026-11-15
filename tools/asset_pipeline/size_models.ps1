@@ -18,7 +18,7 @@ foreach ($file in Get-ChildItem "$base\$Source\*.glb" | Sort-Object Name) {
     $meters = $config.objects.($name -replace '_\d+$', '').meters
     # TripoSR models face +X and need a quarter turn. TRELLIS.2 models usually face the front already.
     $turn = if ($Source -eq 'cleaned') { -90 } elseif ($config.turns.$name -ne $null) { $config.turns.$name } else { 0 }
-    cmd /c "`"$Blender`" -b -P $Root\size_glb.py -- $($file.FullName) $out\$name.glb $meters $turn > $Root\tmp\size.log 2>&1"
+    cmd /c "`"$Blender`" -b -P $Root\size_glb.py -- $($file.FullName) $out\$name.glb $meters $turn $base\provenance > $Root\tmp\size.log 2>&1"
     "$name $((Select-String -Path "$Root\tmp\size.log" -Pattern 'SIZED|Error:|Traceback' -CaseSensitive | Select-Object -First 1).Line)"
 }
 "finished"

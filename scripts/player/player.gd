@@ -161,6 +161,12 @@ func _enter_tree() -> void:
 	add_to_group(GROUP)
 
 
+func _notification(what: int) -> void:
+	# The torch only joins the tree in _ready, so a player that never entered it would leak the torch.
+	if what == NOTIFICATION_PREDELETE and is_instance_valid(_torch) and _torch.get_parent() == null:
+		_torch.free()
+
+
 func _ready() -> void:
 	inventory.changed.connect(_update_weapon_model)
 	_update_weapon_model()

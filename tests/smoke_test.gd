@@ -1,13 +1,16 @@
 extends SceneTree
 ## Run with: godot --headless --path . --script res://tests/smoke_test.gd
 
-const TEST_SAVE := "user://smoke_test_save.json"
-const TEST_OLD_SAVE := "user://smoke_test_old_save.json"
-const TEST_SLOT_2 := "user://smoke_test_save_2.json"
-const TEST_SLOT_3 := "user://smoke_test_save_3.json"
-const TEST_SETTINGS := "user://smoke_test_settings.json"
-const TEST_FLAGS_A := "user://smoke_test_flags_a.json"
-const TEST_FLAGS_B := "user://smoke_test_flags_b.json"
+## Every run keeps its files in its own folder, so runs that overlap (other worktrees, CI) and the
+## player's real saves in user:// never share a file (#356). The folder is deleted at the end.
+var _test_dir := "user://smoke_test_%d" % OS.get_process_id()
+var TEST_SAVE := _test_dir.path_join("save.json")
+var TEST_OLD_SAVE := _test_dir.path_join("old_save.json")
+var TEST_SLOT_2 := _test_dir.path_join("save_2.json")
+var TEST_SLOT_3 := _test_dir.path_join("save_3.json")
+var TEST_SETTINGS := _test_dir.path_join("settings.json")
+var TEST_FLAGS_A := _test_dir.path_join("flags_a.json")
+var TEST_FLAGS_B := _test_dir.path_join("flags_b.json")
 ## How far a prop model's lowest point may be from its base, in meters, before it visibly floats or sinks.
 const PROP_GROUND_TOLERANCE := 0.1
 
@@ -19,6 +22,14 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	var pointers := _lfs_pointer_files("res://assets")
+	if not pointers.is_empty():
+		printerr("FAIL: %d asset files are Git LFS pointers, for example %s. Run 'git lfs pull' and then 'godot --headless --path . --import' (see CONTRIBUTING.md, Setting up a fresh checkout). Revert any .import files the import rewrote." % [pointers.size(), pointers[0]])
+		quit(1)
+		return
+	# A leftover folder from an earlier run that had the same process id would be stale.
+	_remove_dir(_test_dir)
+	DirAccess.make_dir_recursive_absolute(_test_dir)
 	DirAccess.remove_absolute(TEST_SAVE)
 	DirAccess.remove_absolute(TEST_SAVE + SaveGame.BACKUP_SUFFIX)
 	DirAccess.remove_absolute(TEST_SETTINGS)
@@ -62,6 +73,8 @@ func _run() -> void:
 	_check(same_wall.mesh.get_faces() == wall_parts[0].mesh.get_faces(), "the same seed builds the same wall")
 	var palisade := ModelBuilder.palisade(6.0, 3.0, 1).find_children("*", "MeshInstance3D", true, false)
 	_check(palisade.size() == 1 and absf(palisade[0].mesh.get_aabb().size.x - 6.0) < 0.1, "a code-built palisade is one mesh of the size asked for")
+	var log_material: ShaderMaterial = palisade[0].mesh.surface_get_material(0)
+	_check(log_material.get_shader_parameter("turn_first_photo") == true, "palisade logs turn the wood photo so the grain runs upright")
 	stone_wall.free()
 	same_wall.get_parent().get_parent().free()
 	palisade[0].get_parent().get_parent().free()
@@ -199,7 +212,10 @@ func _run() -> void:
 	_test_dialogue_data()
 	_test_dialogue_conditions()
 	_test_data_validation()
+	var asset_problems := AssetLedger.problems()
+	_check(asset_problems.is_empty(), "every asset has a source and license in ASSETS.md (#271) %s" % str(asset_problems))
 
+	_remove_dir(_test_dir)
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL PASSED")
 	quit(1 if _failures > 0 else 0)
 
@@ -255,6 +271,13 @@ func _test_land_and_river(scene: Node, player: Player) -> void:
 			if Vector2(x, z).length() < 480.0 and not terrain.is_on_landslide(x, z):
 				steepest_west = maxf(steepest_west, _slope_degrees(terrain, x, z))
 	_check(steepest_west < 45.0, "the river's west valley sides can be climbed (steepest %.1f degrees)" % steepest_west)
+
+	# The land around the north farm and its field, far from the river, can be climbed too (#345).
+	var steepest_farm := 0.0
+	for x in range(60, 230, 2):
+		for z in range(-170, -10, 2):
+			steepest_farm = maxf(steepest_farm, _slope_degrees(terrain, x, z))
+	_check(steepest_farm < 45.0, "the land around the north farm can be climbed (steepest %.1f degrees)" % steepest_farm)
 
 	_check(terrain.building_sites.size() == 2, "the assembly building and the fort each have a site")
 	for site: Dictionary in terrain.building_sites:
@@ -831,6 +854,7 @@ func _test_hud(scene: Node, player: Player) -> void:
 	await _test_item_models(scene)
 	await _test_interface_fit(scene)
 	await _test_controls_hint(scene)
+	await _test_credits(scene)
 	_test_input_device_prompts(scene)
 	_test_input_glyphs(scene)
 	await _test_ground_dryness()
@@ -895,10 +919,20 @@ func _test_feature_flags() -> void:
 	FeatureFlags.load_layers()
 	_check(not CraftingData.find_recipe("furnace", { "wood": 1, "coal": 1 }).is_empty(), "the torch recipe is on by default")
 	_test_mod_loader()
+	_test_example_mod()
+
+
+## Deletes a folder and everything in it.
+func _remove_dir(path: String) -> void:
+	for sub in DirAccess.get_directories_at(path):
+		_remove_dir(path.path_join(sub))
+	for file in DirAccess.get_files_at(path):
+		DirAccess.remove_absolute(path.path_join(file))
+	DirAccess.remove_absolute(path)
 
 
 func _test_mod_loader() -> void:
-	var dir := "user://smoke_test_mods"
+	var dir := _test_dir.path_join("mods")
 	DirAccess.make_dir_recursive_absolute(dir.path_join("first"))
 	DirAccess.make_dir_recursive_absolute(dir.path_join("second"))
 	DirAccess.make_dir_recursive_absolute(dir.path_join("empty"))
@@ -916,12 +950,66 @@ func _test_mod_loader() -> void:
 	_write_flags(dir.path_join(ModLoader.LOAD_ORDER_FILE), { "mods": ["../escape", "/abs", ".hidden", "a\\b", "empty", "missing", "first", "first"] })
 	_check(ModLoader.flag_files(dir).size() == 1, "unsafe, missing, empty, and repeated mods are skipped")
 	_check(ModLoader.is_safe_name("my_mod") and not ModLoader.is_safe_name("") and not ModLoader.is_safe_name(3), "mod names must be plain folder names")
+	_test_broken_mods(dir)
 	FeatureFlags.load_layers()
+	ModLoader.results = []
 	for sub in ["first", "second", "empty"]:
 		DirAccess.remove_absolute(dir.path_join(sub).path_join("feature_flags.json"))
 		DirAccess.remove_absolute(dir.path_join(sub))
 	DirAccess.remove_absolute(dir.path_join(ModLoader.LOAD_ORDER_FILE))
 	DirAccess.remove_absolute(dir)
+
+
+func _test_example_mod() -> void:
+	var dir := "res://docs/example_mods"
+	var files := ModLoader.flag_files(dir)
+	_check(files.size() == 1 and ModLoader.problem_lines().is_empty(), "the example mod is listed and has no problems")
+	FeatureFlags.load_layers(files)
+	_check(FeatureFlags.enabled("torch_burn_time_enabled") and FeatureFlags.enabled("torch_burns_out") and not FeatureFlags.enabled("minimap")
+			and FeatureFlags.value("torch_burn_seconds") == 300 and FeatureFlags.value("health_regen_per_second") == 4.0
+			and FeatureFlags.value("ambient_butterfly_count") == 60 and FeatureFlags.enabled("compass"), "the example mod changes what it says and nothing else")
+	# A broken copy fails safely: an error result, and the game's own values stay.
+	var broken := "user://smoke_test_example_broken"
+	DirAccess.make_dir_recursive_absolute(broken.path_join("cozy_torches"))
+	_write_flags(broken.path_join(ModLoader.LOAD_ORDER_FILE), { "mods": ["cozy_torches"] })
+	var file := FileAccess.open(broken.path_join("cozy_torches/feature_flags.json"), FileAccess.WRITE)
+	file.store_string(FileAccess.get_file_as_string(dir.path_join("cozy_torches/feature_flags.json")).replace("300,", "300"))
+	file.close()
+	FeatureFlags.load_layers(ModLoader.flag_files(broken))
+	_check(ModLoader.results[0]["status"] == ModLoader.ERROR and FeatureFlags.value("torch_burn_seconds") == 600 and FeatureFlags.enabled("minimap"),
+			"a broken example mod errors and changes nothing")
+	DirAccess.remove_absolute(broken.path_join("cozy_torches/feature_flags.json"))
+	DirAccess.remove_absolute(broken.path_join("cozy_torches"))
+	DirAccess.remove_absolute(broken.path_join(ModLoader.LOAD_ORDER_FILE))
+	DirAccess.remove_absolute(broken)
+	FeatureFlags.load_layers()
+	ModLoader.results = []
+
+
+func _test_broken_mods(dir: String) -> void:
+	var bad := { "bad_json": "{ not json", "wrong_type": "[1, 2]", "bad_section": "{\"flags\": 5}",
+		"partly_bad": "{\"extra\": 1, \"flags\": {\"compass\": 7, \"stamina\": false}, \"values\": {\"torch_burn_seconds\": 3, \"x\": [1]}}" }
+	for mod: String in bad:
+		DirAccess.make_dir_recursive_absolute(dir.path_join(mod))
+		var file := FileAccess.open(dir.path_join(mod).path_join("feature_flags.json"), FileAccess.WRITE)
+		file.store_string(bad[mod])
+		file.close()
+	var listed := bad.keys() + ["no_folder"]
+	_write_flags(dir.path_join(ModLoader.LOAD_ORDER_FILE), { "mods": listed })
+	FeatureFlags.load_layers(ModLoader.flag_files(dir))
+	var statuses := {}
+	for result in ModLoader.results:
+		statuses[result["mod"]] = result["status"]
+	_check(statuses.get("bad_json") == ModLoader.ERROR and statuses.get("wrong_type") == ModLoader.ERROR
+			and statuses.get("bad_section") == ModLoader.ERROR, "mods with bad JSON or wrong types get an error result")
+	_check(statuses.get("no_folder") == ModLoader.SKIPPED, "a listed mod with no folder is skipped")
+	_check(FeatureFlags.value("torch_burn_seconds") == 3 and not FeatureFlags.enabled("stamina") and FeatureFlags.enabled("compass"),
+			"a partly bad mod applies its good parts and ignores the rest")
+	var text := "\n".join(ModLoader.problem_lines())
+	_check(text.contains("bad_json") and text.contains("line") and text.contains("unknown key") and text.contains("\"compass\""), "problems name the mod, file, and part")
+	for mod: String in bad:
+		DirAccess.remove_absolute(dir.path_join(mod).path_join("feature_flags.json"))
+		DirAccess.remove_absolute(dir.path_join(mod))
 
 
 func _test_torch(player: Player) -> void:
@@ -1191,8 +1279,11 @@ func _test_crafting_parts(scene: Node, player: Player) -> void:
 	ui.add_material("iron_ingot")
 	ui.add_material("iron_ingot")
 	ui.add_material("wood")
-	_check(ui._parts.visible and ui._parts.get_child_count() == 4, "the crafting screen offers a choice per part")
+	_check(ui._parts_row.visible and ui._parts.get_child_count() == 4, "the crafting screen offers a choice per part")
+	_check(ui._preview_box.visible and ui._preview_model != null, "the crafting screen previews the item")
+	var preview_width: float = ui._preview_model.get_child(2).mesh.size.x
 	ui.choose_part("blade", "broad")
+	_check(ui._preview_model.get_child(2).mesh.size.x > preview_width, "the preview follows the chosen parts")
 	ui.choose_part("grip", "bogus")
 	ui.craft()
 	while ui.is_forging():
@@ -1208,7 +1299,8 @@ func _test_crafting_parts(scene: Node, player: Player) -> void:
 	ui.abandon_forging()
 	ui.add_material("iron_ingot")
 	ui.add_material("wood")
-	_check(ui._parts.visible and ui._choices.is_empty(), "choices start from the defaults again")
+	_check(ui._parts_row.visible and ui._choices.is_empty(), "choices start from the defaults again")
+	_check(ui._preview_model != null and ui._preview_box.visible, "the preview follows the new item")
 	ui.close()
 	player.inventory.load_data({})
 	player.inventory.add("iron_sword", 1, "common", "blade=broad")
@@ -1307,12 +1399,15 @@ func _test_routine_activities(village: Village, routines: VillagerRoutines) -> v
 func _test_routine_legs(_scene: Node, village: Village, data: Dictionary) -> void:
 	var walker := CharacterBody3D.new()
 	root.add_child(walker)
-	# Villagers are solid, so they are put out of the way of the search.
+	# Villagers are solid, so they are taken out of the way of the search. Moving them down would not
+	# do, because a villager puts itself back on the ground each physics frame.
 	var villagers: Array[Npc] = []
+	var layers := {}
 	for child in village.get_children():
 		if child is Npc:
 			villagers.append(child)
-			child.position.y -= 100.0
+			layers[child] = child.collision_layer
+			child.collision_layer = 0
 	await _physics_frames(2)
 	EnemyPath.forget_all()
 	var path := EnemyPath.new(walker, Npc.BODY_RADIUS)
@@ -1333,10 +1428,10 @@ func _test_routine_legs(_scene: Node, village: Village, data: Dictionary) -> voi
 				legs += 1
 				var from := Vector3(points[j].x, village.walking_height(points[j].x, points[j].y) + 0.1, points[j].y)
 				var to := Vector3(points[j + 1].x, village.walking_height(points[j + 1].x, points[j + 1].y) + 0.1, points[j + 1].y)
-				if not path.is_line_clear(from, to):
+				if not path.is_line_clear(from, to, 0.0, false):
 					bad += " %s %s->%s" % [id, points[j], points[j + 1]]
 	for villager in villagers:
-		villager.position.y += 100.0
+		villager.collision_layer = layers[villager]
 	EnemyPath.forget_all()
 	_check(legs > 0, "there are routine legs to check")
 	_check(bad.is_empty(), "villagers' walks avoid buildings and water:%s" % bad)
@@ -1364,7 +1459,8 @@ func _test_story(scene: Node, player: Player) -> void:
 		elif part.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY:
 			shadows_only += part.mesh.get_surface_count()
 	_check(casters + shadows_only <= 6, "a villager casts its shadow with few draw calls (%d)" % (casters + shadows_only))
-	_check(shadows_only == 1, "a villager's body casts its shadow from one surface")
+	_check(shadows_only == 0, "a villager's body is one surface, so it needs no separate shadow copy")
+	_check(casters <= 6 and hedda_model.find_child("Human", true, false).mesh.get_surface_count() == 1, "a villager's body skin, lips, nails and ears are drawn as one surface")
 	for villager: String in ["bertram", "mira", "greta", "brandt"]:
 		_check(village.get_node(villager).find_child("Model", true, false) != null, "%s has a model" % villager)
 	_check(not village.get_node("marek").visible and not village.get_node("marek").is_available(), "the peddler stays away while the roof leaks")
@@ -1434,6 +1530,8 @@ func _test_story(scene: Node, player: Player) -> void:
 	var cold := DialogueRunner.new("brandt", player)
 	_check(cold.text_key() == "DLG_BRANDT_COLD", "the mayor reacts to the choice")
 	_check(DialogueRunner.new("hedda", player).text_key() == "DLG_HEDDA_PROUD", "grandmother reacts to the finished quest")
+	_check(DialogueRunner.new("hedda", player).text_key() == "DLG_HEDDA_GREETING", "grandmother says her one-time line only once")
+	_check(DialogueRunner.new("greta", player).text_key() == "DLG_GRETA_GREETING" and not DialogueRunner.new("greta", player).choice_keys().is_empty(), "later visits still offer topics")
 	var topics := DialogueRunner.new("bertram", player)
 	topics.advance(0)
 	var answered := topics.text_key()
@@ -2533,6 +2631,8 @@ func _test_interface_fit(scene: Node) -> void:
 	await process_frame
 	await process_frame
 	_check(window.content_scale_factor > 1.0, "a small window raises the interface scale")
+	var hint: Control = scene.get_node("UI/ControlsLabel")
+	_check(scene.get_node("UI/PromptLabel").offset_bottom <= hint.offset_top - 1.0, "the interact prompt stays above the wrapped controls hint")
 	var menu: GameMenu = scene.get_node("GameMenu")
 	menu.slot_paths = [TEST_SAVE, TEST_SLOT_2, TEST_SLOT_3]
 	menu.open_title()
@@ -2585,6 +2685,30 @@ func _test_controls_hint(scene: Node) -> void:
 	_check(is_zero_approx(label.modulate.a), "the controls fade after the pause menu")
 	scene.open_pause_menu()
 	_check(label.modulate.a == 1.0, "the controls come back in the pause menu")
+	scene.resume()
+
+
+func _test_credits(scene: Node) -> void:
+	var data := CreditsData.parse("| File | Source | Author | License | Notes |\n| --- | --- | --- | --- | --- |\n| `a/x.jpg` | [Site: x](https://e.com) | Ann | CC0 | n |\n| `a/y.jpg` | [Site: x](https://e.com) | Ann | CC0 | n |\n\nAfter [link](u).")
+	_check(data["entries"].size() == 1 and data["entries"][0]["files"].size() == 2, "credits merge rows with the same source")
+	_check(data["entries"][0]["source"] == "Site: x" and data["notes"] == ["After link."], "credits drop Markdown links")
+	var real := CreditsData.load_assets()
+	var rows := CreditsData.read_text(CreditsData.ASSETS_PATH).count("| `assets/")
+	var files := 0
+	for entry: Dictionary in real["entries"]:
+		files += entry["files"].size()
+	_check(files >= rows and rows > 0, "every asset row reaches the credits (%d rows, %d files)" % [rows, files])
+	scene.open_pause_menu()
+	var menu: GameMenu = scene.get_node("GameMenu")
+	menu.open_credits(menu.open_pause)
+	await process_frame
+	await process_frame
+	var credits: CreditsMenu = menu._credits
+	_check(credits != null and credits.is_inside_tree(), "the pause menu opens the credits")
+	credits.scroll_by(120.0)
+	_check(credits.scroll_position() > 0, "the credits scroll")
+	credits.back_chosen.emit()
+	_check(menu._credits == null and menu.is_open(), "back leaves the credits for the menu")
 	scene.resume()
 
 
@@ -2856,7 +2980,7 @@ func _test_save_and_menu(scene: Node, player: Player, day_night: DayNight) -> vo
 	DirAccess.remove_absolute(TEST_SLOT_2)
 	DirAccess.remove_absolute(TEST_SLOT_2 + SaveGame.BACKUP_SUFFIX)
 	menu.open_title()
-	_check(not menu._asset_note.get_parent() == null and menu._buttons.get_child_count() == 3, "with no saves, the title offers new game, settings, and quit")
+	_check(not menu._asset_note.get_parent() == null and menu._buttons.get_child_count() == 4, "with no saves, the title offers new game, settings, credits, and quit")
 	started[0] = ""
 	menu._buttons.get_child(0).pressed.emit()
 	_check(started[0] == TEST_SAVE, "with no save, new game starts at once")
@@ -3099,7 +3223,7 @@ func _test_settings(scene: Node, player: Player) -> void:
 	TranslationServer.set_locale("en")
 	menu.open_pause()
 	menu._buttons.get_child(1).pressed.emit()
-	_check(menu._settings_open and menu._buttons.get_child_count() == 9 + AudioBuses.ALL.size(), "the pause menu opens the settings")
+	_check(menu._settings_open and menu._buttons.get_child_count() == 10 + AudioBuses.ALL.size(), "the pause menu opens the settings")
 
 	menu._choose_language(2)
 	await process_frame
@@ -3151,6 +3275,7 @@ func _test_settings(scene: Node, player: Player) -> void:
 	_check(is_equal_approx(dialogue_ui._panel.self_modulate.a, 1.0), "high contrast makes the dialogue panel opaque")
 	_check(WorldMap.text_color() == Accessibility.HC_TEXT_COLOR and WorldMap.outline_size() == Accessibility.HC_OUTLINE_SIZE, "high contrast makes the world map text white with a thick outline")
 	await _test_enemy_accessibility(scene)
+	menu._choose_reduce_motion(true)
 	menu._choose_colour_vision(0)
 	_check(Settings.high_contrast and stamina_pattern.visible, "high contrast shows the bar patterns on its own")
 	menu._close_settings()
@@ -3164,11 +3289,13 @@ func _test_settings(scene: Node, player: Player) -> void:
 	_check(Settings.language == "de" and Settings.look_speed == 2.0 and Settings.graphics == "high", "settings are remembered")
 	_check(Settings.text_size == 1.5 and is_equal_approx(Settings.dialogue_opacity, 0.5), "the text size and dialogue opacity are remembered")
 	_check(Settings.colour_vision == "off" and Settings.high_contrast, "high contrast is remembered")
+	_check(Settings.reduce_motion, "reduce motion is remembered")
 	_check(is_equal_approx(Settings.volumes[AudioBuses.MUSIC], 0.25) and Settings.volumes[AudioBuses.AMBIENCE] == 0.0 and Settings.volumes[AudioBuses.MASTER] == Settings.DEFAULT_VOLUME, "volumes are remembered")
 	var bad_vision := FileAccess.open(TEST_SETTINGS, FileAccess.WRITE)
 	bad_vision.store_string('{"colour_vision": "rainbow", "high_contrast": "yes"}')
 	bad_vision.close()
 	Settings.load_saved()
+	_check(not Settings.reduce_motion, "reduce motion is off when the saved value is missing")
 	_check(Settings.colour_vision == "off" and not Settings.high_contrast, "invalid accessibility settings fall back to defaults")
 	_check(theme.get_color("font_color", "Label") == Color(0.93, 0.88, 0.76, 1) and theme.get_stylebox("normal", "HudPlate").modulate_color == Color.WHITE, "turning high contrast off puts the theme's colors back")
 	scene.get_node("UI").refresh_accessibility()
@@ -3275,6 +3402,9 @@ func _test_input_glyphs(scene: Node) -> void:
 	for child in line.find_children("*", "InputGlyph", true, false):
 		glyph_count += 1
 	_check(glyph_count == 1 and line.text == "E: Open", "a prompt line draws a glyph for the key and keeps the plain text (%s)" % line.text)
+	line.set_template("%s: %s", [KeyBindings.segments_for("interact"), "Talk to the very old village mayor about sheep"])
+	_check(line.text.ends_with("about sheep") and line.get_combined_minimum_size().x < 120.0, "a long prompt can wrap between words, not only after the glyph (%s)" % line.get_combined_minimum_size())
+	line.set_template("%s: %s", [KeyBindings.segments_for("interact"), "Open"])
 	var glyph: InputGlyph = line.find_children("*", "InputGlyph", true, false)[0]
 	var small := glyph.get_combined_minimum_size()
 	Settings.text_size = 1.5
@@ -3287,6 +3417,8 @@ func _test_input_glyphs(scene: Node) -> void:
 	var wasd := InputGlyph.new({ "shape": "key", "text": "Space" }, 16)
 	var short := InputGlyph.new({ "shape": "key", "text": "E" }, 16)
 	_check(wasd.get_combined_minimum_size().x > short.get_combined_minimum_size().x and short.get_combined_minimum_size().x >= short.get_combined_minimum_size().y, "a long key name makes a wider key")
+	wasd.free()
+	short.free()
 
 	var normal_a := Accessibility.glyph_look("A")
 	var high_before := Settings.high_contrast
@@ -3445,6 +3577,35 @@ func _test_key_bindings(scene: Node) -> void:
 	Settings.load_saved()
 	_check(KeyBindings.controls_hint() == default_hint, "bindings that aren't a dictionary fall back to the defaults")
 
+	# Several inputs per action, the mouse wheel, and Esc.
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+	wheel.pressed = true
+	page.listen("jump", KeyBindings.KEYBOARD, KeyBindings.ADD)
+	page.offer(wheel)
+	_check(KeyBindings.events_for("jump", KeyBindings.KEYBOARD).size() == 2 and InputMap.event_is_action(wheel, "jump") and KeyBindings.event_text(wheel) == "Wheel up", "the mouse wheel can be added as a second input")
+	_check(KeyBindings.label_for("jump") == "Space" and ControlsMenu.inputs_text("jump", KeyBindings.KEYBOARD) == "Space, Wheel up", "prompts show the first input and the page lists them all")
+	Settings.save()
+	KeyBindings.reset()
+	Settings.load_saved()
+	_check(KeyBindings.events_for("jump", KeyBindings.KEYBOARD).size() == 2, "several inputs are remembered")
+	var old_file := FileAccess.open(TEST_SETTINGS, FileAccess.WRITE)
+	old_file.store_string(JSON.stringify({ "bindings": { "jump": { "keyboard": { "type": "key", "code": KEY_N }, "gamepad": null } } }))
+	old_file.close()
+	Settings.load_saved()
+	_check(KeyBindings.events_for("jump", KeyBindings.KEYBOARD).size() == 1 and KeyBindings.event_for("jump", KeyBindings.KEYBOARD).physical_keycode == KEY_N and KeyBindings.events_for("jump", KeyBindings.GAMEPAD).is_empty(), "settings files from before several inputs still load")
+	KeyBindings.reset()
+	var escape_key := InputEventKey.new()
+	escape_key.physical_keycode = KEY_ESCAPE
+	_check(not KeyBindings.bind("jump", escape_key, KeyBindings.ADD) and not KeyBindings.unbind("pause", KeyBindings.KEYBOARD, 0), "Esc stays the pause menu's key while it has no other, and its last key can't be removed")
+	var key_p := InputEventKey.new()
+	key_p.physical_keycode = KEY_P
+	_check(KeyBindings.bind("pause", key_p, KeyBindings.ADD) and KeyBindings.bind("jump", escape_key, KeyBindings.ADD) and InputMap.event_is_action(escape_key, "jump") and not InputMap.event_is_action(escape_key, "pause"), "Esc can go to another action once the pause menu has another key")
+	for _i in 3:
+		KeyBindings.bind("jump", key_p, KeyBindings.ADD)
+	_check(KeyBindings.events_for("jump", KeyBindings.KEYBOARD).size() <= KeyBindings.MAX_PER_KIND, "an action holds only a few inputs")
+	KeyBindings.reset()
+
 	menu.close()
 	Settings.path = Settings.DEFAULT_PATH
 	DirAccess.remove_absolute(TEST_SETTINGS)
@@ -3557,6 +3718,20 @@ func _check_water_ripples(terrain: Terrain, player: Player) -> void:
 	_check(terrain._stir_water() == 0, "low graphics skips the ripples")
 	Settings.graphics = saved_graphics
 	player.global_position = before
+
+
+## Files under `dir` that are still Git LFS pointer text instead of the real asset (#172).
+func _lfs_pointer_files(dir: String) -> PackedStringArray:
+	var found := PackedStringArray()
+	for sub in DirAccess.get_directories_at(dir):
+		found.append_array(_lfs_pointer_files(dir.path_join(sub)))
+	for file in DirAccess.get_files_at(dir):
+		if file.get_extension() in ["import", "uid", "md", "txt", "json", "tres", "gd"]:
+			continue
+		var f := FileAccess.open(dir.path_join(file), FileAccess.READ)
+		if f != null and f.get_buffer(23).get_string_from_ascii() == "version https://git-lfs":
+			found.append(dir.path_join(file))
+	return found
 
 
 func _check(condition: bool, label: String) -> void:

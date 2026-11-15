@@ -82,17 +82,49 @@ func rebuild() -> void:
 		child.queue_free()
 	var font_size := _font_size()
 	var chunk: HBoxContainer
+	# After a glyph, its first word stays with it. After a word that has no space behind it, the next
+	# piece stays with it too.
+	var glue := false
 	for segment: Variant in _segments:
-		if chunk == null:
-			chunk = _new_chunk()
 		if segment is Dictionary and glyphs_enabled() and InputGlyph.can_draw(segment) and get_theme_default_font() != null:
+			if chunk == null or not glue:
+				chunk = _new_chunk()
 			chunk.add_child(InputGlyph.new(segment, font_size))
-		else:
-			var piece: String = segment if segment is String else str(segment.get("text", ""))
-			chunk.add_child(_label(piece))
-			# A run of spaces between hints is where the line may wrap.
-			if segment is String and piece.strip_edges() == "" and piece.length() >= SEPARATOR_SPACES:
-				chunk = null
+			glue = true
+			continue
+		var piece: String = segment if segment is String else str(segment.get("text", ""))
+		for token in _tokens(piece):
+			var blank: bool = token.strip_edges() == ""
+			if chunk == null or not (glue or (blank and token.length() < SEPARATOR_SPACES)):
+				chunk = _new_chunk()
+			chunk.add_child(_label(token))
+			if blank:
+				# A run of spaces between hints ends the group.
+				if token.length() >= SEPARATOR_SPACES:
+					chunk = null
+					glue = false
+				# Spaces right after a glyph keep the glue for the word that follows.
+			else:
+				# Punctuation such as the colon after a key is not yet the word.
+				glue = not token.ends_with(" ") or token.to_upper() == token.to_lower()
+
+
+## Splits text into words that each carry the spaces after them, so the line can wrap between words.
+## Spaces at the start are a piece of their own.
+static func _tokens(piece: String) -> PackedStringArray:
+	var tokens := PackedStringArray()
+	var current := ""
+	var in_spaces := false
+	for i in piece.length():
+		var is_space := piece[i] == " "
+		if current != "" and in_spaces and not is_space:
+			tokens.append(current)
+			current = ""
+		in_spaces = is_space
+		current += piece[i]
+	if current != "":
+		tokens.append(current)
+	return tokens
 
 
 ## A group of pieces that stay on one row, so a key never wraps away from its text.

@@ -47,10 +47,11 @@ func _process(delta: float) -> void:
 		global_basis = Basis.IDENTITY.scaled(global_basis.get_scale())
 	_time += delta * FLICKER_SPEED
 	var flicker := sin(_time) * 0.6 + sin(_time * 2.3) * 0.4
-	_light.light_energy = LIGHT_ENERGY * (1.0 + flicker * FLICKER_AMOUNT) * light_share()
-	var wobble := sin(_time * 1.7) * 0.5 + sin(_time * 3.1) * 0.5
+	var calm := 0.0 if Settings.reduce_motion else 1.0
+	_light.light_energy = LIGHT_ENERGY * (1.0 + flicker * FLICKER_AMOUNT * calm) * light_share()
+	var wobble := (sin(_time * 1.7) * 0.5 + sin(_time * 3.1) * 0.5) * calm
 	_flame.scale = Vector3(1.0 - wobble * FLAME_WOBBLE * 0.5, 1.0 + wobble * FLAME_WOBBLE, 1.0 - wobble * FLAME_WOBBLE * 0.5)
-	_flame.rotation.z = sin(_time * 0.8) * FLAME_WOBBLE
+	_flame.rotation.z = sin(_time * 0.8) * FLAME_WOBBLE * calm
 
 
 ## How much of the light shows at this time of day. Full at night, and little at noon.

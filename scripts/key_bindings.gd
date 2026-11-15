@@ -1,8 +1,15 @@
 class_name KeyBindings
 extends RefCounted
-## The player's keyboard/mouse and gamepad bindings for every action. Each action has one
-## keyboard (or mouse) input and one gamepad input. The Input Map in project.godot holds the
-## defaults, and the player's changes are kept in the settings file.
+## The player's keyboard/mouse and gamepad bindings for every action. Each action has up to
+## MAX_PER_KIND keyboard/mouse inputs (keys, mouse buttons and the mouse wheel) and up to as many
+## gamepad inputs. The first of each is the one shown in prompts. The Input Map in project.godot
+## holds the defaults (one input of each kind), and the player's changes are kept in the settings
+## file.
+##
+## Esc: it can be bound to a gameplay action, but the pause menu must always keep a keyboard key
+## (Esc itself, or another one). Esc always closes menus and screens, whatever it is bound to,
+## and while a binding is being chosen it cancels. The Controls page has an explicit "Use Esc"
+## button, since pressing Esc there cancels.
 
 const KEYBOARD := "keyboard"
 const GAMEPAD := "gamepad"
@@ -15,6 +22,10 @@ const ACTIONS: Array[String] = [
 ]
 const MAX_KEY := 0x7FFFFFFF
 const MAX_MOUSE_BUTTON := 9
+## How many inputs one action can have for each kind of device.
+const MAX_PER_KIND := 3
+## The index that adds an input instead of replacing one.
+const ADD := -1
 const MAX_JOY_BUTTON := 20
 const MAX_JOY_AXIS := 5
 const JOY_DPAD_UP_INDEX := 11
@@ -33,22 +44,36 @@ const JOY_DPAD_KEYS: Array[String] = ["UI_PAD_UP", "UI_PAD_DOWN", "UI_PAD_LEFT",
 const KEY_NAMES: Dictionary = {
 	KEY_SPACE: "UI_KEY_SPACE", KEY_SHIFT: "UI_KEY_SHIFT", KEY_CTRL: "UI_KEY_CTRL", KEY_ESCAPE: "UI_KEY_ESCAPE",
 }
-const MOUSE_NAMES: Dictionary = { 1: "UI_MOUSE_LEFT", 2: "UI_MOUSE_RIGHT", 3: "UI_MOUSE_MIDDLE" }
+const MOUSE_NAMES: Dictionary = {
+	1: "UI_MOUSE_LEFT", 2: "UI_MOUSE_RIGHT", 3: "UI_MOUSE_MIDDLE",
+	MOUSE_BUTTON_WHEEL_UP: "UI_MOUSE_WHEEL_UP", MOUSE_BUTTON_WHEEL_DOWN: "UI_MOUSE_WHEEL_DOWN",
+	MOUSE_BUTTON_WHEEL_LEFT: "UI_MOUSE_WHEEL_LEFT", MOUSE_BUTTON_WHEEL_RIGHT: "UI_MOUSE_WHEEL_RIGHT",
+}
+## The action that must keep a keyboard key, so the player can always open the pause menu.
+const PAUSE_ACTION := "pause"
 
-## What each action is bound to: { action: { "keyboard": InputEvent or null, "gamepad": InputEvent or null } }.
+## What each action is bound to: { action: { "keyboard": Array of InputEvent, "gamepad": Array of InputEvent } }.
 static var _defaults: Dictionary = {}
 static var _current: Dictionary = {}
 
 
-## The input an action has in the given slot, or null when it has none.
+## The first input an action has for the kind of device (the one prompts show), or null.
 static func event_for(action: String, kind: String) -> InputEvent:
 	_ensure_loaded()
-	return _current[action][kind]
+	var list: Array = _current[action][kind]
+	return list[0] if not list.is_empty() else null
+
+
+## Every input an action has for the kind of device, in order.
+static func events_for(action: String, kind: String) -> Array:
+	_ensure_loaded()
+	return _current[action][kind].duplicate()
 
 
 static func default_event_for(action: String, kind: String) -> InputEvent:
 	_ensure_loaded()
-	return _defaults[action][kind]
+	var list: Array = _defaults[action][kind]
+	return list[0] if not list.is_empty() else null
 
 
 ## Which kind of slot an input belongs in, or "" when it can't be bound.
@@ -79,22 +104,61 @@ static func conflict(action: String, event: InputEvent) -> String:
 	if kind == "":
 		return ""
 	for other in ACTIONS:
-		if other != action and same(_current[other][kind], event):
+		if other != action and _index_in(_current[other][kind], event) >= 0:
 			return other
 	return ""
 
 
-## Binds the input. If another action uses it, that action gets what this one had (a swap).
-static func bind(action: String, event: InputEvent) -> void:
+## Whether binding the input at the index would give the other action that uses it the input
+## being replaced (a swap). When adding, the other action just loses it.
+static func is_swap(action: String, event: InputEvent, index: int) -> bool:
 	_ensure_loaded()
-	var kind := kind_of(event)
-	if kind == "":
-		return
-	var other := conflict(action, event)
-	if other != "":
-		_current[other][kind] = _current[action][kind]
-	_current[action][kind] = event
+	var list: Array = _current[action][kind_of(event)]
+	return index >= 0 and index < list.size() and conflict(action, event) != ""
+
+
+## "" when the input can be bound, otherwise the translation key of why it can't (the pause menu
+## would be left without a keyboard key, or the action has no room for another input).
+static func problem(action: String, event: InputEvent, index: int = 0) -> String:
+	_ensure_loaded()
+	if kind_of(event) == "":
+		return "UI_CONTROLS_FULL"
+	var next := _copy(_current)
+	return _place(next, action, event, index)
+
+
+## Binds the input. Index 0 (the default) replaces the action's first input of that kind, or
+## adds one when it has none; a larger index replaces that one; ADD adds another. If another
+## action uses the input it loses it: it gets the input that was replaced (a swap) when there was
+## one. Returns whether it was bound (see problem).
+static func bind(action: String, event: InputEvent, index: int = 0) -> bool:
+	_ensure_loaded()
+	if kind_of(event) == "":
+		return false
+	var next := _copy(_current)
+	if _place(next, action, event, index) != "":
+		return false
+	_current = next
 	apply()
+	return true
+
+
+## Removes one of the action's inputs. The pause menu keeps its last keyboard key. Returns
+## whether something was removed.
+static func unbind(action: String, kind: String, index: int) -> bool:
+	_ensure_loaded()
+	var list: Array = _current[action][kind]
+	if index < 0 or index >= list.size() or not can_unbind(action, kind):
+		return false
+	list.remove_at(index)
+	apply()
+	return true
+
+
+## Whether an input of the action can be removed (the pause menu keeps one keyboard key).
+static func can_unbind(action: String, kind: String) -> bool:
+	_ensure_loaded()
+	return not (action == PAUSE_ACTION and kind == KEYBOARD and _current[action][kind].size() <= 1)
 
 
 static func reset() -> void:
@@ -111,8 +175,7 @@ static func apply() -> void:
 			continue
 		InputMap.action_erase_events(action)
 		for kind in KINDS:
-			var event: InputEvent = _current[action][kind]
-			if event != null:
+			for event: InputEvent in _current[action][kind]:
 				InputMap.action_add_event(action, event)
 
 
@@ -123,12 +186,17 @@ static func to_data() -> Dictionary:
 	for action in ACTIONS:
 		data[action] = {}
 		for kind in KINDS:
-			data[action][kind] = _event_to_data(_current[action][kind])
+			var list: Array = []
+			for event: InputEvent in _current[action][kind]:
+				list.append(_event_to_data(event))
+			data[action][kind] = list
 	return data
 
 
-## Reads saved bindings. Anything missing or invalid keeps its default, and if two actions end up
-## sharing an input the defaults are restored, since the Controls page never allows that.
+## Reads saved bindings. Each kind is a list of inputs, or (older files) a single input or null
+## for none. Anything missing or invalid keeps its default, an invalid input in a list is skipped,
+## and if two actions end up sharing an input, or the pause menu has no keyboard key, the
+## defaults are restored, since the Controls page never allows that.
 static func load_data(data: Variant) -> void:
 	_ensure_loaded()
 	_current = _copy(_defaults)
@@ -140,13 +208,10 @@ static func load_data(data: Variant) -> void:
 			for kind in KINDS:
 				if not saved.has(kind):
 					continue
-				if saved[kind] == null:
-					_current[action][kind] = null
-					continue
-				var event := _event_from_data(saved[kind], kind)
-				if event != null:
-					_current[action][kind] = event
-	if _has_duplicates():
+				var loaded: Variant = _list_from_data(saved[kind], kind)
+				if loaded != null:
+					_current[action][kind] = loaded
+	if _has_duplicates() or not _valid(_current):
 		_current = _copy(_defaults)
 	apply()
 
@@ -301,13 +366,13 @@ static func _ensure_loaded() -> void:
 	if not _defaults.is_empty():
 		return
 	for action in ACTIONS:
-		_defaults[action] = { KEYBOARD: null, GAMEPAD: null }
+		_defaults[action] = { KEYBOARD: [], GAMEPAD: [] }
 		if not InputMap.has_action(action):
 			continue
 		for event in InputMap.action_get_events(action):
 			var kind := kind_of(event)
-			if kind != "" and _defaults[action][kind] == null:
-				_defaults[action][kind] = _normalized(event)
+			if kind != "" and _defaults[action][kind].is_empty():
+				_defaults[action][kind].append(_normalized(event))
 	_current = _copy(_defaults)
 
 
@@ -323,22 +388,68 @@ static func _normalized(event: InputEvent) -> InputEvent:
 static func _copy(bindings: Dictionary) -> Dictionary:
 	var copy := {}
 	for action: String in bindings:
-		copy[action] = { KEYBOARD: bindings[action][KEYBOARD], GAMEPAD: bindings[action][GAMEPAD] }
+		copy[action] = { KEYBOARD: bindings[action][KEYBOARD].duplicate(), GAMEPAD: bindings[action][GAMEPAD].duplicate() }
 	return copy
 
 
 static func _has_duplicates() -> bool:
 	for kind in KINDS:
-		var seen: Array[InputEvent] = []
+		var seen: Array = []
 		for action in ACTIONS:
-			var event: InputEvent = _current[action][kind]
-			if event == null:
-				continue
-			for other in seen:
-				if same(other, event):
+			for event: InputEvent in _current[action][kind]:
+				if _index_in(seen, event) >= 0:
 					return true
-			seen.append(event)
+				seen.append(event)
 	return false
+
+
+## Whether the bindings follow the rules: not too many inputs, and a keyboard key for pause.
+static func _valid(bindings: Dictionary) -> bool:
+	for action in ACTIONS:
+		for kind in KINDS:
+			if bindings[action][kind].size() > MAX_PER_KIND:
+				return false
+	return not bindings[PAUSE_ACTION][KEYBOARD].is_empty()
+
+
+static func _index_in(list: Array, event: InputEvent) -> int:
+	for i in list.size():
+		if same(list[i], event):
+			return i
+	return -1
+
+
+## Puts the input into the bindings (a copy being tried). Returns "" or why it can't be done.
+static func _place(bindings: Dictionary, action: String, event: InputEvent, index: int) -> String:
+	var kind := kind_of(event)
+	var list: Array = bindings[action][kind]
+	var own := _index_in(list, event)
+	if own >= 0 and (index == own or index == ADD or (index == 0 and list.size() == 1)):
+		return ""
+	var old: InputEvent = list[index] if index >= 0 and index < list.size() else null
+	if own >= 0:
+		list.remove_at(own)
+		if index > own:
+			index -= 1
+	for other in ACTIONS:
+		if other == action:
+			continue
+		var other_list: Array = bindings[other][kind]
+		var found := _index_in(other_list, event)
+		if found >= 0:
+			if old != null and _index_in(other_list, old) < 0:
+				other_list[found] = old
+			else:
+				other_list.remove_at(found)
+	if index >= 0 and index < list.size():
+		list[index] = event
+	else:
+		list.append(event)
+	if list.size() > MAX_PER_KIND:
+		return "UI_CONTROLS_FULL"
+	if not _valid(bindings):
+		return "UI_CONTROLS_PAUSE_KEY"
+	return ""
 
 
 static func _event_to_data(event: InputEvent) -> Variant:
@@ -351,6 +462,21 @@ static func _event_to_data(event: InputEvent) -> Variant:
 	if event is InputEventJoypadMotion:
 		return { "type": "pad_axis", "axis": event.axis, "direction": 1 if event.axis_value >= 0.0 else -1 }
 	return null
+
+
+## The inputs from saved data, or null when none of it is usable (so the default stays).
+static func _list_from_data(saved: Variant, kind: String) -> Variant:
+	if saved == null:
+		return []
+	var entries: Array = saved if saved is Array else [saved]
+	if entries.is_empty():
+		return []
+	var list: Array = []
+	for entry: Variant in entries:
+		var event := _event_from_data(entry, kind)
+		if event != null and _index_in(list, event) < 0 and list.size() < MAX_PER_KIND:
+			list.append(event)
+	return list if not list.is_empty() else null
 
 
 static func _event_from_data(data: Variant, kind: String) -> InputEvent:

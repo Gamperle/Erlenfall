@@ -44,10 +44,11 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_time += delta * FLICKER_SPEED
 	var flicker := sin(_time) * 0.6 + sin(_time * 2.3) * 0.4
+	var calm := 0.0 if Settings.reduce_motion else 1.0
 	var rain := _rain()
 	var strength := lerpf(1.0, RAIN_FLAME_SHARE, rain)
-	_light.light_energy = LIGHT_ENERGY * (1.0 + flicker * FLICKER_AMOUNT) * light_share() * strength
-	var wobble := sin(_time * 1.7) * 0.5 + sin(_time * 3.1) * 0.5
+	_light.light_energy = LIGHT_ENERGY * (1.0 + flicker * FLICKER_AMOUNT * calm) * light_share() * strength
+	var wobble := (sin(_time * 1.7) * 0.5 + sin(_time * 3.1) * 0.5) * calm
 	_flame.scale = Vector3(1.0 - wobble * FLAME_WOBBLE * 0.5, 1.0 + wobble * FLAME_WOBBLE, 1.0 - wobble * FLAME_WOBBLE * 0.5) * strength
 
 

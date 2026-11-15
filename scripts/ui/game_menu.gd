@@ -132,6 +132,11 @@ func open_settings(leave: Callable) -> void:
 	high_contrast.toggled.connect(_choose_high_contrast)
 	_add_setting("UI_HIGH_CONTRAST", high_contrast)
 
+	var reduce_motion := CheckButton.new()
+	reduce_motion.button_pressed = Settings.reduce_motion
+	reduce_motion.toggled.connect(_choose_reduce_motion)
+	_add_setting("UI_REDUCE_MOTION", reduce_motion)
+
 	var opacity := HSlider.new()
 	opacity.min_value = Settings.MIN_DIALOGUE_OPACITY
 	opacity.max_value = 1.0
@@ -149,6 +154,13 @@ func open_settings(leave: Callable) -> void:
 		volume.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		volume.value_changed.connect(_choose_volume.bind(bus_name))
 		_add_setting("UI_VOLUME_" + bus_name.to_upper(), volume)
+
+	var mod_problems := ModLoader.problem_lines()
+	if not mod_problems.is_empty():
+		var mods_label := Label.new()
+		mods_label.text = tr("UI_MODS_TITLE") + ":\n" + "\n".join(mod_problems)
+		mods_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_buttons.add_child(mods_label)
 
 	_add_action("UI_CONTROLS_TITLE", open_controls)
 	_add_action("UI_BACK", _close_settings)
@@ -178,7 +190,11 @@ func close() -> void:
 func _input(event: InputEvent) -> void:
 	if _controls != null and _controls.is_inside_tree():
 		if event.is_action_pressed("ui_cancel") and not _controls.is_listening():
-			_close_controls()
+			# Back goes from an action's inputs to the list, then out of the page.
+			if _controls.is_editing():
+				_controls.finish_editing()
+			else:
+				_close_controls()
 		if event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause"):
 			get_viewport().set_input_as_handled()
 		return
@@ -326,6 +342,11 @@ func _choose_colour_vision(index: int) -> void:
 func _choose_high_contrast(pressed: bool) -> void:
 	Settings.high_contrast = pressed
 	_accessibility_changed()
+
+
+func _choose_reduce_motion(pressed: bool) -> void:
+	Settings.reduce_motion = pressed
+	Settings.save()
 
 
 func _accessibility_changed() -> void:

@@ -68,14 +68,18 @@
 	],
 	"konrad": [
 		{ "from": 6.0, "activity": "tend" },
-		{ "from": 11.5, "x": 150.0, "z": -72.0, "facing": 35.0, "activity": "tend" },
+		{ "from": 8.0, "x": 163.0, "z": -68.0, "facing": 35.0, "activity": "tend" },
+		{ "from": 9.5, "x": 170.0, "z": -56.0, "facing": 35.0, "activity": "tend" },
+		{ "from": 11.0, "x": 155.0, "z": -50.0, "facing": 35.0, "activity": "tend" },
+		{ "from": 12.5, "x": 143.0, "z": -42.0, "facing": 35.0, "activity": "tend" },
+		{ "from": 14.5, "via": [[148, -70]], "activity": "tend" },
 		{ "from": 17.0, "activity": "sit" },
 		{ "from": 20.5, "x": 132.58, "z": -76.31, "indoors": true }
 	],
 	"agnes": [
-		{ "from": 6.0, "activity": "tend" },
+		{ "from": 6.0, "via": [[84, 160], [78, 152]], "activity": "tend" },
 		{ "from": 12.0, "x": 108.0, "z": 166.0, "facing": 160.0, "via": [[100, 146]], "activity": "tend" },
 		{ "from": 16.5, "via": [[100, 146]], "activity": "sit" },
-		{ "from": 19.5, "indoors": true }
+		{ "from": 19.5, "x": 88.46, "z": 154.23, "via": [[78, 152], [84, 160]], "indoors": true }
 	]
 }

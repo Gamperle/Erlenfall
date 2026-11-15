@@ -229,7 +229,7 @@
     {"model": "hand_cart_5", "building": "south_farm", "x": -3, "z": 6, "rotation": -20},
     {"model": "bucket_1", "building": "south_farm", "x": 1.8, "z": 4.3},
     {"model": "campfire_4", "x": 118, "z": -145},
-    {"model": "goblin_tent_2", "x": 126, "z": -153, "rotation": -40},
-    {"model": "goblin_tent_3", "x": 109, "z": -151, "rotation": 40}
+    {"model": "goblin_tent_2", "roof_cover": true, "x": 126, "z": -153, "rotation": -40},
+    {"model": "goblin_tent_3", "roof_cover": true, "x": 109, "z": -151, "rotation": 40}
   ]
 }

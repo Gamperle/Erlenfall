@@ -46,6 +46,7 @@ ITEM_IRON_DAGGER,Iron dagger,Eisendolch
 ITEM_IRON_SWORD,Iron sword,Eisenschwert
 ITEM_IRON_AXE,Iron axe,Eisenaxt
 ITEM_TORCH,Torch,Fackel
+UI_PREVIEW,Preview,Vorschau
 SLOT_GRIP,Grip,Griff
 SLOT_LIMB,Limbs,Bogenarme
 SLOT_BLADE,Blade,Klinge
@@ -147,6 +148,7 @@ UI_COLOUR_VISION_DEUTERANOPIA,Deuteranopia (red-green),Deuteranopie (Rot-Grün)
 UI_COLOUR_VISION_PROTANOPIA,Protanopia (red-green),Protanopie (Rot-Grün)
 UI_COLOUR_VISION_TRITANOPIA,Tritanopia (blue-yellow),Tritanopie (Blau-Gelb)
 UI_HIGH_CONTRAST,High contrast,Hoher Kontrast
+UI_REDUCE_MOTION,Reduce motion,Weniger Bewegung
 UI_DIALOGUE_OPACITY,Dialogue panel opacity,Deckkraft des Dialogfelds
 UI_VOLUME_MASTER,Master volume,Gesamtlautstärke
 UI_VOLUME_MUSIC,Music volume,Musiklautstärke
@@ -167,6 +169,8 @@ UI_RESUME,Resume,Weiterspielen
 UI_SAVE_AND_QUIT,Save and quit,Speichern und beenden
 UI_SLEPT,"You sleep until morning and wake up rested. Game saved.","Du schläfst bis zum Morgen und wachst erholt auf. Spiel gespeichert."
 UI_DEMO_END,"The inn has its roof back. You've reached the end of this first version, and you can keep crafting and exploring. Talk to the villagers to see what has changed.","Das Gasthaus hat sein Dach wieder. Du hast das Ende dieser ersten Version erreicht und kannst weiter schmieden und die Gegend erkunden. Sprich mit den Dorfbewohnern und sieh, was sich geändert hat."
+UI_MODS_NOTICE,"%d mod problem(s). Open Settings to see them.","%d Mod-Problem(e). Öffne die Einstellungen, um sie zu sehen."
+UI_MODS_TITLE,Mod problems,Mod-Probleme
 UI_AI_ASSETS_NOTE,Many assets are AI-generated.,Viele Assets sind KI-generiert.
 UI_AI_ASSETS_LINK,See the asset list,Zur Asset-Liste
 DLG_HEDDA_CHOICE_GRANDFATHER,Tell me about Grandfather.,Erzähl mir von Großvater.
@@ -304,6 +308,16 @@ UI_CONTROLS_CONFLICT,"%s is already used for ""%s"". Swap it with ""%s""?",%s wi
 UI_CONTROLS_SWAP,Swap,Tauschen
 UI_CONTROLS_CANCEL,Cancel,Abbrechen
 UI_CONTROLS_RESET,Reset to defaults,Auf Standard zurücksetzen
+UI_CONTROLS_EDITING,"%s, %s: change, remove, or add an input.","%s, %s: Eingabe ändern, entfernen oder hinzufügen."
+UI_CONTROLS_CHANGE,Change: %s,Ändern: %s
+UI_CONTROLS_REMOVE,Remove,Entfernen
+UI_CONTROLS_ADD,Add another input,Weitere Eingabe hinzufügen
+UI_CONTROLS_USE_ESC,Add Esc,Esc hinzufügen
+UI_CONTROLS_DONE,Done,Fertig
+UI_CONTROLS_MOVE,Move,Verschieben
+UI_CONTROLS_CONFLICT_MOVE,"%s is already used for ""%s"". Move it to ""%s""?",%s wird schon für „%s“ verwendet. Zu „%s“ verschieben?
+UI_CONTROLS_FULL,"There is no room for another input. Remove one first.","Es ist kein Platz für eine weitere Eingabe. Entferne zuerst eine."
+UI_CONTROLS_PAUSE_KEY,"%s is the only key for ""%s"". Give that action another key first.",%s ist die einzige Taste für „%s“. Gib dieser Aktion zuerst eine andere Taste.
 UI_KEY_SPACE,Space,Leertaste
 UI_KEY_SHIFT,Shift,Umschalt
 UI_KEY_CTRL,Ctrl,Strg
@@ -313,6 +327,10 @@ UI_MOUSE_LEFT,Left click,Linksklick
 UI_MOUSE_RIGHT,Right click,Rechtsklick
 UI_MOUSE_MIDDLE,Middle click,Mausrad-Klick
 UI_MOUSE_OTHER,Mouse button %d,Maustaste %d
+UI_MOUSE_WHEEL_UP,Wheel up,Mausrad hoch
+UI_MOUSE_WHEEL_DOWN,Wheel down,Mausrad runter
+UI_MOUSE_WHEEL_LEFT,Wheel left,Mausrad links
+UI_MOUSE_WHEEL_RIGHT,Wheel right,Mausrad rechts
 UI_PAD_UP,up,hoch
 UI_PAD_DOWN,down,runter
 UI_PAD_LEFT,left,links
@@ -420,3 +438,12 @@ NOTE_GRANDFATHER_LETTER_TITLE,A letter from Grandfather,Ein Brief von Großvater
 NOTE_GRANDFATHER_LETTER_TEXT,"To whoever keeps this house after me,\n\nThe hinges want oil, the roof wants nails, and the village wants a little patience. Start with the nails. Bertram will show you how to hold the hammer, and Hedda will tell you whether you hold it well.\n\nA good door is not made in a day. Neither is a village.\n\nAnselm","An den, der dieses Haus nach mir behält,\n\nDie Angeln wollen Öl, das Dach will Nägel, und das Dorf will ein wenig Geduld. Fang mit den Nägeln an. Bertram zeigt dir, wie man den Hammer hält, und Hedda sagt dir, ob du es gut machst.\n\nEine gute Tür baut man nicht an einem Tag. Ein Dorf auch nicht.\n\nAnselm"
 NOTE_CHRONICLE_TITLE,The Erlenfall chronicle,Die Chronik von Erlenfall
 NOTE_CHRONICLE_TEXT,"Kept by Albrecht, in his own hand.\n\nThe miners came and named the place for the alders on the rockfall. The first beer was poured at the inn, and its fire has never gone out. The spring assembly meets under the old alder on the hill.\n\nThe goblin winter came, and the palisade held. Only its ditch remains.\n\nThen the mountain came down. (Today's date to be written in once I remember it.)","Geführt von Albrecht, in eigener Handschrift.\n\nDie Bergleute kamen und nannten den Ort nach den Erlen auf dem Felssturz. Das erste Bier wurde im Gasthaus eingeschenkt, und dessen Feuer ist nie erloschen. Die Frühjahrsversammlung tagt unter der alten Erle auf dem Hügel.\n\nDer Goblinwinter kam, und die Palisade hielt. Nur ihr Graben ist geblieben.\n\nDann kam der Berg herunter. (Das heutige Datum trage ich ein, sobald es mir einfällt.)"
+UI_CREDITS,Credits and licenses,Danksagung und Lizenzen
+UI_CREDITS_INTRO,"Erlenfall uses the assets below. This list is read from the asset list that ships with the game. Scroll with the arrow keys, the D-pad, or the right stick.","Erlenfall nutzt die folgenden Assets. Diese Liste wird aus der Asset-Liste gelesen, die dem Spiel beiliegt. Blättere mit den Pfeiltasten, dem Steuerkreuz oder dem rechten Stick."
+UI_CREDITS_ASSETS,Assets,Assets
+UI_CREDITS_LICENSES,Licenses,Lizenzen
+UI_CREDITS_MISSING,The asset list could not be read.,Die Asset-Liste konnte nicht gelesen werden.
+DLG_HEDDA_GREETING,"Come in, child. Sit a moment. What's on your mind?","Komm herein, Kind. Setz dich einen Moment. Was beschäftigt dich?"
+DLG_BERTRAM_GREETING,Back at the anvil already? What do you want to know?,Schon wieder am Amboss? Was willst du wissen?
+DLG_MIRA_GREETING,"Oh, it's you! Got a minute to talk?","Oh, du bist es! Hast du einen Moment zum Reden?"
+DLG_GRETA_GREETING,"Welcome back, dear. Mind the dry floor. What can I do for you?","Willkommen zurück. Pass auf den trockenen Boden auf. Was kann ich für dich tun?"

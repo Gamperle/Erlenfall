@@ -120,7 +120,11 @@ func _input(event: InputEvent) -> void:
 			open()
 			get_viewport().set_input_as_handled()
 		return
-	if event.is_action_pressed("journal") or event.is_action_pressed("ui_cancel"):
+	if _tab == TAB_MAP and _world_map != null and event is InputEventJoypadMotion and event.axis in [JOY_AXIS_LEFT_X, JOY_AXIS_LEFT_Y]:
+		# The left stick pans the map there (the map reads it from Input), so it must not also move
+		# the focus. The d-pad and the arrow keys still do.
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("journal") or event.is_action_pressed("ui_cancel"):
 		close()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("map") and _world_map != null:

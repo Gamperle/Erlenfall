@@ -765,6 +765,12 @@ func _test_journal(scene: Node, player: Player) -> void:
 	map_press.pressed = true
 	journal._input(map_press)
 	_check(journal.current_tab() == Journal.TAB_MAP and journal.is_open(), "the map key shows the map tab while the journal is open")
+	var stick := InputEventJoypadMotion.new()
+	stick.axis = JOY_AXIS_LEFT_X
+	stick.axis_value = 1.0
+	journal.get_viewport().set_input_as_handled()
+	journal._input(stick)
+	_check(journal.get_viewport().is_input_handled(), "on the map tab the left stick pans the map without moving the menu focus")
 	var cancel := InputEventAction.new()
 	cancel.action = "ui_cancel"
 	cancel.pressed = true

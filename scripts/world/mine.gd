@@ -1,7 +1,7 @@
 class_name Mine
 extends Node3D
 ## The buried mine's entrance: a cliff face, a collapsed timber frame, a rubble heap that blocks the
-## way in, a tilted cart, rails, and a tall headframe that can be seen from afar. It is built from
+## way in, a tilted cart, rails, and a tall timber headframe with a winch shed that can be seen from afar. It is built from
 ## code-made shapes. The ground in front of it is flattened by Terrain, and the inside is not built.
 ## The entrance faces +z, so the node's rotation turns it toward the road.
 
@@ -11,6 +11,7 @@ const RUBBLE_TINT := Color(0.34, 0.31, 0.28)
 const TIMBER := Color(0.24, 0.16, 0.1)
 const OLD_TIMBER := Color(0.3, 0.22, 0.15)
 const IRON := Color(0.18, 0.16, 0.15)
+const SACK := Color(0.42, 0.35, 0.24)
 const OPENING := Color(0.02, 0.02, 0.025)
 const BEAM := 0.5
 const RUBBLE_COUNT := 22
@@ -56,6 +57,7 @@ func _ready() -> void:
 	_build_frame(look, body)
 	_build_rubble(look, body, random)
 	_build_headframe(look, body)
+	_build_mouth_details(look, random)
 	_build_cart_and_rails(look, body)
 	add_child(ModelBuilder.merged(look))
 
@@ -241,32 +243,201 @@ func _build_rubble(look: Node3D, body: StaticBody3D, random: RandomNumberGenerat
 	_add_timber(look, Vector3(0.28, 0.28, 2.4), Vector3(-1.2, opening_height * 0.5, 1.8), Vector3(-0.2, -0.6, 0.15), OLD_TIMBER)
 
 
+## A timber headframe that can be seen from afar: four legs leaning together, rings and cross braces
+## between them, a sheave wheel on an axle at the top, a rope down to a winch shed beside it, and a
+## small deck at its foot. The people who left it took nothing, so planks are missing and a brace hangs.
 func _build_headframe(look: Node3D, body: StaticBody3D) -> void:
-	# Two leaning legs and a cross beam, so that the mine can be told from far off.
 	var base_x: float = _data["width"] / 2.0 + 3.5
-	var lean := 0.22
-	for leg in [[-0.9, lean], [0.9, -lean]]:
-		_add_timber(look, Vector3(0.6, HEADFRAME_HEIGHT, 0.6), Vector3(base_x + leg[1] * HEADFRAME_HEIGHT / 2.0, HEADFRAME_HEIGHT / 2.0 - 0.3, 3.0 + leg[0] * 1.0), Vector3(0.0, 0.0, -leg[1]), TIMBER)
-	_add_timber(look, Vector3(0.5, 0.5, 3.0), Vector3(base_x, HEADFRAME_HEIGHT - 1.0, 3.0), Vector3.ZERO, OLD_TIMBER)
-	_add_timber(look, Vector3(2.4, 0.4, 0.4), Vector3(base_x, HEADFRAME_HEIGHT * 0.5, 3.0), Vector3(0.0, 0.0, 0.0), OLD_TIMBER)
-	# A rusted wheel hangs from the top.
-	var wheel := MeshInstance3D.new()
-	var disk := CylinderMesh.new()
-	disk.top_radius = 1.0
-	disk.bottom_radius = 1.0
-	disk.height = 0.25
-	disk.radial_segments = 12
-	disk.material = Surfaces.get_material(Surfaces.Pattern.BOULDER, IRON)
-	wheel.mesh = disk
-	wheel.position = Vector3(base_x, HEADFRAME_HEIGHT - 2.2, 3.0)
-	wheel.rotation = Vector3(0.0, PI / 2.0, PI / 2.0)
-	look.add_child(wheel)
+	var centre := Vector3(base_x, 0.0, 3.0)
+	var height := HEADFRAME_HEIGHT
+	# The legs: a square at the foot that narrows toward the top.
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			_add_strut(look, _frame_point(centre, sx, sz, -0.4), _frame_point(centre, sx, sz, height), 0.55, TIMBER)
+	var levels := [-0.1, 2.6, 5.4, 8.2, height - 0.9]
+	for level in levels.size():
+		if level == 0:
+			continue
+		var y: float = levels[level]
+		for s in [-1.0, 1.0]:
+			_add_strut(look, _frame_point(centre, -1.0, s, y), _frame_point(centre, 1.0, s, y), 0.3, OLD_TIMBER)
+			_add_strut(look, _frame_point(centre, s, -1.0, y), _frame_point(centre, s, 1.0, y), 0.3, OLD_TIMBER)
+	# Diagonal braces on every face, one in each bay, running the other way in the next bay.
+	for bay in levels.size() - 1:
+		var low: float = levels[bay]
+		var high: float = levels[bay + 1]
+		var flip := -1.0 if bay % 2 == 0 else 1.0
+		for s in [-1.0, 1.0]:
+			if bay == 2 and s > 0.0:
+				continue
+			_add_strut(look, _frame_point(centre, s, -flip, low), _frame_point(centre, s, flip, high), 0.2, OLD_TIMBER)
+			_add_strut(look, _frame_point(centre, -flip, s, low), _frame_point(centre, flip, s, high), 0.2, OLD_TIMBER)
+	# One brace has come loose and hangs from its upper end.
+	var loose_top := _frame_point(centre, 1.0, 1.0, levels[3])
+	_add_strut(look, loose_top, loose_top + Vector3(0.9, -1.9, 0.5), 0.2, OLD_TIMBER)
+	# The cap, and the axle the wheel turns on.
+	for s in [-1.0, 1.0]:
+		_add_strut(look, _frame_point(centre, -1.0, s, height) + Vector3(-0.2, 0.15, 0.0), _frame_point(centre, 1.0, s, height) + Vector3(0.2, 0.15, 0.0), 0.35, TIMBER)
+	var axle_y := height - 0.9
+	_add_strut(look, centre + Vector3(0.0, axle_y, -1.0), centre + Vector3(0.0, axle_y, 1.0), 0.18, IRON)
+	_build_sheave(look, centre + Vector3(0.0, axle_y, 0.0))
+	# The foot: a deck of planks over sleepers, with two planks gone.
+	for sleeper in [-1.0, 1.0]:
+		_add_strut(look, centre + Vector3(-2.0, 0.22, sleeper * 1.3), centre + Vector3(2.0, 0.22, sleeper * 1.3), 0.25, OLD_TIMBER)
+	for plank in 7:
+		if plank == 3 or plank == 5:
+			continue
+		var z := -1.5 + plank * 0.5
+		_add_timber(look, Vector3(3.9, 0.08, 0.46), centre + Vector3(0.0, 0.38, z), Vector3.ZERO, TIMBER)
+	_build_winch_shed(look, body, centre + Vector3(-3.6, 0.0, 0.0), centre + Vector3(0.0, axle_y, 0.0))
 	var feet := BoxShape3D.new()
-	feet.size = Vector3(5.0, HEADFRAME_HEIGHT, 3.0)
+	feet.size = Vector3(3.4, height, 3.6)
 	var shape := CollisionShape3D.new()
 	shape.shape = feet
-	shape.position = Vector3(base_x, HEADFRAME_HEIGHT / 2.0, 3.0)
+	shape.position = centre + Vector3(0.0, height / 2.0, 0.0)
 	body.add_child(shape)
+
+
+## A point on the headframe at height y, at a corner (sx, sz are -1 or 1) or along a face.
+func _frame_point(centre: Vector3, sx: float, sz: float, y: float) -> Vector3:
+	var fraction := clampf((y + 0.4) / (HEADFRAME_HEIGHT + 0.4), 0.0, 1.0)
+	var half := Vector2(1.5, 1.6).lerp(Vector2(0.6, 0.7), fraction)
+	return centre + Vector3(sx * half.x, y, sz * half.y)
+
+
+## The sheave: an iron rim, a hub and spokes, standing in the x-y plane around the axle.
+func _build_sheave(look: Node3D, at: Vector3) -> void:
+	var material := Surfaces.get_material(Surfaces.Pattern.BOULDER, IRON)
+	var rim := TorusMesh.new()
+	rim.inner_radius = 0.96
+	rim.outer_radius = 1.12
+	rim.rings = 16
+	rim.ring_segments = 5
+	rim.material = material
+	var rim_node := MeshInstance3D.new()
+	rim_node.mesh = rim
+	rim_node.position = at
+	rim_node.rotation = Vector3(PI / 2.0, 0.0, 0.0)
+	look.add_child(rim_node)
+	var hub := CylinderMesh.new()
+	hub.top_radius = 0.2
+	hub.bottom_radius = 0.2
+	hub.height = 0.3
+	hub.radial_segments = 8
+	hub.material = material
+	var hub_node := MeshInstance3D.new()
+	hub_node.mesh = hub
+	hub_node.position = at
+	hub_node.rotation = Vector3(PI / 2.0, 0.0, 0.0)
+	look.add_child(hub_node)
+	for spoke in 4:
+		var node := ModelBuilder.box(Vector3(2.05, 0.09, 0.09), Surfaces.Pattern.BOULDER, IRON, at)
+		node.rotation = Vector3(0.0, 0.0, spoke * PI / 4.0 + 0.2)
+		look.add_child(node)
+
+
+## A hoist house with the winch drum inside. It stands open toward the headframe, with a lean-to roof
+## that slopes away, gaps in its plank walls, and the rope running from the wheel to the drum.
+func _build_winch_shed(look: Node3D, body: StaticBody3D, at: Vector3, wheel: Vector3) -> void:
+	for sx in [-1.5, 1.5]:
+		for sz in [-1.4, 1.4]:
+			var tall := 2.9 if sx > 0.0 else 2.3
+			_add_timber(look, Vector3(0.22, tall + 0.6, 0.22), at + Vector3(sx, (tall - 0.6) / 2.0, sz), Vector3.ZERO, TIMBER)
+	# Back wall planks (away from the frame), with two missing, and half of the side walls.
+	for plank in 9:
+		if plank == 2 or plank == 6:
+			continue
+		var plank_height := 2.1 - (0.5 if plank == 7 else 0.0)
+		_add_timber(look, Vector3(0.06, plank_height, 0.3), at + Vector3(-1.5, plank_height / 2.0, -1.4 + plank * 0.35), Vector3.ZERO, OLD_TIMBER)
+	for side in [-1.0, 1.0]:
+		for plank in 5:
+			if side > 0.0 and plank == 3:
+				continue
+			_add_timber(look, Vector3(0.3, 2.0 - plank * 0.1, 0.06), at + Vector3(-1.2 + plank * 0.35, (2.0 - plank * 0.1) / 2.0, side * 1.4), Vector3.ZERO, OLD_TIMBER)
+	# The roof: a slab sloping down toward the back, with ribs under it and a plank torn off the edge.
+	var roof := ModelBuilder.box(Vector3(3.7, 0.12, 3.5), Surfaces.Pattern.WOOD, TIMBER, at + Vector3(0.0, 2.75, 0.0))
+	roof.rotation = Vector3(0.0, 0.0, 0.14)
+	look.add_child(roof)
+	for rib in 4:
+		_add_timber(look, Vector3(3.5, 0.14, 0.14), at + Vector3(0.0, 2.6, -1.3 + rib * 0.87), Vector3(0.0, 0.0, 0.14), OLD_TIMBER)
+	_add_timber(look, Vector3(1.5, 0.06, 0.4), at + Vector3(1.0, 2.2, 1.9), Vector3(0.6, 0.2, 0.9), OLD_TIMBER)
+	# The drum, with flanges, and a crank.
+	var drum := CylinderMesh.new()
+	drum.top_radius = 0.42
+	drum.bottom_radius = 0.42
+	drum.height = 1.7
+	drum.radial_segments = 10
+	drum.material = Surfaces.get_material(Surfaces.Pattern.BOULDER, IRON)
+	var drum_node := MeshInstance3D.new()
+	drum_node.mesh = drum
+	drum_node.position = at + Vector3(-0.3, 0.9, 0.0)
+	drum_node.rotation = Vector3(PI / 2.0, 0.0, 0.0)
+	look.add_child(drum_node)
+	for flange in [-0.9, 0.9]:
+		_add_timber(look, Vector3(1.0, 1.0, 0.1), at + Vector3(-0.3, 0.9, flange), Vector3(0.0, 0.0, 0.4), TIMBER)
+	_add_strut(look, at + Vector3(-0.3, 0.9, 1.0), at + Vector3(0.2, 1.5, 1.35), 0.1, IRON)
+	_add_timber(look, Vector3(1.6, 0.25, 1.9), at + Vector3(-0.3, 0.25, 0.0), Vector3.ZERO, OLD_TIMBER)
+	# The rope, from the wheel's side to the drum.
+	_add_strut(look, wheel + Vector3(-1.1, 0.0, 0.0), at + Vector3(-0.3, 1.32, 0.0), 0.07, ROOT_COLOR)
+	var shed := BoxShape3D.new()
+	shed.size = Vector3(3.2, 2.8, 3.0)
+	var shape := CollisionShape3D.new()
+	shape.shape = shed
+	shape.position = at + Vector3(0.0, 1.4, 0.0)
+	body.add_child(shape)
+
+
+## Props and planks around the mouth, sacks and spilled ore beside the track, and loose rails.
+func _build_mouth_details(look: Node3D, random: RandomNumberGenerator) -> void:
+	var opening: float = _data["opening_width"]
+	var opening_height: float = _data["opening_height"]
+	var half := opening / 2.0
+	# Bracing on the standing post, a footing under it, and a brace hanging from the sagging beam.
+	_add_strut(look, Vector3(-half + 0.2, 0.5, 0.62), Vector3(-half + 1.25, opening_height - 0.45, 0.62), 0.2, OLD_TIMBER)
+	_add_timber(look, Vector3(1.1, 0.3, 0.9), Vector3(-half, 0.15, 0.3), Vector3.ZERO, OLD_TIMBER)
+	_add_strut(look, Vector3(half - 1.0, opening_height - 0.35, 0.62), Vector3(half - 0.2, opening_height - 1.5, 0.7), 0.2, TIMBER)
+	# Props that held the roof, snapped and leaning on the heap.
+	for i in 6:
+		var side := -1.0 if i % 2 == 0 else 1.0
+		var x := side * random.randf_range(half + 0.2, half + 2.4)
+		var z := random.randf_range(3.0, 4.6)
+		var lean := Vector3(-side * random.randf_range(0.2, 0.9), random.randf_range(1.0, 1.9), -random.randf_range(0.8, 1.5))
+		_add_strut(look, Vector3(x, 0.1, z), Vector3(x, 0.1, z) + lean, 0.22, TIMBER if i % 3 == 0 else OLD_TIMBER)
+	# Planks lying about, and a few leaning against the heap.
+	for i in 11:
+		var at := Vector3(random.randf_range(-6.0, 6.0), 0.06 + (0.07 if i % 4 == 0 else 0.0), random.randf_range(4.0, 8.0))
+		if absf(at.x) < 1.4 and at.z > 4.0:
+			at.x += signf(at.x + 0.01) * 1.6
+		_add_timber(look, Vector3(random.randf_range(1.2, 2.6), 0.06, 0.24), at, Vector3(0.0, random.randf() * PI, random.randf_range(-0.05, 0.05)), OLD_TIMBER)
+	for i in 3:
+		var x := -half - 0.6 + i * 1.5 + random.randf_range(-0.3, 0.3)
+		_add_strut(look, Vector3(x, 0.1, 4.3), Vector3(x + random.randf_range(-0.3, 0.3), 2.0, 3.2), 0.24, OLD_TIMBER)
+	_build_sacks(look, random)
+	# Rails: a bent one sticking out of the heap, and a loose piece beside the cart.
+	_add_strut(look, Vector3(-0.7, 0.3, 4.0), Vector3(-0.2, 1.6, 3.3), 0.1, IRON)
+	_add_strut(look, Vector3(1.7, 0.1, 6.0), Vector3(2.4, 0.2, 9.2), 0.1, IRON)
+
+
+## Sacks of ore stacked beside the winch shed, one fallen, with ore spilled on the ground.
+func _build_sacks(look: Node3D, random: RandomNumberGenerator) -> void:
+	var base := Vector3(5.2, 0.0, 5.2)
+	var rows: Array = [[0.0, 0.0], [0.55, 0.05], [1.1, 0.0], [0.27, 0.45], [0.82, 0.5]]
+	for i in rows.size():
+		var level := 0.19 if i < 3 else 0.54
+		var sack := ModelBuilder.box(Vector3(0.55, 0.38, 0.38), Surfaces.Pattern.PLASTER, SACK, base + Vector3(rows[i][0], level, rows[i][1]))
+		sack.rotation = Vector3(0.0, random.randf_range(-0.25, 0.25), random.randf_range(-0.08, 0.08))
+		look.add_child(sack)
+	var fallen := ModelBuilder.box(Vector3(0.55, 0.38, 0.38), Surfaces.Pattern.PLASTER, SACK, base + Vector3(1.6, 0.17, 0.9))
+	fallen.rotation = Vector3(0.0, 0.8, 0.5)
+	look.add_child(fallen)
+	var ore := _rock_mesh(int(_data["seed"]) + 4)
+	ore.surface_set_material(0, Surfaces.get_material(Surfaces.Pattern.IRON_ORE, Color(0.5, 0.4, 0.34)))
+	for i in 7:
+		var piece := MeshInstance3D.new()
+		piece.mesh = ore
+		var size := random.randf_range(0.08, 0.2)
+		piece.transform = Transform3D(Basis.from_euler(Vector3(random.randf(), random.randf() * TAU, random.randf())).scaled(Vector3.ONE * size), base + Vector3(1.5 + random.randf_range(-0.2, 1.1), size * 0.5, 0.9 + random.randf_range(-0.2, 0.9)))
+		look.add_child(piece)
 
 
 func _build_cart_and_rails(look: Node3D, body: StaticBody3D) -> void:
@@ -280,6 +451,18 @@ func _build_cart_and_rails(look: Node3D, body: StaticBody3D) -> void:
 	var cart := Vector3(2.9, 0.5, 8.0)
 	_add_timber(look, Vector3(1.5, 0.9, 1.1), cart, Vector3(0.0, 0.5, 0.9), IRON)
 	_add_timber(look, Vector3(0.1, 1.0, 1.0), cart + Vector3(0.75, 0.0, 0.6), Vector3(0.0, 0.5, 0.0), IRON)
+	for wheel in [Vector3(-0.35, 0.0, 0.6), Vector3(0.45, 0.0, -0.7)]:
+		var disk := CylinderMesh.new()
+		disk.top_radius = 0.25
+		disk.bottom_radius = 0.25
+		disk.height = 0.06
+		disk.radial_segments = 8
+		disk.material = Surfaces.get_material(Surfaces.Pattern.BOULDER, IRON)
+		var wheel_node := MeshInstance3D.new()
+		wheel_node.mesh = disk
+		wheel_node.position = cart + wheel + Vector3(0.0, 0.4, 0.0)
+		wheel_node.rotation = Vector3(0.4, 0.5, PI / 2.0 - 0.3)
+		look.add_child(wheel_node)
 	var tipped := BoxShape3D.new()
 	tipped.size = Vector3(1.5, 1.0, 1.4)
 	var shape := CollisionShape3D.new()
@@ -310,6 +493,16 @@ func _add_block(body: StaticBody3D, size: Vector3, at: Vector3, yaw_degrees: flo
 	shape.position = at
 	shape.rotation.y = deg_to_rad(yaw_degrees)
 	body.add_child(shape)
+
+
+## A beam of the given thickness running from one point to another.
+func _add_strut(look: Node3D, from: Vector3, to: Vector3, thickness: float, color: Color) -> void:
+	var along := to - from
+	var pattern := Surfaces.Pattern.BOULDER if color == IRON else Surfaces.Pattern.WOOD
+	var strut := ModelBuilder.box(Vector3(thickness, thickness, along.length()), pattern, color)
+	var up := Vector3.RIGHT if absf(along.normalized().y) > 0.99 else Vector3.UP
+	strut.transform = Transform3D(Basis.looking_at(along.normalized(), up), (from + to) / 2.0)
+	look.add_child(strut)
 
 
 func _add_timber(look: Node3D, size: Vector3, at: Vector3, tilt: Vector3, color: Color) -> void:

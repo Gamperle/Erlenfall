@@ -33,7 +33,10 @@ var visibility_indicator: VisibilityIndicator
 
 func _ready() -> void:
 	get_viewport().size_changed.connect(arrange)
+	# The hint wraps as the window changes, so follow its real size, not only its minimum.
 	_controls.minimum_size_changed.connect(_place_prompt)
+	_controls.item_rect_changed.connect(_place_prompt)
+	_prompt.minimum_size_changed.connect(_place_prompt)
 	_add_bar_pattern(_health_bar, BarPattern.Kind.STRIPES)
 	_add_bar_pattern(_stamina_bar, BarPattern.Kind.DOTS)
 	visibility_indicator = VisibilityIndicator.new()
@@ -111,7 +114,8 @@ func _quest_text_width() -> float:
 
 ## Long control hints wrap in a narrow window, so the prompt stays above them.
 func _place_prompt() -> void:
-	var height := _controls.get_combined_minimum_size().y + absf(_controls.offset_bottom) + PROMPT_GAP
+	var hint_height := maxf(_controls.get_combined_minimum_size().y, _controls.size.y)
+	var height := hint_height + absf(_controls.offset_bottom) + PROMPT_GAP
 	_prompt.offset_bottom = -maxf(PROMPT_BOTTOM, height)
 	_prompt.offset_top = _prompt.offset_bottom - _prompt.get_combined_minimum_size().y
 	_place_visibility_indicator()

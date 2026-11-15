@@ -85,8 +85,8 @@ static func _transform_in(model: Node3D, part: Node3D) -> Transform3D:
 	return result
 
 
-## Plastered walls with a timber frame, a stone base, a door, and windows.
-static func house_walls(size: Vector3, wall_color: Color, ruined: bool) -> Node3D:
+## Plastered walls with a timber frame, a stone base, a door, and windows (a barn has none).
+static func house_walls(size: Vector3, wall_color: Color, ruined: bool, windows := true) -> Node3D:
 	var house := Node3D.new()
 	var plaster := wall_color.lightened(0.25) if not ruined else wall_color
 	house.add_child(box(Vector3(size.x, size.y + 3.0, size.z), Surfaces.Pattern.PLASTER, plaster, Vector3.UP * (size.y - 3.0) / 2.0))
@@ -111,9 +111,10 @@ static func house_walls(size: Vector3, wall_color: Color, ruined: bool) -> Node3
 	var door_color := OPENING_COLOR if ruined else WOOD_COLOR
 	house.add_child(box(Vector3(DOOR_SIZE.x, DOOR_SIZE.y, OPENING_DEPTH), Surfaces.Pattern.WOOD, door_color, door_at))
 	var window_height := minf(size.y * 0.42 + 0.5, size.y - 0.9)
-	for side: float in [1.0, -1.0]:
-		house.add_child(_window(Vector3(side * size.x * 0.3, window_height, half.z)))
-		house.add_child(_window(Vector3(side * size.x * 0.3, window_height, -half.z)))
+	if windows:
+		for side: float in [1.0, -1.0]:
+			house.add_child(_window(Vector3(side * size.x * 0.3, window_height, half.z)))
+			house.add_child(_window(Vector3(side * size.x * 0.3, window_height, -half.z)))
 	return house
 
 

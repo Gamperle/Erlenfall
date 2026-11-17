@@ -13,7 +13,7 @@ This pipeline makes 3D props from text. FLUX.2 klein 4B draws a picture, TRELLIS
 | Make the model | TRELLIS.2 in ComfyUI (`run_trellis.ps1`, `make_trellis.py`) | GPU | 1 to 25 minutes, usually 3 to 9 | `<batch>\trellis\<name>.glb` |
 | Set real size | Blender (`size_models.ps1`, `size_glb.py`) | CPU | Seconds | `<batch>\props\<name>.glb` |
 
-TRELLIS.2 removes the background with BiRefNet, builds the shape in three stages, remeshes it into one closed surface, reduces it to the object's face budget, unwraps it, and bakes base color, roughness, metallic, normal, and ambient occlusion maps at 1024 px. No separate cleanup is needed.
+TRELLIS.2 removes the background with BiRefNet, builds the shape in three stages, remeshes it into one closed surface, reduces it to the object's face budget, unwraps it, and bakes base color, roughness, metallic, normal, and ambient occlusion maps at 1024 px. No separate cleanup is needed. After sizing, `tools/asset_pipeline/shrink_textures.py` shrinks the textures of props up to 1.25 m to 512 px and keeps 1024 px for larger ones (#426).
 
 The scripts are in [tools/asset_pipeline](../tools/asset_pipeline):
 

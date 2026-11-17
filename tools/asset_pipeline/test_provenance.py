@@ -22,7 +22,11 @@ ASSETS = """# Assets
 | --- | --- | --- | --- | --- |
 | `assets/props/barrel_2.glb` | %s | AI-generated, chosen by Someone | CC BY-SA 4.0 | Seed 6002, subject: "upright oak barrel". TRELLIS.2 at its face budget; scaled to 1 m. Darkened by hand (issue #1) |
 | `assets/props/rock_1.glb` | FLUX.2 klein 4B, TripoSR `107cefd`, rembg u2net, Blender 5.2 | AI-generated, chosen by Someone | CC BY-SA 4.0 | Seed 6011, subject: "grey rock". Automatic cleanup; scaled to 0.5 m |
-| `assets/textures/*_relief.png` | Poly Haven | A | CC0 | Built by a script |
+| `assets/characters/hero.glb` | Built with [MPFB](https://x.example) from [MakeHuman asset packs](https://x.example/packs): system assets, Shirts 01 | MakeHuman | CC0 | Recipe in `villagers.json` |
+| `assets/textures/grass.jpg` | [Poly Haven: sparse_grass](https://polyhaven.com/a/sparse_grass) | A | CC0 | 1K diffuse map, unedited |
+| `assets/textures/*_relief.png` | The same Poly Haven texture as each photo above | A | CC0 | Built by a script |
+| `assets/ui/panel.png`, `assets/ui/button_*.png` | Built by `tools/ui_pipeline/build_ui_textures.py` from `assets/textures/grass.jpg` | A | CC0 | Resized |
+| `assets/ui/fonts/Some.ttf` | [Noto fonts](https://x.example) | Google | OFL | Unedited |
 
 The generated props share one prompt, with the subject in place of `{}`: "A single {}, 3d game prop. No text." Drawn at 1024 x 1024 with 4 steps and guidance 1.0. See the pipeline.
 """ % SOURCE
@@ -41,6 +45,11 @@ def make_repo():
     os.makedirs(os.path.join(root, "assets", "props"))
     for name in ("barrel_2", "rock_1"):
         write(os.path.join(root, "assets", "props", name + ".glb"), "")
+    for path in ("characters/hero.glb", "textures/grass.jpg", "textures/grass_relief.png", "ui/panel.png", "ui/button_a.png", "ui/button_b.png", "ui/fonts/Some.ttf"):
+        os.makedirs(os.path.dirname(os.path.join(root, "assets", path)), exist_ok=True)
+        write(os.path.join(root, "assets", path), "x")
+    os.makedirs(os.path.join(root, "tools", "character_pipeline"))
+    write(os.path.join(root, "tools", "character_pipeline", "villagers.json"), json.dumps([{"id": "hero", "skin": "plain"}]))
     write(os.path.join(root, "ASSETS.md"), ASSETS)
     write(os.path.join(root, "tools", "asset_pipeline", "batches", "b1.json"), json.dumps(BATCH))
     return root
@@ -94,11 +103,49 @@ class BackfillTest(unittest.TestCase):
         self.assertFalse(os.path.exists(provenance.record_path("ai_prop", "assets/props/barrel_2.glb", self.root)))
 
 
+def write_ui_records(root):
+    """What build_ui_textures.py writes, for the three UI files the sample repository has."""
+    for name in ("panel", "button_a", "button_b"):
+        asset = "assets/ui/%s.png" % name
+        stage = {"step": "build", "tool": "build_ui_textures.py", "date": "2026-11-17", "versions": {"Pillow": "12"}}
+        provenance.save(provenance.record_path("ui_texture", asset, root), provenance.new_record("ui_texture", asset, name=name, stages=[stage]))
+
+
+class OtherAssetsBackfillTest(unittest.TestCase):
+    def setUp(self):
+        self.root = make_repo()
+        self.out = []
+        provenance.backfill(self.root, out=quiet(self.out))
+
+    def test_character_and_relief_records_use_nulls_for_the_unknown(self):
+        hero = provenance.load(provenance.record_path("character", "assets/characters/hero.glb", self.root))
+        self.assertEqual(hero["origin"], "backfill")
+        self.assertEqual(hero["stages"][0]["recipe"], {"id": "hero", "skin": "plain"})
+        self.assertEqual(hero["stages"][0]["asset_packs"], ["system assets", "Shirts 01"])
+        self.assertIsNone(hero["stages"][0]["date"])
+        self.assertEqual(hero["stages"][0]["output_sha256"], provenance.sha256(os.path.join(self.root, "assets/characters/hero.glb")))
+        relief = provenance.load(provenance.record_path("derived_texture", "assets/textures/grass_relief.png", self.root))
+        self.assertEqual(relief["stages"][0]["polyhaven_asset"], "sparse_grass")
+        self.assertIsNone(relief["stages"][0]["date"])
+        self.assertEqual(provenance.check_record(relief, "grass_relief"), [])
+
+    def test_relief_map_without_a_known_source_is_not_backfilled(self):
+        write(os.path.join(self.root, "assets", "textures", "mystery_relief.png"), "x")
+        self.assertEqual(provenance.backfill(self.root, out=quiet(self.out)), 1)
+        self.assertFalse(os.path.exists(provenance.record_path("derived_texture", "assets/textures/mystery_relief.png", self.root)))
+
+    def test_character_without_a_recipe_is_not_backfilled(self):
+        write(os.path.join(self.root, "tools", "character_pipeline", "villagers.json"), "[]")
+        os.remove(provenance.record_path("character", "assets/characters/hero.glb", self.root))
+        self.assertEqual(provenance.backfill(self.root, out=quiet(self.out)), 1)
+
+
 class ValidateTest(unittest.TestCase):
     def setUp(self):
         self.root = make_repo()
         self.out = []
         provenance.backfill(self.root, out=quiet(self.out))
+        write_ui_records(self.root)
         self.out.clear()
 
     def run_validate(self):
@@ -112,6 +159,28 @@ class ValidateTest(unittest.TestCase):
         os.remove(provenance.record_path("ai_prop", "assets/props/rock_1.glb", self.root))
         self.assertEqual(self.run_validate(), 1)
         self.assertIn("rock_1.glb is AI-generated but has no provenance record", self.out[0])
+
+    def test_missing_character_relief_or_ui_record_is_reported(self):
+        for kind, asset in (("character", "assets/characters/hero.glb"), ("derived_texture", "assets/textures/grass_relief.png"),
+                            ("ui_texture", "assets/ui/button_b.png")):
+            path = provenance.record_path(kind, asset, self.root)
+            saved = provenance.load(path)
+            os.remove(path)
+            self.assertEqual(self.run_validate(), 1, asset)
+            self.assertTrue(any(asset in line and "has no provenance record" in line for line in self.out), self.out)
+            provenance.save(path, saved)
+        self.assertEqual(self.run_validate(), 0, self.out)
+
+    def test_ui_font_needs_no_record(self):
+        self.assertEqual(self.run_validate(), 0, self.out)
+
+    def test_pattern_matching_no_file_is_reported(self):
+        os.remove(os.path.join(self.root, "assets", "ui", "button_a.png"))
+        os.remove(os.path.join(self.root, "assets", "ui", "button_b.png"))
+        os.remove(provenance.record_path("ui_texture", "assets/ui/button_a.png", self.root))
+        os.remove(provenance.record_path("ui_texture", "assets/ui/button_b.png", self.root))
+        self.assertEqual(self.run_validate(), 1)
+        self.assertTrue(any("button_*.png" in line for line in self.out))
 
     def test_seed_disagreeing_with_ledger_is_reported(self):
         path = provenance.record_path("ai_prop", "assets/props/barrel_2.glb", self.root)
@@ -159,6 +228,18 @@ class PipelineStagesTest(unittest.TestCase):
         again = provenance.add_stage(path, {"step": "mesh", "tool": "TRELLIS.2", "versions": {"ComfyUI": "0.44"}, "date": "2026-11-15"}, kind="ai_prop")
         self.assertEqual([s["step"] for s in again["stages"]], ["image", "mesh", "size"])
         self.assertEqual(again["seed"], 6002)
+
+    def test_triposr_scripts_build_one_valid_record(self):
+        """The calls run_triposr.py and cleanup_mesh.py make, then size_glb.py."""
+        path = os.path.join(tempfile.mkdtemp(), "rock_1.json")
+        common = {"kind": "ai_prop", "asset": "assets/props/rock_1.glb", "name": "rock_1"}
+        provenance.add_stage(path, {"step": "image", "tool": "FLUX.2 klein 4B", "versions": {"torch": "2.14"}, "date": "2026-11-14"},
+                             batch="b1", object="rock", subject="grey rock", prompt="A single grey rock.", seed=6011, **common)
+        provenance.add_stage(path, {"step": "size", "tool": "Blender", "versions": {"Blender": "5.2"}, "date": "2026-11-15"}, **common)
+        provenance.add_stage(path, {"step": "cleanup", "tool": "Automatic cleanup (cleanup_mesh.py)", "versions": {"Blender": "5.2"}, "date": "2026-11-15"}, **common)
+        record = provenance.add_stage(path, {"step": "mesh", "tool": "TripoSR", "versions": {"TripoSR": "107cefd", "torch": "2.14"}, "date": "2026-11-14"}, **common)
+        self.assertEqual([s["step"] for s in record["stages"]], ["image", "mesh", "cleanup", "size"])
+        self.assertEqual(provenance.check_record(record, "rock_1"), [])
 
     def test_stages_out_of_order_are_reported_by_validation(self):
         record = provenance.new_record("ai_prop", "assets/props/a_1.glb", batch="b", name="a_1", subject="a", prompt="a", seed=1)

@@ -1,0 +1,70 @@
+{
+	"schema": 1,
+	"asset": "assets/characters/greta.glb",
+	"kind": "character",
+	"origin": "backfill",
+	"name": "greta",
+	"stages": [
+		{
+			"step": "build",
+			"tool": "build_character.py with MPFB",
+			"date": null,
+			"versions": {
+				"Blender": null,
+				"MPFB": null
+			},
+			"recipe": {
+				"id": "greta",
+				"smooth_chest": [
+					"toigo_fisherman_sweater"
+				],
+				"shape": {
+					"gender": 0.0,
+					"age": 0.6,
+					"muscle": 0.4,
+					"weight": 0.6,
+					"cupsize": 0.66,
+					"firmness": 0.5
+				},
+				"skin": "middleage_caucasian_female",
+				"clothes": [
+					"toigo_long_full_skirt",
+					"toigo_fisherman_sweater",
+					"shoes03"
+				],
+				"footwear": [
+					"shoes03"
+				],
+				"colors": {
+					"toigo_long_full_skirt": [
+						0.5,
+						0.38,
+						0.2
+					],
+					"toigo_fisherman_sweater": [
+						0.55,
+						0.3,
+						0.22
+					]
+				},
+				"hair": "ponytail01",
+				"brows": "eyebrow001",
+				"eyes": "low-poly",
+				"tucked": {
+					"toigo_fisherman_sweater": "toigo_long_full_skirt"
+				}
+			},
+			"recipes_file_sha256": null,
+			"asset_packs": [
+				"system assets",
+				"Shirts 01",
+				"Skirts 01",
+				"Pants 01"
+			],
+			"full_detail": null,
+			"output_sha256": "41f8a1a7c6d08d6c0ac5b5a500f6a644127a4ad57f305d5b6b8d6a49cacfd643"
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
+	"manual_edits": []
+}

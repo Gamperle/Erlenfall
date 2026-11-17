@@ -1,0 +1,28 @@
+{
+	"schema": 1,
+	"asset": "assets/ui/parchment.png",
+	"kind": "ui_texture",
+	"origin": "pipeline",
+	"name": "parchment",
+	"stages": [
+		{
+			"step": "build",
+			"tool": "build_ui_textures.py",
+			"date": "2026-11-17",
+			"versions": {
+				"python": "3.14.4",
+				"numpy": "2.3.5",
+				"Pillow": "12.1.1"
+			},
+			"function": "build_parchment",
+			"source_textures": [
+				"assets/textures/plaster.jpg"
+			],
+			"source_sha256": {
+				"plaster.jpg": "82e43c68bddebb55a18577ae3cb0d01c02c23f086d342a854ff8a174d9f4fd73"
+			},
+			"output_sha256": "81bfbb0e17298de94f09d8352f0c6a8c72053dd17813dac6c6606da0cde195ff"
+		}
+	],
+	"manual_edits": []
+}

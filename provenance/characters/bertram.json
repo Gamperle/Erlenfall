@@ -1,0 +1,57 @@
+{
+	"schema": 1,
+	"asset": "assets/characters/bertram.glb",
+	"kind": "character",
+	"origin": "backfill",
+	"name": "bertram",
+	"stages": [
+		{
+			"step": "build",
+			"tool": "build_character.py with MPFB",
+			"date": null,
+			"versions": {
+				"Blender": null,
+				"MPFB": null
+			},
+			"recipe": {
+				"id": "bertram",
+				"shape": {
+					"gender": 1.0,
+					"age": 0.65,
+					"muscle": 0.8,
+					"weight": 0.6
+				},
+				"skin": "middleage_caucasian_male",
+				"clothes": [
+					"rehmanpolanski_viking_tunic",
+					"rehmanpolanski_viking_pants",
+					"rehmanpolanski_viking_boots"
+				],
+				"footwear": [
+					"rehmanpolanski_viking_boots"
+				],
+				"hair": "short02",
+				"beard": "grinsegold_beard_sigmund_wip",
+				"colors": {
+					"grinsegold_beard_sigmund_wip": [
+						0.3,
+						0.2,
+						0.13
+					]
+				},
+				"brows": "eyebrow009",
+				"eyes": "low-poly"
+			},
+			"recipes_file_sha256": null,
+			"asset_packs": [
+				"system assets",
+				"Suits 02",
+				"Bodyparts 05"
+			],
+			"full_detail": null,
+			"output_sha256": "c9410c964a5404050a7b568e921c767759007e671350b04f94214fa484375cd2"
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
+	"manual_edits": []
+}

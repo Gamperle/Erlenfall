@@ -35,18 +35,18 @@ The scripts are in [tools/asset_pipeline](../tools/asset_pipeline):
 
 ## Provenance records
 
-Each generated asset has a small JSON record in [`provenance/`](../provenance) at the repository root, named after the asset: `provenance/props/anvil_2.json`, `provenance/characters/hedda.json`, `provenance/textures/grass_relief.json`. It sits outside `assets/` so that [ASSETS.md](../ASSETS.md) doesn't need a row for it. ASSETS.md stays the human-readable list, with the license. The record is the same facts as data, so a script can check them and an asset can be remade or replaced.
+Each generated asset has a small JSON record in [`provenance/`](../provenance) at the repository root, named after the asset: `provenance/props/anvil_2.json`, `provenance/characters/hedda.json`, `provenance/textures/grass_relief.json`, `provenance/ui/panel.json`. It sits outside `assets/` so that [ASSETS.md](../ASSETS.md) doesn't need a row for it. ASSETS.md stays the human-readable list, with the license. The record is the same facts as data, so a script can check them and an asset can be remade or replaced.
 
 A prop's record holds the subject, the full prompt, the seed, the chosen candidate, and one stage for each step with its tool, tool versions, date, and settings:
 
 | Stage | Written by | Records |
 | --- | --- | --- |
 | `image` | `draw_klein.py` | FLUX.2 klein model, model revision, Python, PyTorch, and diffusers versions, size, steps, guidance, candidate number, the picture's SHA-256 |
-| `mesh` | `make_trellis.py` | TRELLIS.2 build, ComfyUI and PyTorch versions from the running server, face budget, SHA-256 of `trellis2_api.json` (which fixes BiRefNet, DINOv3, and the other settings), the picture's SHA-256 |
-| `cleanup` | Backfill only | TripoSR props' automatic cleanup |
+| `mesh` | `make_trellis.py` (TRELLIS.2), `run_triposr.py` (TripoSR) | TRELLIS.2 build, ComfyUI and PyTorch versions from the running server, face budget, SHA-256 of `trellis2_api.json` (which fixes BiRefNet, DINOv3, and the other settings), the picture's SHA-256. For TripoSR: its commit, PyTorch version, marching-cubes resolution |
+| `cleanup` | `cleanup_mesh.py` | TripoSR props' automatic cleanup: Blender version, face budget and mode, faces before and after, pieces removed |
 | `size` | `size_glb.py` | Blender version, size in meters, turn |
 
-Characters (`build_character.py`, `build_goblin.py`) record the recipe, the Blender and MPFB versions, and SHA-256 of the output. The relief maps (`build_relief_maps.py`) record the Poly Haven texture, the downloaded maps' SHA-256, and the library versions. `manual_edits` lists changes made by hand afterward, each with its text and date, and is empty when none are known. `origin` is `pipeline` for a record a script wrote as the asset was made, and `backfill` for one rebuilt from ASSETS.md.
+Characters (`build_character.py`, `build_goblin.py`) record the recipe, the Blender and MPFB versions, and SHA-256 of the output. The relief maps (`build_relief_maps.py`) record the Poly Haven texture, the downloaded maps' SHA-256, and the library versions. The interface textures (`build_ui_textures.py`) get one record each, in `provenance/ui/`, with the photos they were built from, the Python, NumPy, and Pillow versions, and SHA-256 of source and output. `manual_edits` lists changes made by hand afterward, each with its text and date, and is empty when none are known. `origin` is `pipeline` for a record a script wrote as the asset was made, and `backfill` for one rebuilt from ASSETS.md.
 
 The scripts write the records on the asset PC, in `<batch>\provenance\<name>.json`, each step adding its stage. After the models are sized, copy them next to the models:
 
@@ -58,10 +58,10 @@ Only copy the records of the pictures you chose, because the folder also holds o
 
 `tools/asset_pipeline/provenance.py` also has:
 
-- `validate` checks each record's fields, that its asset exists and has an ASSETS.md row, that every AI-generated prop in ASSETS.md has a record, and that seed and subject agree with ASSETS.md. CI runs it, with the unit checks in `test_provenance.py`.
-- `backfill` writes records for props that have none, from the ASSETS.md row and the batch file, and never overwrites an existing record (`--force` does). Nothing is guessed: the 59 existing props have `null` for dates and for tool versions ASSETS.md doesn't give (the FLUX.2 revision, PyTorch, diffusers). They were drawn before the pipeline wrote records.
+- `validate` checks each record's fields, that its asset exists and has an ASSETS.md row, that every AI-generated prop, character model, relief map, and script-built UI texture in ASSETS.md has a record, and that seed and subject agree with ASSETS.md. CI runs it, with the unit checks in `test_provenance.py`.
+- `backfill` writes records for props, characters, and relief maps that have none, from the ASSETS.md row, the batch file, and `villagers.json`, and never overwrites an existing record (`--force` does). Nothing is guessed: the 59 existing props have `null` for dates and for tool versions ASSETS.md doesn't give (the FLUX.2 revision, PyTorch, diffusers). They were drawn before the pipeline wrote records. The characters, the goblin, and the relief maps are backfilled the same way: the recipe or the Poly Haven asset name and the SHA-256 of the file as it is now, with `null` for dates and tool versions, because the scripts only write a record when run. The UI textures were rebuilt by their script, which produced identical files, so their records are `pipeline` records.
 
-The records of the first run on the asset PC haven't been seen yet: the pipeline changes were written and checked with sample data, but not run on the GPU, so all 179 records in `provenance/props/` are `backfill` ([#273](https://github.com/Gamperle/Erlenfall/issues/273)). The TripoSR fallback scripts and the UI textures don't write records ([#398](https://github.com/Gamperle/Erlenfall/issues/398)), and the characters and relief maps have no records yet ([#399](https://github.com/Gamperle/Erlenfall/issues/399)).
+The records of the first run on the asset PC haven't been seen yet: the pipeline changes were written and checked with sample data, but not run on the GPU, so every record of the props is a `backfill` ([#273](https://github.com/Gamperle/Erlenfall/issues/273)). The TripoSR writers (`run_triposr.py`, `cleanup_mesh.py`) are likewise untested on the asset PC. Copy `provenance.py` next to them there.
 
 ## Access
 

@@ -1,0 +1,67 @@
+{
+	"schema": 1,
+	"asset": "assets/characters/player.glb",
+	"kind": "character",
+	"origin": "backfill",
+	"name": "player",
+	"stages": [
+		{
+			"step": "build",
+			"tool": "build_character.py with MPFB",
+			"date": null,
+			"versions": {
+				"Blender": null,
+				"MPFB": null
+			},
+			"recipe": {
+				"id": "player",
+				"shape": {
+					"gender": 1.0,
+					"age": 0.55,
+					"muscle": 0.55,
+					"weight": 0.45
+				},
+				"skin": "young_caucasian_male",
+				"clothes": [
+					"toigo_wool_pants",
+					"toigo_fisherman_sweater",
+					"shoes03"
+				],
+				"footwear": [
+					"shoes03"
+				],
+				"colors": {
+					"toigo_wool_pants": [
+						0.33,
+						0.27,
+						0.2
+					],
+					"toigo_fisherman_sweater": [
+						0.5,
+						0.36,
+						0.24
+					]
+				},
+				"under_hem": {
+					"toigo_wool_pants": "toigo_fisherman_sweater"
+				},
+				"trim_above": {
+					"shoes03": 0.11
+				},
+				"hair": "short04",
+				"brows": "eyebrow009",
+				"eyes": "low-poly"
+			},
+			"recipes_file_sha256": null,
+			"asset_packs": [
+				"system assets",
+				"Shirts 01",
+				"Pants 01"
+			],
+			"full_detail": null,
+			"output_sha256": "fff1bc1e387b22d5712b4cc09e0fbc4b3d0134e2b2db5b63a17d6bcc75640e8b"
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
+	"manual_edits": []
+}

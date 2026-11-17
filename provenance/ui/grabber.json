@@ -1,0 +1,28 @@
+{
+	"schema": 1,
+	"asset": "assets/ui/grabber.png",
+	"kind": "ui_texture",
+	"origin": "pipeline",
+	"name": "grabber",
+	"stages": [
+		{
+			"step": "build",
+			"tool": "build_ui_textures.py",
+			"date": "2026-11-17",
+			"versions": {
+				"python": "3.14.4",
+				"numpy": "2.3.5",
+				"Pillow": "12.1.1"
+			},
+			"function": "build_small_parts",
+			"source_textures": [
+				"assets/textures/iron_ore_2.jpg"
+			],
+			"source_sha256": {
+				"iron_ore_2.jpg": "369f69eb86a7dcc4e5b6e30b1f3a4da5ce6ba50cf417de937efb4f09101f88d4"
+			},
+			"output_sha256": "524eea8204ffb94efa4ef11a4733edbb18f8f948ed14aa63f66f945149864d3b"
+		}
+	],
+	"manual_edits": []
+}

@@ -1,0 +1,29 @@
+{
+	"schema": 1,
+	"asset": "assets/textures/rock_3_relief.png",
+	"kind": "derived_texture",
+	"origin": "backfill",
+	"name": "rock_3_relief",
+	"stages": [
+		{
+			"step": "pack",
+			"tool": "build_relief_maps.py",
+			"date": null,
+			"versions": {
+				"python": null,
+				"numpy": null,
+				"Pillow": null
+			},
+			"source": "https://polyhaven.com/a/rock_05",
+			"polyhaven_asset": "rock_05",
+			"resolution": "1k",
+			"source_maps_sha256": {
+				"nor_gl": null,
+				"arm": null
+			},
+			"output_sha256": "955931f6c8e3a8dee17eebd5d5ee09f183b8e6e87c378780b6dbf3cd1f70dac5"
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
+	"manual_edits": []
+}

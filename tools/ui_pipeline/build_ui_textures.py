@@ -9,10 +9,14 @@ nine-patch tile without seams. assets/ui/erlenfall_theme.tres sets those margins
 change both together.
 """
 
+import sys
 from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "asset_pipeline"))
+import provenance
 
 SOURCE = Path("assets/textures")
 OUTPUT = Path("assets/ui")
@@ -251,14 +255,39 @@ def build_hud_parts():
     save("hud_plate.png", color, alpha)
 
 
+# What each build function makes, and the surface photos each texture is built from (none for shapes drawn in code).
+# Keep this in step with the functions above.
+IRON, WOOD = "iron_ore_2.jpg", "wood_2.jpg"
+BUILDS = [
+    (build_panel, {"panel.png": [WOOD, IRON]}),
+    (build_parchment, {"parchment.png": ["plaster.jpg"]}),
+    (build_buttons, {name: [WOOD] for name in ("button_normal.png", "button_hover.png", "button_pressed.png", "button_disabled.png")} | {"button_focus.png": []}),
+    (build_bars, {"bar_trough.png": [IRON], "bar_fill.png": [WOOD]}),
+    (build_small_parts, {"grabber.png": [IRON], "grabber_hover.png": [IRON], "scroll_grabber.png": [IRON], "arrow_down.png": [], "divider.png": []}),
+    (build_hud_parts, {"compass_strip.png": [IRON], "hud_plate.png": [IRON]}),
+]
+
+
+def write_provenance(builder, outputs):
+    """Writes one record for each texture the builder made (#398)."""
+    versions = {"python": sys.version.split()[0], "numpy": np.__version__, "Pillow": provenance.module_version("Pillow")}
+    for name, sources in outputs.items():
+        target = f"assets/ui/{name}"
+        stage = {
+            "step": "build", "tool": "build_ui_textures.py", "date": provenance.today(), "versions": versions,
+            "function": builder.__name__, "source_textures": [f"assets/textures/{source}" for source in sources],
+            "source_sha256": {source: provenance.sha256(str(SOURCE / source)) for source in sources},
+            "output_sha256": provenance.sha256(str(OUTPUT / name)),
+        }
+        provenance.save(provenance.record_path("ui_texture", target), provenance.new_record(
+            "ui_texture", target, name=Path(name).stem, stages=[stage]))
+
+
 def main():
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    build_panel()
-    build_parchment()
-    build_buttons()
-    build_bars()
-    build_small_parts()
-    build_hud_parts()
+    for builder, outputs in BUILDS:
+        builder()
+        write_provenance(builder, outputs)
 
 
 if __name__ == "__main__":

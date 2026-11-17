@@ -83,6 +83,8 @@ ssh ASSET_PC "powershell -NoProfile -ExecutionPolicy Bypass -File D:\erlenfall-a
 
 Most models take 3 to 9 minutes. Small ones such as swords take about a minute, and detailed boxes such as chests and crates up to 25. The models land in `klein2\trellis`, and finished ones are skipped, so the script can be run again after a dropped connection. Long SSH sessions to this PC have dropped several times, so for a big batch, run it a few names at a time.
 
+`build_batch.sh` does that for you. With `ASSET_PC` set to the SSH login, `tools/asset_pipeline/build_batch.sh klein2 4` finds the pictures in `klein2\input` that have no model yet, makes them four at a time, retries dropped connections, and lists whatever is still missing at the end (exit code 1). Start it in the background so it outlives your terminal.
+
 TRELLIS.2 sees only the front, like TripoSR did, but it gets thin parts, backs, and proportions much more right:
 
 ![TRELLIS.2 beside TripoSR for a hand cart and a crate](examples/3_trellis_vs_triposr.jpg)

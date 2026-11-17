@@ -296,6 +296,13 @@ def backfill(root=ROOT, force=False, out=print):
     return 1 if failed else 0
 
 
+def texture_problems(root=ROOT):
+    """Props whose embedded textures exceed their size tier (shrink_textures.py, #445)."""
+    import shrink_textures
+
+    return shrink_textures.check_props(root)
+
+
 def validate(root=ROOT, out=print):
     problems = []
     text = read_text(os.path.join(root, "ASSETS.md"))
@@ -329,6 +336,7 @@ def validate(root=ROOT, out=print):
         seed = re.search(r"Seed (\d+), subject: \"(.+?)\"\.", cells[4])
         if seed and (record.get("seed") != int(seed.group(1)) or record.get("subject") != seed.group(2)):
             problems.append("%s: seed or subject differs from ASSETS.md" % asset)
+    problems += texture_problems(root)
     for problem in problems:
         out(problem)
     out("provenance: %d problems" % len(problems) if problems else "provenance: ok, %d assets" % len(seen))

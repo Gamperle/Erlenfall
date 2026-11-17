@@ -15,12 +15,15 @@ offsets that follow them are rewritten. Normal maps are renormalized after shrin
 Needs Pillow and the standard library only (no Blender), so it runs on any machine.
 
 Usage, from the repository root:
-  shrink_textures.py [--apply] [--ledger] [--records] [FILE.glb ...]
+  shrink_textures.py [--apply] [--ledger] [--records] [--provenance FOLDER] [--check] [FILE.glb ...]
 
   Without --apply it only reports what would change. Without files it takes every assets/props/*.glb.
   --apply     rewrites the GLBs
   --records   also adds a "textures" stage to each changed prop's provenance record (provenance.py)
+  --provenance FOLDER  adds that stage to FOLDER/<name>.json instead, like size_glb.py (the asset PC's batch folder)
   --ledger    also adds a note to each changed prop's ASSETS.md row
+  --check     changes nothing and exits 1 if a prop's textures are larger than its size tier (#445). Needs no
+              Pillow. `provenance.py validate` runs the same check.
 """
 import glob
 import io
@@ -30,7 +33,10 @@ import os
 import struct
 import sys
 
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:  # --check and provenance.py validate read PNG headers only
+    Image = None
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -69,6 +75,40 @@ def write_glb(path, document, binary):
         file.write(b"glTF" + struct.pack("<II", 2, total))
         file.write(struct.pack("<I", len(text)) + b"JSON" + text)
         file.write(struct.pack("<I", len(binary)) + b"BIN\0" + binary)
+
+
+def png_size(raw):
+    """(width, height) from a PNG's header, without Pillow."""
+    if raw[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError("not a PNG")
+    return struct.unpack(">II", raw[16:24])
+
+
+def check_file(path):
+    """Problems for one GLB whose embedded textures are above its size tier (none when fine). A file that is
+    not a real GLB (a Git LFS pointer in a checkout without LFS) is skipped."""
+    try:
+        document, binary = read_glb(path)
+    except ValueError:
+        return []
+    edge = texture_edge(max(bounding_size(document)))
+    problems = []
+    for index, image in enumerate(document.get("images", [])):
+        view = document["bufferViews"][image["bufferView"]]
+        start = view.get("byteOffset", 0)
+        size = png_size(binary[start:start + 24])
+        if max(size) > edge:
+            problems.append("%s: texture %d is %d x %d px, above the %d px its size allows (run shrink_textures.py --apply)"
+                            % (os.path.basename(path), index, size[0], size[1], edge))
+    return problems
+
+
+def check_props(root=ROOT):
+    """Problems for every assets/props/*.glb under root."""
+    problems = []
+    for path in sorted(glob.glob(os.path.join(root, "assets", "props", "*.glb"))):
+        problems += check_file(path)
+    return problems
 
 
 def _matrix(node):
@@ -198,10 +238,11 @@ def vram_bytes(pixels):
     return pixels * 4 // 3
 
 
-def add_record_stage(report):
+def add_record_stage(report, folder=None):
     name = os.path.splitext(os.path.basename(report["path"]))[0]
-    record_file = provenance.record_path("ai_prop", "assets/props/%s.glb" % name)
-    if not os.path.exists(record_file):
+    record_file = os.path.join(folder, name + ".json") if folder else provenance.record_path(
+        "ai_prop", "assets/props/%s.glb" % name)
+    if not folder and not os.path.exists(record_file):
         print("no provenance record for %s" % name)
         return
     import PIL
@@ -229,11 +270,27 @@ def add_ledger_note(report, text):
 
 
 def main(argv):
+    argv = list(argv)
+    folder = None
+    if "--provenance" in argv:
+        at = argv.index("--provenance")
+        folder = argv[at + 1]
+        del argv[at:at + 2]
     flags = [a for a in argv if a.startswith("--")]
+    if "--check" in flags:
+        paths = [a for a in argv if not a.startswith("--")]
+        problems = [p for path in paths for p in check_file(path)] if paths else check_props()
+        for problem in problems:
+            print(problem)
+        print("textures: %d problems" % len(problems) if problems else "textures: ok")
+        return 1 if problems else 0
+    if Image is None:
+        print("Pillow is needed: pip install pillow numpy")
+        return 1
     files = [a for a in argv if not a.startswith("--")] or sorted(glob.glob(os.path.join(ROOT, "assets", "props", "*.glb")))
     apply = "--apply" in flags
     ledger_path = os.path.join(ROOT, "ASSETS.md")
-    ledger = provenance.read_text(ledger_path)
+    ledger = provenance.read_text(ledger_path) if "--ledger" in flags else ""
     totals = [0, 0, 0, 0]
     for path in files:
         report = shrink_file(path, apply)
@@ -244,8 +301,8 @@ def main(argv):
         print("%-34s %.2f m  -> %4d px  %s" % (os.path.basename(path), report["longest"], report["edge"],
                                                "changed" if report["changed"] else "ok"))
         if apply and report["changed"]:
-            if "--records" in flags:
-                add_record_stage(report)
+            if "--records" in flags or folder:
+                add_record_stage(report, folder)
             if "--ledger" in flags:
                 ledger = add_ledger_note(report, ledger)
     if apply and "--ledger" in flags:

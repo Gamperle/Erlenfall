@@ -61,7 +61,7 @@ Only copy the records of the pictures you chose, because the folder also holds o
 - `validate` checks each record's fields, that its asset exists and has an ASSETS.md row, that every AI-generated prop, character model, relief map, and script-built UI texture in ASSETS.md has a record, and that seed and subject agree with ASSETS.md. CI runs it, with the unit checks in `test_provenance.py`.
 - `backfill` writes records for props, characters, and relief maps that have none, from the ASSETS.md row, the batch file, and `villagers.json`, and never overwrites an existing record (`--force` does). Nothing is guessed: the 59 existing props have `null` for dates and for tool versions ASSETS.md doesn't give (the FLUX.2 revision, PyTorch, diffusers). They were drawn before the pipeline wrote records. The characters, the goblin, and the relief maps are backfilled the same way: the recipe or the Poly Haven asset name and the SHA-256 of the file as it is now, with `null` for dates and tool versions, because the scripts only write a record when run. The UI textures were rebuilt by their script, which produced identical files, so their records are `pipeline` records.
 
-The records of the first run on the asset PC haven't been seen yet: the pipeline changes were written and checked with sample data, but not run on the GPU ([#273](https://github.com/Gamperle/Erlenfall/issues/273)). The TripoSR writers (`run_triposr.py`, `cleanup_mesh.py`) are likewise untested on the asset PC. Copy `provenance.py` next to them there.
+The records of the first run on the asset PC haven't been seen yet: the pipeline changes were written and checked with sample data, but not run on the GPU, so every record of the props is a `backfill` ([#273](https://github.com/Gamperle/Erlenfall/issues/273)). The TripoSR writers (`run_triposr.py`, `cleanup_mesh.py`) are likewise untested on the asset PC. Copy `provenance.py` next to them there.
 
 ## Access
 
@@ -88,6 +88,27 @@ ssh ASSET_PC "powershell -NoProfile -ExecutionPolicy Bypass -File D:\erlenfall-a
 ```
 
 It should report that the GPU is available. The models take about 15 GB. ComfyUI is pinned to v0.43.0, with PyTorch 2.14 for ROCm 10.1 from AMD's wheel index. `setup_pc.ps1` installs the TripoSR fallback and the SDXL environment.
+
+## Asset PC versions
+
+Read on 2026-11-17 over SSH, without changing anything on the PC. The PC is not on the setup that ROCm 10.1 lists, and the HIP DLL in the virtual environments differs from the system one, which may play a part in the startup crashes in [#59](https://github.com/Gamperle/Erlenfall/issues/59). Whether it does isn't known.
+
+| Item | Value |
+| --- | --- |
+| GPU | AMD Radeon RX 7900 XT |
+| Display driver | 32.0.32015.7029, dated 2026-10-18 |
+| Radeon software | AMD Software: Adrenalin Edition, version value 26.10.1 (the release string 26.20.15.07-261015a is from [#71](https://github.com/Gamperle/Erlenfall/issues/71)) |
+| Listed for ROCm 10.1 | Adrenalin 26.10.41.05, Windows 11 25H2 |
+| Windows | 26H2 (`DisplayVersion`), build 26300.9974 (`UBR`); [#71](https://github.com/Gamperle/Erlenfall/issues/71) recorded 26300.9711 on 2 November, so Windows has updated since |
+| `amdhip64_7.dll`, `C:\Windows\System32` | 10.0.3683.0, SHA-256 `7E50A36172DACA1A4C321DC3CE3FCC3898EF1B4C3107923BE5D5AC87E9113D83` |
+| `amdhip64_7.dll`, `venv`, `venv-bakeoff`, `venv-comfy`, `venv-images` (each under `Lib\site-packages\_rocm_sdk_core\bin`) | 10.0.3684.0, identical SHA-256 `F20E2065CEE5889789BF73DF0C2D1F4EFB481E74ADE30488C352FD65AD80AC83` |
+| `amdhip64_7.dll`, `trellis2\venv` (`_rocm_sdk_core` and `_rocm_sdk_devel`) | 10.0.3581.0, SHA-256 `3D72E1AC453D58C55C1F94CC7958A13CB42233D6F711AC363E5FA2B0DFAE43A8`. An older ROCm SDK, no longer used for batches |
+
+So the four current environments agree with each other and differ from the system DLL by one build (3684 against 3683). The older `trellis2\venv` is 100 builds behind.
+
+How to read them again (read-only, PowerShell 5): the driver from the registry key `HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}` (`DriverVersion`, `DriverDate`, `RadeonSoftwareVersion`), because `Get-CimInstance Win32_VideoController` is denied to the SSH user; Windows from `HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion` (`DisplayVersion`, `CurrentBuildNumber`, `UBR`); the DLLs with `Get-FileHash <path> -Algorithm SHA256` and `(Get-Item <path>).VersionInfo.FileVersion`.
+
+**Rollback note.** Before any driver or Windows update, the working state is the driver 32.0.32015.7029 (Adrenalin 26.10.1), Windows build 26300.9974, and the DLL hashes above. If a newer driver breaks generation, reinstall that driver version from AMD's archive, which needs the maintainer because the SSH user is not an administrator. Don't copy the system DLL over the one in a venv, or the other way round, to test the mismatch, without first keeping a copy of the original and noting its hash here.
 
 ## Making a batch
 
@@ -118,6 +139,22 @@ The ComfyUI server only listens on the PC itself. To use its web interface, open
 **Pictures.** FLUX.2 klein 4B is the default, under Apache 2.0, with no account needed. In testing it got objects right far more often than SDXL, with cleaner backgrounds. It needs `enable_model_cpu_offload`, because keeping every part on the GPU exceeds its memory, and its own environment with current `diffusers`. Z-Image Turbo also works, at 18 s and 12.1 GB. Don't use FLUX.2 klein 9B, whose license is non-commercial.
 
 **Models.** TRELLIS.2 replaced TripoSR in November 2026 ([#70](https://github.com/Gamperle/Erlenfall/issues/70)). On the same pictures it gave much sharper detail, a real back instead of a guessed one, and correct thin parts such as spoked wheels and ropes. It made a clean crate where TripoSR's model failed cleanup ([#150](https://github.com/Gamperle/Erlenfall/issues/150)). It's about 3 times slower, but needs no cleanup, and it hasn't crashed. Pixal3D, which the same ComfyUI template offers, kept closer to the picture's colors, but flattened a well's roof into one slope. Hunyuan3D can't be used, because its license excludes the EU.
+
+**Comparison with SDXL and Z-Image Turbo** ([#69](https://github.com/Gamperle/Erlenfall/issues/69)). The same eight objects, three seeds each, at 1024 px on the RX 7900 XT with `enable_model_cpu_offload`, scored by eye, were run through each model:
+
+| Model | License | Time per picture | Peak VRAM | Result |
+| --- | --- | --- | --- | --- |
+| FLUX.2 klein 4B | Apache 2.0 | 9.3 s | 7.9 GB | Real anvils, closed cupboards, white backgrounds, timber walls with a clear outline. Hammers and flasks right. Plain "bellows" wrong |
+| Z-Image Turbo | Apache 2.0 | 17.9 s | 12.1 GB (25.2 GB and 258 s without offload) | About as accurate as klein, but slower and heavier. Same failure on bellows |
+| SDXL (reference) | CreativeML Open RAIL++-M | About 8 s | Not measured | Drew an axe for a hammer, and does not know bellows |
+
+Both newer models clearly beat SDXL on object accuracy. Through TripoSR, anvil, hammer and cupboard came out clearly better and flasks looked more like glass. Timber walls failed with both (Z-Image lost the white plaster as background, klein made a wrong box), which is why walls are built in code. klein was chosen for its speed and memory, and it is the model every later batch used (`klein1` to `klein3`).
+
+Bellows were fixed by the prompt, not by another model. The plain word failed, but `klein3` describes the shape (a flat pear-shaped accordion of dark folded leather between two wooden boards, a handle at the wide end, an iron nozzle at the narrow end, seen from the side), and `bellows_1` and `bellows_3` made from it are in the game. So the depth ControlNet fallback from the issue hasn't been needed, and wasn't tried.
+
+**License and access, checked on 2026-11-17** from the Hugging Face model pages and API: [FLUX.2-klein-4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B) and [Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) both declare `apache-2.0`, neither is gated or private (`gated: false`), and an anonymous request for each one's `model_index.json` returns 200. This is a reading of the cards, not legal advice, and the pages could change. The larger FLUX.2 klein 9B is non-commercial, see above.
+
+What the comparison doesn't cover: the scores were not recorded per picture in the repository, only the summary in the issue, and the test used 8 objects, not the full prop list.
 
 The template's upsample stage is set to 1024 instead of 1536. At 1536 a step took 282 s instead of 23 s, probably because it no longer fits in the card's 20 GB.
 

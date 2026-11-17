@@ -6,10 +6,10 @@
 		"iron_ore": { "name": "ITEM_IRON_ORE", "material": true },
 		"coal": { "name": "ITEM_COAL", "material": true },
 		"wood": { "name": "ITEM_WOOD", "material": true },
-		"iron_ingot": { "name": "ITEM_IRON_INGOT", "material": true, "model": [
+		"iron_ingot": { "name": "ITEM_IRON_INGOT", "scene": "res://assets/props/iron_ingot_0.glb", "scene_scale": 0.8, "material": true, "model": [
 			{ "size": [0.09, 0.05, 0.2], "at": [0, 0.025, 0], "color": "#6f7276" }
 		] },
-		"iron_nails": { "name": "ITEM_IRON_NAILS", "model": [
+		"iron_nails": { "name": "ITEM_IRON_NAILS", "scene": "res://assets/props/iron_nails_3.glb", "scene_scale": 0.6, "model": [
 			{ "size": [0.012, 0.012, 0.09], "at": [-0.03, 0.006, 0], "color": "#8a8d92" },
 			{ "size": [0.012, 0.012, 0.09], "at": [0.0, 0.006, 0.02], "color": "#8a8d92" },
 			{ "size": [0.012, 0.012, 0.09], "at": [0.03, 0.006, -0.01], "color": "#8a8d92" }
@@ -21,11 +21,11 @@
 		"hearty_stew": { "name": "ITEM_HEARTY_STEW", "use": { "heal": 60 } },
 		"healing_potion": { "name": "ITEM_HEALING_POTION", "use": { "heal": 50 } },
 		"torch": { "name": "ITEM_TORCH" },
-		"short_bow": { "name": "ITEM_SHORT_BOW", "fires": "arrow", "ranged_damage_multiplier": 1.0, "model": [{ "size": [0.03, 0.7, 0.03], "at": [0, 0.35, 0], "color": "#6b4a2b", "slot": "limb" }], "parts": { "limb": ["oak", "ash", "ebony"] } },
-		"long_bow": { "name": "ITEM_LONG_BOW", "fires": "arrow", "ranged_damage_multiplier": 1.4, "model": [{ "size": [0.035, 1.0, 0.035], "at": [0, 0.5, 0], "color": "#6b4a2b", "slot": "limb" }], "parts": { "limb": ["oak", "ash", "ebony"] } },
+		"short_bow": { "name": "ITEM_SHORT_BOW", "scene": "res://assets/props/short_bow_3.glb", "scene_scale": 0.7, "fires": "arrow", "ranged_damage_multiplier": 1.0, "model": [{ "size": [0.03, 0.7, 0.03], "at": [0, 0.35, 0], "color": "#6b4a2b", "slot": "limb" }], "parts": { "limb": ["oak", "ash", "ebony"] } },
+		"long_bow": { "name": "ITEM_LONG_BOW", "scene": "res://assets/props/long_bow_4.glb", "scene_scale": 0.625, "fires": "arrow", "ranged_damage_multiplier": 1.4, "model": [{ "size": [0.035, 1.0, 0.035], "at": [0, 0.5, 0], "color": "#6b4a2b", "slot": "limb" }], "parts": { "limb": ["oak", "ash", "ebony"] } },
 		"arrow": { "name": "ITEM_ARROW", "material": true },
 		"fire_flask": { "name": "ITEM_FIRE_FLASK" },
-		"iron_dagger": { "name": "ITEM_IRON_DAGGER", "damage": 10, "model": [
+		"iron_dagger": { "name": "ITEM_IRON_DAGGER", "scene": "res://assets/props/iron_dagger_0.glb", "scene_scale": 1.0, "damage": 10, "model": [
 			{ "size": [0.03, 0.14, 0.03], "at": [0, 0.07, 0], "color": "#3b3026", "slot": "grip" },
 			{ "size": [0.09, 0.02, 0.03], "at": [0, 0.15, 0], "color": "#6f7276" },
 			{ "size": [0.045, 0.32, 0.012], "at": [0, 0.32, 0], "color": "#a9acb0", "slot": "blade" }
@@ -35,7 +35,7 @@
 			{ "size": [0.16, 0.025, 0.035], "at": [0, 0.19, 0], "color": "#6f7276" },
 			{ "size": [0.06, 0.75, 0.014], "at": [0, 0.575, 0], "color": "#a9acb0", "slot": "blade" }
 		], "parts": { "grip": ["oak", "ash", "ebony"], "blade": ["straight", "broad", "darkened"] } },
-		"iron_axe": { "name": "ITEM_IRON_AXE", "damage": 16, "model": [
+		"iron_axe": { "name": "ITEM_IRON_AXE", "scene": "res://assets/props/iron_axe_0.glb", "scene_scale": 0.78, "damage": 16, "model": [
 			{ "size": [0.03, 0.62, 0.03], "at": [0, 0.31, 0], "color": "#3b3026", "slot": "grip" },
 			{ "size": [0.17, 0.13, 0.02], "at": [0.09, 0.55, 0], "color": "#a9acb0", "slot": "blade" }
 		], "parts": { "grip": ["oak", "ash", "ebony"], "blade": ["straight", "broad", "darkened"] } }

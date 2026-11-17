@@ -33,7 +33,7 @@ import sys
 
 SCHEMA = 1
 KINDS = ("ai_prop", "character", "derived_texture", "ui_texture")
-PROP_STEPS = ("image", "mesh", "cleanup", "size")
+PROP_STEPS = ("image", "mesh", "cleanup", "size", "textures")
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 # The kind decides the folder under provenance/.

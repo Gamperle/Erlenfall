@@ -154,7 +154,35 @@ Bellows were fixed by the prompt, not by another model. The plain word failed, b
 
 **License and access, checked on 2026-11-17** from the Hugging Face model pages and API: [FLUX.2-klein-4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B) and [Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) both declare `apache-2.0`, neither is gated or private (`gated: false`), and an anonymous request for each one's `model_index.json` returns 200. This is a reading of the cards, not legal advice, and the pages could change. The larger FLUX.2 klein 9B is non-commercial, see above.
 
-What the comparison doesn't cover: the scores were not recorded per picture in the repository, only the summary in the issue, and the test used 8 objects, not the full prop list.
+**The pictures.** The klein and Z-Image pictures still exist on the asset PC (`bakeoff\pictures`: 8 objects, seeds 5000 to 5002, 48 in all) and are saved as a contact sheet, one row per object with klein on the left and Z-Image on the right: [`6_klein_zimage_pictures.jpg`](../tools/asset_pipeline/examples/6_klein_zimage_pictures.jpg). The 14 TripoSR models made from the first choices are in [`7_klein_zimage_models.jpg`](../tools/asset_pipeline/examples/7_klein_zimage_models.jpg) (top row klein, bottom row Z-Image; no bellows model was made). The prompts are in `image_bakeoff.py` on the PC.
+
+![Eight objects, three seeds each, klein left and Z-Image right](../tools/asset_pipeline/examples/6_klein_zimage_pictures.jpg)
+
+**The scores.** The by-eye scores were never written to a file, on the PC or in the repository, so the original per-picture scores are gone. What the logs do hold is the time per picture (1024 px, `enable_model_cpu_offload`):
+
+| Model | Pictures logged | Fastest | Median | Slowest | Peak VRAM |
+| --- | --- | --- | --- | --- | --- |
+| klein 4B | 24 of 24 | 9.2 s | 9.4 s | 52.8 s (first picture, includes warm-up) | 7.9 GB |
+| Z-Image Turbo | 19 of 24 (5 lines missing from the log) | 17.8 s | 17.9 s | 34.4 s (a bellows picture) | 12.1 GB |
+
+Re-reading the contact sheet (a later reading, not the original scores), per object across the three seeds:
+
+| Object | klein 4B | Z-Image Turbo |
+| --- | --- | --- |
+| Anvil | Right on a stump in 2 of 3. Seed 5000 is a flat star shape | Right in 3 of 3, with a horn |
+| Barrel | Right in 3 of 3 | Right in 3 of 3, with shinier hoops |
+| Bellows (plain word) | Wrong in 3 of 3: a barrel-like drum with folds | Wrong in 3 of 3: a box with vertical pleats and a rod |
+| Cupboard | Closed doors in 3 of 3 | Closed doors in 3 of 3, taller |
+| Flask | Right in 3 of 3, darker liquid | Right in 3 of 3, paler liquid, a longer neck |
+| Hammer | A block head like a mallet in 3 of 3 | A steel head closer to a smith's hammer in 3 of 3 |
+| Short sword | Broad blade, dagger-like | Slimmer, longer blade |
+| Timber wall | Clear outline in 3 of 3 | Clear outline in 2 of 3. Seed 5000 has a gabled top |
+
+This reading differs a little from the summary above ("about as accurate as klein"): on the sheet Z-Image's hammers look more like a smith's hammer, and klein's anvil seed 5000 is a miss.
+
+**SDXL.** The SDXL pictures of this comparison are not on the PC, only the earlier SDXL sample sets (`samples`, `samples2`, `samples3`), which used different prompts. The SDXL row above rests on the issue comment alone.
+
+What the comparison doesn't cover: the original per-picture scores (see above), the SDXL pictures, and the full prop list. The test used 8 objects.
 
 The template's upsample stage is set to 1024 instead of 1536. At 1536 a step took 282 s instead of 23 s, probably because it no longer fits in the card's 20 GB.
 

@@ -1,0 +1,28 @@
+{
+	"schema": 1,
+	"asset": "assets/ui/button_normal.png",
+	"kind": "ui_texture",
+	"origin": "pipeline",
+	"name": "button_normal",
+	"stages": [
+		{
+			"step": "build",
+			"tool": "build_ui_textures.py",
+			"date": "2026-11-17",
+			"versions": {
+				"python": "3.14.4",
+				"numpy": "2.3.5",
+				"Pillow": "12.1.1"
+			},
+			"function": "build_buttons",
+			"source_textures": [
+				"assets/textures/wood_2.jpg"
+			],
+			"source_sha256": {
+				"wood_2.jpg": "01c9a372cfd7a7bf471b59c2458ed3ccecc93448aebf7ba0cc5b3b5b6ed24349"
+			},
+			"output_sha256": "7f18023c20a36572a6ea223f419da59c6f7f2ecc8202bbfd1b86b47d2f01c60e"
+		}
+	],
+	"manual_edits": []
+}

@@ -1,0 +1,29 @@
+{
+	"schema": 1,
+	"asset": "assets/textures/boulder_relief.png",
+	"kind": "derived_texture",
+	"origin": "backfill",
+	"name": "boulder_relief",
+	"stages": [
+		{
+			"step": "pack",
+			"tool": "build_relief_maps.py",
+			"date": null,
+			"versions": {
+				"python": null,
+				"numpy": null,
+				"Pillow": null
+			},
+			"source": "https://polyhaven.com/a/rock_boulder_dry",
+			"polyhaven_asset": "rock_boulder_dry",
+			"resolution": "1k",
+			"source_maps_sha256": {
+				"nor_gl": null,
+				"arm": null
+			},
+			"output_sha256": "ece0f4f662bac41b4219c138b85bc727474a45b7d7e9dd2464a0eb9ed89206e0"
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
+	"manual_edits": []
+}

@@ -10,13 +10,14 @@ runs inside Blender's Python and on the asset PC, where the scripts are copied f
 
 Command line, from the repository root:
   provenance.py validate             check every record and compare with ASSETS.md (exit 1 on problems)
-  provenance.py backfill [--force]   write records for AI-generated props from what ASSETS.md records
+  provenance.py backfill [--force]   write records for AI-generated props, characters and relief maps
+                       from what ASSETS.md and the recipes record
   provenance.py note ASSET TEXT      add a manual edit to an asset's record
 
 A record, as JSON:
   schema        1
   asset         "assets/props/anvil_2.glb"
-  kind          "ai_prop", "character" or "derived_texture"
+  kind          "ai_prop", "character", "derived_texture" (relief maps) or "ui_texture" (assets/ui)
   origin        "pipeline" if a script wrote it as the asset was made, or "backfill" if it was rebuilt
                 from ASSETS.md afterwards. A backfilled record has null for what ASSETS.md doesn't say
   stages        what ran, in order: {"step", "tool", "versions", "date", plus the step's settings}
@@ -31,12 +32,12 @@ import re
 import sys
 
 SCHEMA = 1
-KINDS = ("ai_prop", "character", "derived_texture")
+KINDS = ("ai_prop", "character", "derived_texture", "ui_texture")
 PROP_STEPS = ("image", "mesh", "cleanup", "size")
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 # The kind decides the folder under provenance/.
-FOLDERS = {"ai_prop": "props", "character": "characters", "derived_texture": "textures"}
+FOLDERS = {"ai_prop": "props", "character": "characters", "derived_texture": "textures", "ui_texture": "ui"}
 
 
 def today():
@@ -272,6 +273,69 @@ def generated_rows(text):
             yield paths[0], cells
 
 
+def source_rows(text):
+    """{texture name: Poly Haven asset name} from the rows for the 1K photos in ASSETS.md."""
+    found = {}
+    for paths, cells in ledger_rows(text):
+        link = re.search(r"polyhaven\.com/a/(\w+)", cells[1])
+        if len(paths) == 1 and link and re.fullmatch(r"assets/textures/\w+\.jpg", paths[0]):
+            found[os.path.basename(paths[0])[:-4]] = link.group(1)
+    return found
+
+
+def file_hash(root, asset):
+    path = os.path.join(root, asset)
+    return sha256(path) if os.path.exists(path) else None
+
+
+NOTE = "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null."
+
+
+def character_record(root, asset, cells):
+    """A backfilled record for one character model. The tool versions and date weren't kept, so they are null."""
+    name = os.path.splitext(os.path.basename(asset))[0]
+    if name == "goblin":
+        stage = {"step": "export", "tool": "build_goblin.py", "date": None, "versions": {"Blender": None},
+                 "source": "Low Poly Goblin (Rigged) by tbbk, https://opengameart.org/content/low-poly-goblin-rigged",
+                 "source_sha256": None, "output_sha256": file_hash(root, asset)}
+    else:
+        recipes = os.path.join(root, "tools", "character_pipeline", "villagers.json")
+        recipe = next((r for r in load(recipes) if r.get("id") == name), None) if os.path.exists(recipes) else None
+        if recipe is None:
+            return None, "no recipe with id %s in villagers.json" % name
+        packs = re.search(r"asset packs\]\([^)]*\): (.+)$", cells[1])
+        stage = {"step": "build", "tool": "build_character.py with MPFB", "date": None, "versions": {"Blender": None, "MPFB": None},
+                 "recipe": recipe, "recipes_file_sha256": None, "asset_packs": [p.strip() for p in packs.group(1).split(",")] if packs else None,
+                 "full_detail": None, "output_sha256": file_hash(root, asset)}
+    return new_record("character", asset, "backfill", name=name, stages=[stage], backfill_note=NOTE), None
+
+
+def relief_record(root, asset, polyhaven):
+    name = os.path.splitext(os.path.basename(asset))[0]
+    stage = {"step": "pack", "tool": "build_relief_maps.py", "date": None, "versions": {"python": None, "numpy": None, "Pillow": None},
+             "source": "https://polyhaven.com/a/" + polyhaven, "polyhaven_asset": polyhaven, "resolution": "1k",
+             "source_maps_sha256": {"nor_gl": None, "arm": None}, "output_sha256": file_hash(root, asset)}
+    return new_record("derived_texture", asset, "backfill", name=name, stages=[stage], backfill_note=NOTE), None
+
+
+def other_records(root, text):
+    """Yields (asset, kind, record, reason) for the character models and relief maps that exist."""
+    for paths, cells in ledger_rows(text):
+        for asset in paths:
+            if re.fullmatch(r"assets/characters/\w+\.glb", asset) and os.path.exists(os.path.join(root, asset)):
+                yield (asset, "character") + character_record(root, asset, cells)
+    sources = source_rows(text)
+    folder = os.path.join(root, "assets", "textures")
+    for file in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+        if file.endswith("_relief.png"):
+            asset = "assets/textures/" + file
+            polyhaven = sources.get(file[: -len("_relief.png")])
+            if polyhaven is None:
+                yield asset, "derived_texture", None, "ASSETS.md has no Poly Haven source for the photo of the same name"
+            else:
+                yield (asset, "derived_texture") + relief_record(root, asset, polyhaven)
+
+
 def backfill(root=ROOT, force=False, out=print):
     text = read_text(os.path.join(root, "ASSETS.md"))
     info = shared_prompt(text)
@@ -292,6 +356,16 @@ def backfill(root=ROOT, force=False, out=print):
             continue
         save(path, record)
         written += 1
+    for asset, kind, record, reason in other_records(root, text):
+        path = record_path(kind, asset, root)
+        if os.path.exists(path) and not force:
+            skipped += 1
+        elif record is None:
+            out("not backfilled: %s: %s" % (asset, reason))
+            failed += 1
+        else:
+            save(path, record)
+            written += 1
     out("backfill: %d written, %d already there, %d not possible" % (written, skipped, failed))
     return 1 if failed else 0
 
@@ -329,10 +403,36 @@ def validate(root=ROOT, out=print):
         seed = re.search(r"Seed (\d+), subject: \"(.+?)\"\.", cells[4])
         if seed and (record.get("seed") != int(seed.group(1)) or record.get("subject") != seed.group(2)):
             problems.append("%s: seed or subject differs from ASSETS.md" % asset)
+    for asset, kind in required_records(root, text):
+        if asset not in seen:
+            problems.append("%s is listed in ASSETS.md as generated or derived (%s) but has no provenance record" % (asset, kind))
+        elif load(record_path(kind, asset, root)).get("kind") != kind:
+            problems.append("%s: record kind is not %s" % (asset, kind))
     for problem in problems:
         out(problem)
     out("provenance: %d problems" % len(problems) if problems else "provenance: ok, %d assets" % len(seen))
     return 1 if problems else 0
+
+
+def required_records(root, text):
+    """(asset, kind) for each file that an ASSETS.md row says a script generated or derived, other than AI props
+    (generated_rows covers those): character models, relief maps and UI textures. A pattern that matches no file
+    is yielded as it is, so it is reported too."""
+    import glob
+
+    for paths, cells in ledger_rows(text):
+        for pattern in paths:
+            if re.fullmatch(r"assets/characters/[^/]*\.glb", pattern):
+                kind = "character"
+            elif re.fullmatch(r"assets/textures/[^/]*_relief\.png", pattern):
+                kind = "derived_texture"
+            elif pattern.startswith("assets/ui/") and cells[1].startswith(("Built by", "Drawn in code")):
+                kind = "ui_texture"
+            else:
+                continue
+            files = sorted(glob.glob(os.path.join(root, pattern)))
+            for file in files or [os.path.join(root, pattern)]:
+                yield os.path.relpath(file, root).replace(os.sep, "/"), kind
 
 
 def _glob_match(path, pattern):
@@ -342,7 +442,7 @@ def _glob_match(path, pattern):
 
 
 def add_note(asset, text, root=ROOT):
-    kind = "ai_prop" if "/props/" in asset else "character" if "/characters/" in asset else "derived_texture"
+    kind = "ai_prop" if "/props/" in asset else "character" if "/characters/" in asset else "ui_texture" if "/ui/" in asset else "derived_texture"
     path = record_path(kind, asset, root)
     record = load(path)
     record["manual_edits"].append({"text": text, "date": today()})

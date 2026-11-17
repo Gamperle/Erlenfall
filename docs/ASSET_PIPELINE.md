@@ -54,7 +54,7 @@ The scripts write the records on the asset PC, in `<batch>\provenance\<name>.jso
 scp ASSET_PC:D:/erlenfall-assets/my_batch/provenance/*.json provenance/props/
 ```
 
-Only copy the records of the pictures you chose, because the folder also holds one for every candidate. Add `chosen_by` by hand, and run `python3 tools/asset_pipeline/provenance.py validate`. After editing an asset by hand, record it with `python3 tools/asset_pipeline/provenance.py note assets/props/anvil_2.glb "what you changed and why"`, and mention it in the ASSETS.md notes too.
+Only copy the records of the pictures you chose, because the folder also holds one for every candidate (the records of the pictures in `<batch>\input` are the ones with a mesh stage). `make_trellis.py` writes `chosen_by` from the batch file's `"chosen_by"` key (for example `"chosen_by": "Claude for Markus Gamperle"`, as ASSETS.md words it), or from the `CHOSEN_BY` environment variable when it is run by hand, so set it before the models are made. A pipeline record without it fails validation. Run `python3 tools/asset_pipeline/provenance.py validate`. After editing an asset by hand, record it with `python3 tools/asset_pipeline/provenance.py note assets/props/anvil_2.glb "what you changed and why"`, and mention it in the ASSETS.md notes too.
 
 `tools/asset_pipeline/provenance.py` also has:
 

@@ -4,6 +4,10 @@ extends Node3D
 
 const LAYOUT_PATH := "res://data/village_layout.json"
 const FOUNDATION_DEPTH := 3.0
+## Field slabs: grid spacing, how far the top rises above the ground, and how far the sides reach below it.
+const FIELD_GRID := 2.0
+const FIELD_LIFT := 0.1
+const FIELD_SKIRT := 0.5
 const TRUNK_HEIGHT := 3.0
 const TRUNK_RADIUS := 0.3
 const TREE_HEIGHT := 12.0
@@ -635,11 +639,66 @@ func _building_heading(buildings: Array, id: String) -> float:
 	return 0.0
 
 
+## A thin crop slab whose top follows the ground (a flat box floated over slopes, #411). The mesh is
+## a grid of the field's own size, rotated like the field, so every corner meets the terrain.
 func _add_field(data: Dictionary) -> void:
-	var size := Vector3(data["width"], 1.0, data["depth"])
-	var field := ModelBuilder.box(size, Surfaces.Pattern.CROPS, Color(data["color"]), _ground_position(data["x"], data["z"]))
+	var field := MeshInstance3D.new()
+	field.add_to_group("crop_fields")
+	field.mesh = _field_mesh(data)
 	field.rotation_degrees.y = data["rotation"]
+	field.position = Vector3(data["x"], 0.0, data["z"])
 	add_child(field)
+
+
+func _field_mesh(data: Dictionary) -> ArrayMesh:
+	var half := Vector2(data["width"], data["depth"]) / 2.0
+	var turn := Basis(Vector3.UP, deg_to_rad(float(data["rotation"])))
+	var centre := Vector3(data["x"], 0.0, data["z"])
+	var columns := maxi(2, ceili(half.x * 2.0 / FIELD_GRID))
+	var rows := maxi(2, ceili(half.y * 2.0 / FIELD_GRID))
+	var top: Array = []
+	for row in rows + 1:
+		var line: Array[Vector3] = []
+		for column in columns + 1:
+			var local := Vector3(lerpf(-half.x, half.x, float(column) / columns), 0.0, lerpf(-half.y, half.y, float(row) / rows))
+			var world := centre + turn * local
+			line.append(Vector3(local.x, terrain.height_at(world.x, world.z) + FIELD_LIFT, local.z))
+		top.append(line)
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	surface.set_smooth_group(-1)
+	for row in rows:
+		for column in columns:
+			var a: Vector3 = top[row][column]
+			var b: Vector3 = top[row][column + 1]
+			var c: Vector3 = top[row + 1][column]
+			var d: Vector3 = top[row + 1][column + 1]
+			_add_field_quad(surface, a, b, c, d, Vector3.UP)
+	# Skirts down the four edges close the sides, so no gap shows under the lip.
+	for column in columns:
+		_add_field_skirt(surface, top[0][column], top[0][column + 1], Vector3.FORWARD)
+		_add_field_skirt(surface, top[rows][column], top[rows][column + 1], Vector3.BACK)
+	for row in rows:
+		_add_field_skirt(surface, top[row][0], top[row + 1][0], Vector3.LEFT)
+		_add_field_skirt(surface, top[row][columns], top[row + 1][columns], Vector3.RIGHT)
+	surface.generate_normals()
+	var mesh := surface.commit()
+	mesh.surface_set_material(0, Surfaces.get_material(Surfaces.Pattern.CROPS, Color(data["color"])))
+	return mesh
+
+
+func _add_field_skirt(surface: SurfaceTool, from: Vector3, to: Vector3, outward: Vector3) -> void:
+	var drop := Vector3.DOWN * FIELD_SKIRT
+	_add_field_quad(surface, from, to, from + drop, to + drop, outward)
+
+
+## Two triangles for the quad a, b, c, d (d opposite a), wound so that the front faces `facing`.
+func _add_field_quad(surface: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, facing: Vector3) -> void:
+	var order := [a, b, c, b, d, c]
+	if -(b - a).cross(c - a).dot(facing) < 0.0:
+		order = [a, c, b, b, c, d]
+	for point: Vector3 in order:
+		surface.add_vertex(point)
 
 
 func _add_trees(data: Dictionary, fields: Array) -> void:

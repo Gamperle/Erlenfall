@@ -82,6 +82,18 @@ func _run() -> void:
 	var door: MeshInstance3D = village.get_node("Props/door_3").find_children("*", "MeshInstance3D", true, false)[0]
 	_check(bowl.visibility_range_end > 0.0 and door.visibility_range_end == 0.0, "only small props stop being drawn far away")
 	_check(village.get_node("Roads").get_child_count() == 6, "roads load from data")
+	# Fields follow the ground instead of standing as flat slabs on slopes (#411).
+	var fields := get_nodes_in_group("crop_fields")
+	_check(fields.size() == layout_field_count(), "every field is built (%d)" % fields.size())
+	var worst_gap := 0.0
+	for field: MeshInstance3D in fields:
+		var tops := field.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array
+		for vertex in tops:
+			var world := field.to_global(vertex)
+			var gap := world.y - terrain.height_at(world.x, world.z)
+			if gap > -0.2:  # skirt vertices reach below the ground, only the top counts
+				worst_gap = maxf(worst_gap, absf(gap - Village.FIELD_LIFT))
+	_check(worst_gap < 0.01, "field surfaces follow the terrain (off by %.3f m)" % worst_gap)
 	_check(village.get_node("Boulders").get_child_count() > 0, "boulders have collision")
 	_check(village.get_node("Boulders").get_child(0).shape is ConvexPolygonShape3D, "boulders collide with their real shape")
 	_check(terrain.is_on_landslide(40.0, -300.0) and not terrain.is_on_landslide(0.0, 0.0), "landslide stays out of the village")
@@ -4520,3 +4532,8 @@ func _test_noticing_rules(scene: Node, player: Player, enemy: Enemy, day_night: 
 	_check(is_equal_approx(enemy.notice_range(player), base), "with the rules off, a standing player is noticed from the full range")
 	FeatureFlags._flags["noticing_rules"] = true
 	enemy.rotation.y = PI
+
+
+func layout_field_count() -> int:
+	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Village.LAYOUT_PATH))
+	return layout["fields"].size()

@@ -506,6 +506,7 @@ func _check_village_layout(data: Dictionary) -> void:
 		"beds": { "model": ["string", true], "asset": ["string", false], "prompt": ["text", true], "width": ["number", true], "depth": ["number", true], "height": ["number", true], "color": ["color", true] },
 		"stations": { "id": ["string", true], "model": ["string", true], "asset": ["string", false], "prompt": ["text", true], "width": ["number", true], "depth": ["number", true], "height": ["number", true], "work_spot": ["vec3", false], "requires_flag": ["string", false], "color": ["color", true] },
 		"resources": { "item": ["string", true], "prompt": ["text", true], "size": ["number", true], "uses": ["int", true], "respawn_seconds": ["number", true], "color": ["color", true] },
+		"structures": { "id": ["string", true], "kind": ["string", true], "width": ["number", true], "depth": ["number", true], "height": ["number", true], "rotation": ["number", true], "color": ["color", false], "variant": ["int", false] },
 		"building_sites": { "id": ["string", true], "radius": ["number", true], "blend": ["number", true], "rise": ["number", true] },
 		"hills": { "radius": ["number", true], "height": ["number", true] },
 		"flat_areas": { "radius": ["number", true], "blend": ["number", true] },
@@ -533,7 +534,7 @@ func _check_village_layout(data: Dictionary) -> void:
 					_add(file, "%s.%s" % [path, key], "file not found: %s" % entry[key])
 			_check_layout_references(file, path, list, entry)
 	_check_readables(data)
-	_fields(file, "mine", data.get("mine"), { "id": ["string", true], "x": ["number", true], "z": ["number", true], "rotation": ["number", true], "width": ["number", true], "height": ["number", true], "opening_width": ["number", true], "opening_height": ["number", true], "seed": ["int", true], "plaza_radius": ["number", true], "plaza_blend": ["number", true], "compass": ["bool", false] })
+	_fields(file, "mine", data.get("mine"), { "id": ["string", true], "x": ["number", true], "z": ["number", true], "rotation": ["number", true], "width": ["number", true], "height": ["number", true], "opening_width": ["number", true], "opening_height": ["number", true], "seed": ["int", true], "plaza_radius": ["number", true], "plaza_blend": ["number", true], "compass": ["bool", false], "intact_frame": ["bool", false] })
 	_check_walls(file, data.get("walls"))
 	for i in _array(data.get("roads")).size():
 		var road: Variant = data["roads"][i]
@@ -571,5 +572,8 @@ func _check_layout_references(file: String, path: String, list: String, entry: D
 	elif list == "repair_sites":
 		if _files.has("quests.json"):
 			_check_objective(file, path, str(entry.get("quest")), str(entry.get("objective")))
+	elif list == "structures":
+		if not StructureBuilder.KINDS.has(entry.get("kind")):
+			_add(file, path + ".kind", "unknown structure \"%s\" (one of %s)" % [entry.get("kind"), ", ".join(StructureBuilder.KINDS)])
 	elif list == "npcs" and entry.has("appears_when"):
 		_check_conditions(file, path + ".appears_when", entry["appears_when"])

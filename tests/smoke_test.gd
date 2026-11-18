@@ -198,6 +198,7 @@ func _run() -> void:
 	await _test_buried_mine(scene, player)
 	await _test_walls(scene, player)
 	_test_farms(scene)
+	_test_structures(scene, player)
 	await _test_forest(scene, player)
 	await _test_player_fixes(scene, player)
 	await _test_save_and_menu(scene, player, day_night)
@@ -2523,6 +2524,98 @@ func _test_farms(scene: Node) -> void:
 				meets_main = meets_main or terrain.roads[j].nearest(samples[samples.size() - 1].x, samples[samples.size() - 1].y).x < 1.0 or terrain.roads[j].nearest(samples[0].x, samples[0].y).x < 1.0
 		_check(steepest < 15.0 and nearest_river > 4.0 and meets_main, "farm path %d joins a main road on gentle, dry ground (steepest %.1f, river %.1f)" % [i, steepest, nearest_river])
 	_check(branches >= 3, "each outlying farm has a path (%d)" % branches)
+
+
+## The small code-built buildings and work pieces (#436): each is one mesh on level ground, clear of the river,
+## roads and other buildings, solid where it should be and open where it should be, and keeps the rain off.
+func _test_structures(scene: Node, player: Player) -> void:
+	var terrain: Terrain = scene.get_node("Terrain")
+	var village: Village = scene.get_node("Village")
+	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Village.LAYOUT_PATH))
+	var structures: Array = layout["structures"]
+	var holder: Node = village.get_node("Structures")
+	var kinds := {}
+	for data: Dictionary in structures:
+		kinds[data["kind"]] = true
+	_check(holder.get_child_count() == structures.size() and kinds.size() == StructureBuilder.KINDS.size(), "every kind of structure is placed from the layout (%d structures, %d kinds)" % [structures.size(), kinds.size()])
+	var problems := PackedStringArray()
+	var circles: Array[Array] = []
+	for building: Dictionary in layout["buildings"]:
+		circles.append([building["id"], Vector2(building["x"], building["z"]), Vector2(building["width"], building["depth"]).length() / 2.0])
+	for data: Dictionary in structures:
+		var body := holder.get_node(data["id"]) as StaticBody3D
+		var meshes := body.find_children("*", "MeshInstance3D", true, false)
+		if meshes.size() != 1 or (meshes[0] as MeshInstance3D).mesh.get_surface_count() > 8:
+			problems.append("%s is not one mesh of at most 8 surfaces" % data["id"])
+		var at := Vector2(data["x"], data["z"])
+		var radius := Vector2(data["width"], data["depth"]).length() / 2.0
+		var low := INF
+		var high := -INF
+		for step_x in range(-2, 3):
+			for step_z in range(-2, 3):
+				var point := at + Vector2(step_x * data["width"] / 4.0, step_z * data["depth"] / 4.0).rotated(-deg_to_rad(data["rotation"]))
+				low = minf(low, terrain.height_at(point.x, point.y))
+				high = maxf(high, terrain.height_at(point.x, point.y))
+		if high - low > 0.8:
+			problems.append("%s stands on a slope (%.2f m relief)" % [data["id"], high - low])
+		if terrain.river_clearance(at.x, at.y) < radius + 2.0:
+			problems.append("%s is too near the river" % data["id"])
+		for road in terrain.roads:
+			var found: Vector3 = road.nearest(at.x, at.y)
+			if found.x < found.z + radius * 0.7:
+				problems.append("%s is on a road" % data["id"])
+		for circle: Array in circles:
+			if at.distance_to(circle[1]) < radius + float(circle[2]) - 1.0 and not (data["id"] == "forge_shed" and circle[0] == "forge"):
+				problems.append("%s overlaps %s" % [data["id"], circle[0]])
+		circles.append([data["id"], at, radius])
+		# Roofed ones keep the rain off.
+		if body.has_meta("cover"):
+			var covered := false
+			for cover: Dictionary in village.roof_covers:
+				covered = covered or (cover["center"] as Vector2).distance_to(at) < radius
+			if not covered:
+				problems.append("%s has no rain cover" % data["id"])
+	_check(problems.is_empty(), "structures are one mesh on level ground, clear of the river, roads and buildings: %s" % [problems.slice(0, 4)])
+
+	# The lumber yard's shed is open at the front and closed at the back: walking in from the front goes all the way, from the back it stops.
+	var shed: Dictionary = structures.filter(func(data: Dictionary) -> bool: return data["id"] == "lumber_shed")[0]
+	var shed_body := holder.get_node("lumber_shed") as Node3D
+	var results := [0.0, 0.0]
+	for i in 2:
+		var side := 1.0 if i == 0 else -1.0
+		var start := shed_body.to_global(Vector3(-1.0, 0.0, side * (float(shed["depth"]) / 2.0 + 2.0)))
+		start.y = terrain.height_at(start.x, start.z) + 0.1
+		var motion := shed_body.global_basis * Vector3(0.0, 0.0, -side * (float(shed["depth"]) + 1.0))
+		var result := PhysicsTestMotionResult3D.new()
+		PhysicsServer3D.body_test_motion(player.get_rid(), _motion_params(Transform3D(player.global_basis, start), motion), result)
+		results[i] = result.get_travel().length()
+	_check(results[0] > float(shed["depth"]) - 0.5 and results[1] < float(shed["depth"]) - 0.3, "the lumber shed is open at its front and closed at its back (walked %.1f m in, %.1f m from behind)" % [results[0], results[1]])
+
+	# Rail pieces are 2 m long, a straight one ends straight ahead, and a bend turns by its angle.
+	var straight := StructureBuilder.rail_end(0.0)
+	var bend := StructureBuilder.rail_end(0.3)
+	_check(straight.origin.is_equal_approx(Vector3(0.0, 0.0, StructureBuilder.RAIL_PIECE)) and absf(bend.origin.length() - StructureBuilder.RAIL_PIECE) < 0.05 and bend.origin.x < -0.1 and absf(bend.basis.get_euler().y - 0.3) < 0.001, "a straight rail piece is 2 m long and a bent one turns left by its angle")
+	var rail_piece := StructureBuilder.rail_track(0.3)
+	var rail_meshes := rail_piece.find_children("*", "MeshInstance3D", true, false)
+	_check(rail_meshes.size() == StructureBuilder.RAIL_STEPS * 3, "a rail piece is made of sleepers and two rails for each of its steps (%d parts)" % rail_meshes.size())
+	rail_piece.free()
+	var mine_look := village.get_node(layout["mine"]["id"]).get_node("Look/Mesh") as MeshInstance3D
+	_check(mine_look.mesh.get_surface_count() <= 12, "the mine, with its rail track, stays few surfaces (%d)" % mine_look.mesh.get_surface_count())
+
+	# The timbered mine entrance frames the opening exactly: its posts stand against the opening's edges and its lintel on top.
+	var opening_width: float = layout["mine"]["opening_width"]
+	var opening_height: float = layout["mine"]["opening_height"]
+	var entrance := StructureBuilder.mine_timber_entrance(opening_width, opening_height)
+	var inner := INF
+	var lintel := 0.0
+	for shape: CollisionShape3D in entrance.find_children("*", "CollisionShape3D", true, false):
+		var size: Vector3 = (shape.shape as BoxShape3D).size
+		if size.y >= opening_height - 0.01 and size.y <= opening_height + 0.01:
+			inner = minf(inner, absf(shape.position.x) - size.x / 2.0)
+		else:
+			lintel = maxf(lintel, shape.position.y - size.y / 2.0)
+	_check(absf(inner - opening_width / 2.0) < 0.01 and absf(lintel - opening_height) < 0.01, "the timbered mine entrance fits the opening (%.2f m clear, lintel at %.2f m)" % [inner * 2.0, lintel])
+	entrance.free()
 
 
 func _test_walls(scene: Node, player: Player) -> void:

@@ -91,7 +91,9 @@ TRELLIS.2 sees only the front, like TripoSR did, but it gets thin parts, backs, 
 
 *Left of each pair: TRELLIS.2. Right: TripoSR after cleanup. TripoSR's cleanup broke the crate completely.*
 
-It does worse on loose, fibrous materials. It turned haystacks into brown lumps and gave a sack a dark pattern, so those props still use TripoSR models ([#154](https://github.com/Gamperle/Erlenfall/issues/154), [#453](https://github.com/Gamperle/Erlenfall/issues/453)). Check every model against its picture.
+It does worse on loose, fibrous materials and thin parts. Pictures of straw, thin staves, a rope handle or small stones came out as torn shells, no matter the seed ([#154](https://github.com/Gamperle/Erlenfall/issues/154)). Pictures of the same objects redrawn as thick, chunky shapes worked with the usual seeds: a stack of hay bales, a dome of broad hay bundles, big boulders around a few logs, a bucket of wide staves with no handle ([#453](https://github.com/Gamperle/Erlenfall/issues/453), batch `klein453`). When a prop comes out torn, change the picture before the seed. Check every model against its picture, from the front, side, and back with `render_glb.py` (`blender -b -P render_glb.py -- model.glb out_prefix`).
+
+![Four props before and after: the old picture and TripoSR model, then the new picture and TRELLIS.2 model](examples/8_klein453_remakes.jpg)
 
 A model that comes out badly can be made again with another seed for its three shape stages: set `TRELLIS_SEED` (for example `$env:TRELLIS_SEED='777'` before `run_trellis.ps1`), and `TRELLIS_PIXAL3D=1` swaps the shape model for Pixal3D. A variant goes to `<batch>\trellis_s777` (and `_pixal3d`), and `size_models.ps1 -Source trellis_s777` sizes it into `props_s777`, so the usual models stay. Different seeds fixed the burlap sacks, but not hay, the campfire or the bucket (see #154).
 
@@ -153,6 +155,7 @@ Last, list every new file in [ASSETS.md](../../ASSETS.md) with its seed and subj
 | `batches/*.json` | Each batch's objects, sizes, face budgets, and turns |
 | `draw_klein.py` | Draws candidates with FLUX.2 klein 4B |
 | `contact_sheet.py` | Lays pictures out on one labeled page |
+| `render_glb.py` | Renders a model from the front, side, and back in Blender, to compare it with its picture |
 | `setup_comfy.ps1` | Installs ComfyUI with ROCm PyTorch and the TRELLIS.2 models |
 | `run_trellis.ps1`, `make_trellis.py`, `trellis2_api.json` | Make models with TRELLIS.2 |
 | `size_models.ps1`, `size_glb.py` | Scale models to real size for Godot |

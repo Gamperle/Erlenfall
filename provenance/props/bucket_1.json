@@ -2,60 +2,71 @@
 	"schema": 1,
 	"asset": "assets/props/bucket_1.glb",
 	"kind": "ai_prop",
-	"origin": "backfill",
-	"batch": "klein2",
+	"origin": "pipeline",
+	"batch": "klein453",
 	"object": "bucket",
 	"name": "bucket_1",
 	"chosen_by": "Claude for Markus Gamperle",
-	"subject": "wooden bucket made of staves with two iron bands and a rope handle",
-	"prompt": "A single wooden bucket made of staves with two iron bands and a rope handle, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
-	"seed": 7061,
+	"subject": "empty wooden bucket made of thick wide staves with two wide dark iron bands, plain smooth round rim, no handle, no rope",
+	"prompt": "A single empty wooden bucket made of thick wide staves with two wide dark iron bands, plain smooth round rim, no handle, no rope, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
+	"seed": 12050,
 	"stages": [
 		{
 			"step": "image",
 			"tool": "FLUX.2 klein 4B",
-			"versions": {},
-			"date": null,
+			"versions": {
+				"python": "3.12.10",
+				"torch": "2.14.0+rocm10.1.0",
+				"diffusers": "0.42.1",
+				"model": "black-forest-labs/FLUX.2-klein-4B",
+				"model_revision": "e7b7dc27f91deacad38e78976d1f2b499d76a294"
+			},
+			"date": "2026-11-18",
 			"width": 1024,
 			"height": 1024,
 			"steps": 4,
 			"guidance": 1.0,
-			"candidate": 1
+			"candidate": 0,
+			"picture_sha256": "2a026b45b0123df239f44be9a09065f4f5ee713ba81fa442fa2197ff5fa75168"
 		},
 		{
 			"step": "mesh",
-			"tool": "TripoSR",
+			"tool": "TRELLIS.2 (Comfy-Org int8 build)",
 			"versions": {
-				"TripoSR": "107cefd"
+				"ComfyUI": "0.43.0",
+				"pytorch": "2.14.0+rocm10.1.0",
+				"python": "3.12.10"
 			},
+			"date": "2026-11-18",
 			"helpers": [
-				"rembg u2net"
+				"BiRefNet",
+				"DINOv3"
 			],
-			"date": null
-		},
-		{
-			"step": "cleanup",
-			"tool": "Automatic cleanup (cleanup_mesh.py)",
-			"versions": {},
-			"date": null
+			"faces": 1500,
+			"workflow": "trellis2_api.json",
+			"workflow_sha256": "a35c55abacb3f67eabd94098e9e075bd91e74fc4209c7bd8ae4ec38648bf9777",
+			"picture_sha256": "2a026b45b0123df239f44be9a09065f4f5ee713ba81fa442fa2197ff5fa75168",
+			"comfy_prompt_id": "6caac9de-1342-4389-9ffb-37158a517240"
 		},
 		{
 			"step": "size",
 			"tool": "Blender",
 			"versions": {
-				"Blender": "5.2"
+				"Blender": "5.2.3 LTS"
 			},
-			"date": null,
-			"meters": 0.4
+			"date": "2026-11-18",
+			"meters": 0.4,
+			"turn_degrees": 0.0,
+			"script": "size_glb.py"
 		},
 		{
 			"step": "textures",
 			"tool": "shrink_textures.py",
 			"script": "shrink_textures.py",
 			"versions": {
-				"Pillow": "12.1.1"
+				"Pillow": "13.0.0"
 			},
-			"date": "2026-11-17",
+			"date": "2026-11-18",
 			"longest_side_meters": 0.4,
 			"texture_edge": 512,
 			"from_edge": 1024,
@@ -64,5 +75,10 @@
 		}
 	],
 	"manual_edits": [],
-	"backfill_note": "Rebuilt from ASSETS.md and the batch file. Dates and tool versions it doesn't state are null."
+	"replaces": {
+		"tool": "TripoSR",
+		"batch": "klein2",
+		"seed": 7061,
+		"picture_candidate": 1
+	}
 }

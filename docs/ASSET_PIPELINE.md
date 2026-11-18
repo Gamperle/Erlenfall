@@ -4,6 +4,8 @@ This pipeline makes 3D props from text. FLUX.2 klein 4B draws a picture, TRELLIS
 
 **Status: in use for props.** Every generated prop in the game is listed in [ASSETS.md](../ASSETS.md). SDXL output is not used (see "SDXL license" below). [The pipeline's README](../tools/asset_pipeline/README.md) walks through a batch with pictures.
 
+Every picture and model should match [the art style guide](ART_STYLE.md): its palette, size and face-budget table, and the image prompt template.
+
 ## Workflow
 
 | Step | Tool | Runs on | Time per item | Output |
@@ -188,6 +190,8 @@ What the comparison doesn't cover: the original per-picture scores (see above), 
 The template's upsample stage is set to 1024 instead of 1536. At 1536 a step took 282 s instead of 23 s, probably because it no longer fits in the card's 20 GB.
 
 ## Getting good pictures
+
+The look to aim for, and the subject wording that works, are in [the art style guide](ART_STYLE.md#image-prompt-template).
 
 The picture matters more than anything else, because the model sees only that one image. Drawing six candidates and keeping the best two costs very little.
 

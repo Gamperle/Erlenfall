@@ -56,6 +56,7 @@ Save files are stored in Godot's user data folder. To run the tests: `godot --he
 
 - [Game design and milestones](docs/GAME_DESIGN.md)
 - [Lore](docs/LORE.md)
+- [Art style guide](docs/ART_STYLE.md)
 - [Asset pipeline](docs/ASSET_PIPELINE.md) and [its step-by-step guide](tools/asset_pipeline/README.md)
 - [Asset list](docs/ASSET_LIST.md) and [assets to create next](docs/ASSETS_TO_CREATE.md)
 - [Making mods](docs/MODS.md), with a [working example](docs/example_mods/README.md)

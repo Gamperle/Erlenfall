@@ -1,68 +1,75 @@
 {
-	"schema": 1,
-	"asset": "assets/props/sack_2.glb",
-	"kind": "ai_prop",
-	"origin": "backfill",
-	"batch": "klein2",
-	"object": "sack",
-	"name": "sack_2",
-	"chosen_by": "Claude for Markus Gamperle",
-	"subject": "full burlap grain sack tied at the top with a cord, standing upright",
-	"prompt": "A single full burlap grain sack tied at the top with a cord, standing upright, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
-	"seed": 7022,
-	"stages": [
-		{
-			"step": "image",
-			"tool": "FLUX.2 klein 4B",
-			"versions": {},
-			"date": null,
-			"width": 1024,
-			"height": 1024,
-			"steps": 4,
-			"guidance": 1.0,
-			"candidate": 2
-		},
-		{
-			"step": "mesh",
-			"tool": "TripoSR",
-			"versions": {
-				"TripoSR": "107cefd"
-			},
-			"helpers": [
-				"rembg u2net"
-			],
-			"date": null
-		},
-		{
-			"step": "cleanup",
-			"tool": "Automatic cleanup (cleanup_mesh.py)",
-			"versions": {},
-			"date": null
-		},
-		{
-			"step": "size",
-			"tool": "Blender",
-			"versions": {
-				"Blender": "5.2"
-			},
-			"date": null,
-			"meters": 0.8
-		},
-		{
-			"step": "textures",
-			"tool": "shrink_textures.py",
-			"script": "shrink_textures.py",
-			"versions": {
-				"Pillow": "12.1.1"
-			},
-			"date": "2026-11-17",
-			"longest_side_meters": 0.8,
-			"texture_edge": 512,
-			"from_edge": 1024,
-			"rule": "512 px up to 1.25 m longest side, else 1024 px",
-			"note": "Downscaled with Lanczos; normal maps renormalized (#426)"
-		}
-	],
-	"manual_edits": [],
-	"backfill_note": "Rebuilt from ASSETS.md and the batch file. Dates and tool versions it doesn't state are null."
+  "schema": 1,
+  "asset": "assets/props/sack_2.glb",
+  "kind": "ai_prop",
+  "origin": "backfill",
+  "batch": "klein2",
+  "object": "sack",
+  "name": "sack_2",
+  "chosen_by": "Claude for Markus Gamperle",
+  "subject": "full burlap grain sack tied at the top with a cord, standing upright",
+  "prompt": "A single full burlap grain sack tied at the top with a cord, standing upright, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
+  "seed": 7022,
+  "stages": [
+    {
+      "step": "image",
+      "tool": "FLUX.2 klein 4B",
+      "versions": {},
+      "date": null,
+      "width": 1024,
+      "height": 1024,
+      "steps": 4,
+      "guidance": 1.0,
+      "candidate": 2
+    },
+    {
+      "step": "mesh",
+      "tool": "TRELLIS.2 (Comfy-Org int8 build)",
+      "versions": {
+        "ComfyUI": "0.43.0",
+        "pytorch": "2.14.0+rocm10.1.0",
+        "python": "3.12.10"
+      },
+      "date": "2026-11-17",
+      "helpers": [
+        "BiRefNet",
+        "DINOv3"
+      ],
+      "faces": 1500,
+      "workflow": "trellis2_api.json",
+      "workflow_sha256": "a35c55abacb3f67eabd94098e9e075bd91e74fc4209c7bd8ae4ec38648bf9777",
+      "picture_sha256": "890d72fe99e785187a75f7bf3229994ccf332cb44995d6ad199c3549a4904722",
+      "comfy_prompt_id": "abe935c8-e441-4e2e-90b6-2f70f63ae671",
+      "shape_seed": 777,
+      "models": null,
+      "models_note": "made before the weight files were recorded (#450)"
+    },
+    {
+      "step": "size",
+      "tool": "Blender",
+      "versions": {
+        "Blender": "5.2.3 LTS"
+      },
+      "date": "2026-11-17",
+      "meters": 0.8,
+      "turn_degrees": 0.0,
+      "script": "size_glb.py"
+    },
+    {
+      "step": "textures",
+      "tool": "shrink_textures.py",
+      "script": "shrink_textures.py",
+      "versions": {
+        "Pillow": "12.1.1"
+      },
+      "date": "2026-11-28",
+      "longest_side_meters": 0.8,
+      "texture_edge": 512,
+      "from_edge": 1024,
+      "rule": "512 px up to 1.25 m longest side, else 1024 px",
+      "note": "Downscaled with Lanczos; normal maps renormalized (#426)"
+    }
+  ],
+  "manual_edits": [],
+  "backfill_note": "The image stage was rebuilt from ASSETS.md and the batch file, so its date and tool versions are null. The mesh and size stages were written by the pipeline on 2026-11-17, when the model was remade with shape seed 777 (#154)."
 }

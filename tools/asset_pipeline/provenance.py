@@ -148,7 +148,9 @@ def check_models(stage, origin):
         return ["mesh stage has no models (null if unknown)"]
     models = stage["models"]
     if models is None:
-        return ["mesh stage has null models, but a pipeline record must name the weight files"] if origin == "pipeline" else []
+        if origin == "pipeline" and not stage.get("models_note"):
+            return ["mesh stage has null models, but a pipeline record must name the weight files (or say in models_note why not)"]
+        return []
     if not isinstance(models, list) or not models:
         return ["mesh stage models is not a non-empty list"]
     found = []

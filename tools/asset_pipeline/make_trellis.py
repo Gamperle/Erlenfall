@@ -1,6 +1,6 @@
 """Turns a batch's chosen pictures into textured models with TRELLIS.2, through a running ComfyUI server.
 
-Usage: make_trellis.py batch_name [name ...]
+Usage: make_trellis.py batch_name [name ...]   (environment variables TRELLIS_SEED and TRELLIS_PIXAL3D make a variant, see below)
 Without names it uses every picture in <batch>/input. Each model is reduced to its face budget from
 batches/<batch>.json and saved as <batch>/trellis/<name>.glb with base color, normal, roughness, and
 ambient occlusion maps. Finished models are skipped, so it can be run again after a failure.
@@ -31,7 +31,13 @@ objects = config["objects"]
 CHOSEN_BY = os.environ.get("CHOSEN_BY") or config.get("chosen_by")
 # PowerShell passes a -File list as one comma-separated argument.
 names = [n for arg in sys.argv[2:] for n in arg.split(",") if n] or sorted(f[:-4] for f in os.listdir(os.path.join(base, "input")) if f.endswith(".png"))
-out_dir = os.path.join(base, "trellis")
+# A variant of the usual run, for models that came out badly (#154). TRELLIS_SEED sets the seed of the three shape
+# stages (the usual ones are 56, 42 and 42), and TRELLIS_PIXAL3D=1 swaps the shape model for Pixal3D. A variant writes
+# to <batch>/trellis_s<seed>[_pixal3d] and <batch>/provenance_s<seed>[_pixal3d], so the usual models stay as they are.
+SHAPE_SEED = int(os.environ["TRELLIS_SEED"]) if os.environ.get("TRELLIS_SEED") else None
+PIXAL3D = os.environ.get("TRELLIS_PIXAL3D") == "1"
+VARIANT = (f"_s{SHAPE_SEED}" if SHAPE_SEED is not None else "") + ("_pixal3d" if PIXAL3D else "")
+out_dir = os.path.join(base, "trellis" + VARIANT)
 os.makedirs(out_dir, exist_ok=True)
 if os.name == "nt":
     import ctypes
@@ -68,7 +74,13 @@ for name in names:
     workflow = json.load(open(os.path.join(HERE, "trellis2_api.json")))
     workflow["122"]["inputs"]["image"] = f"{batch}_{name}.png"
     workflow["186"]["inputs"]["target_face_count"] = item["faces"]
-    workflow["save"]["inputs"]["filename_prefix"] = f"trellis/{batch}_{name}"
+    workflow["save"]["inputs"]["filename_prefix"] = f"trellis/{batch}_{name}{VARIANT}"
+    if SHAPE_SEED is not None:
+        for node in ("3", "18", "23"):
+            workflow[node]["inputs"]["seed"] = SHAPE_SEED
+    if PIXAL3D:
+        # The switches choose between the TRELLIS.2 (true) and Pixal3D (false) conditioning and model.
+        workflow["316"]["inputs"]["value"] = False
     start = time.time()
     prompt_id = call("/prompt", {"prompt": workflow})["prompt_id"]
     while True:
@@ -86,12 +98,13 @@ for name in names:
     # TRELLIS.2 also runs BiRefNet and DINOv3 inside this workflow. "models" names every weight file the workflow loads
     # (file, size, SHA-256), so a file swapped on the PC shows in the record. The workflow file's hash fixes the other settings.
     provenance.add_stage(
-        os.path.join(base, "provenance", name + ".json"),
-        {"step": "mesh", "tool": "TRELLIS.2 (Comfy-Org int8 build)", "versions": comfy_versions(), "date": provenance.today(),
+        os.path.join(base, "provenance" + VARIANT, name + ".json"),
+        {"step": "mesh", "tool": "Pixal3D shape model in TRELLIS.2 workflow (Comfy-Org int8 build)" if PIXAL3D else "TRELLIS.2 (Comfy-Org int8 build)", "versions": comfy_versions(), "date": provenance.today(),
          "helpers": ["BiRefNet", "DINOv3"], "faces": item["faces"], "workflow": "trellis2_api.json",
          "workflow_sha256": provenance.sha256(os.path.join(HERE, "trellis2_api.json")),
          "models": provenance.workflow_models(workflow, os.path.join(COMFY, "models")), "picture_sha256": provenance.sha256(picture),
-         "comfy_prompt_id": prompt_id},
+         "comfy_prompt_id": prompt_id,
+         **({"shape_seed": SHAPE_SEED} if SHAPE_SEED is not None else {})},
         kind="ai_prop", asset=f"assets/props/{name}.glb", batch=batch, object=name.rsplit("_", 1)[0], name=name, subject=item["subject"],
         **({"chosen_by": CHOSEN_BY} if CHOSEN_BY else {}),
     )

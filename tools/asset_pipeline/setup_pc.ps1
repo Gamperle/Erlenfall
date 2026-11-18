@@ -34,7 +34,7 @@ git -C "$Root\TripoSR" checkout 107cefdc244c39106fa830359024f6a2f1c78871
 
 # torchmcubes doesn't build here, so the stand-in replaces it.
 Get-Content "$Root\TripoSR\requirements.txt" | Where-Object { $_ -notmatch 'torchmcubes' } | Set-Content "$Root\requirements_no_mcubes.txt"
-& $py3d -m pip install -r "$Root\requirements_no_mcubes.txt" onnxruntime
+& $py3d -m pip install -r "$Root\requirements_no_mcubes.txt" onnxruntime fast_simplification
 if ($LASTEXITCODE -ne 0) { throw 'TripoSR package install failed' }
 Copy-Item "$Root\torchmcubes.py" "$Root\venv\Lib\site-packages\torchmcubes.py" -Force
 

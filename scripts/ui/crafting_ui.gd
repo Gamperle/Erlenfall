@@ -330,8 +330,11 @@ func _update_preview() -> void:
 		return
 	var length := CraftingData.item_length(item_id)
 	var reach := 0.0
-	for part: MeshInstance3D in _preview_model.get_children():
-		var box := (part.mesh as BoxMesh).size
+	for part in _preview_model.get_children():
+		# A generated model is one scene, not boxes, so only the boxes widen the view.
+		if not (part is MeshInstance3D and part.mesh is BoxMesh):
+			continue
+		var box: Vector3 = part.mesh.size
 		reach = maxf(reach, maxf(absf(part.position.x) + box.x / 2.0, absf(part.position.z) + box.z / 2.0))
 	_preview_model.position = Vector3.DOWN * length / 2.0
 	_preview_pivot.add_child(_preview_model)

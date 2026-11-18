@@ -95,7 +95,7 @@ It does worse on loose, fibrous materials and thin parts. Pictures of straw, thi
 
 ![Four props before and after: the old picture and TripoSR model, then the new picture and TRELLIS.2 model](examples/8_klein453_remakes.jpg)
 
-A model that comes out badly can be made again with another seed for its three shape stages: set `TRELLIS_SEED` (for example `$env:TRELLIS_SEED='777'` before `run_trellis.ps1`), and `TRELLIS_PIXAL3D=1` swaps the shape model for Pixal3D. A variant goes to `<batch>\trellis_s777` (and `_pixal3d`), and `size_models.ps1 -Source trellis_s777` sizes it into `props_s777`, so the usual models stay. Different seeds fixed the burlap sacks, but not hay, the campfire or the bucket, which needed new pictures (see #154 and #453).
+A model that comes out badly can be made again with another seed for its three shape stages: set `TRELLIS_SEED` (for example `$env:TRELLIS_SEED='777'` before `run_trellis.ps1`), and `TRELLIS_PIXAL3D=1` swaps the shape model for Pixal3D. A variant goes to `<batch>\trellis_s777` (and `_pixal3d`), and `size_models.ps1 -Source trellis_s777` sizes it into `props_s777`, so the usual models stay. Different seeds fixed the burlap sacks, but not hay, the campfire or the bucket (see #154).
 
 ## 5. Size the models
 
@@ -167,6 +167,7 @@ Last, list every new file in [ASSETS.md](../../ASSETS.md) with its seed and subj
 | `clean_models.ps1`, `cleanup_mesh.py`, `adjust_glb.py` | Clean and reshape TripoSR models |
 | `check_mesh.py` | Prints a raw model's face count and whether it's watertight |
 | `setup_pc.ps1`, `torchmcubes.py` | Set up the TripoSR and SDXL environments |
+| `bench_bake.py` | Times the parts of TripoSR texture baking (see the pipeline reference) |
 | `draw_pictures.py` | The older SDXL drawing script, kept for reference |
 
 The example pictures are in [`examples`](examples). Its `.gdignore` keeps them out of the game.

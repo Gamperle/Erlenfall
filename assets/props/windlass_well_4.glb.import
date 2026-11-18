@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://5iouq50o6vvg"
-path="res://.godot/imported/sawpit_frame_4.glb-d1b3cb2c93d60c4948c8fb68a2b99058.scn"
+uid="uid://bytwlhrk7y6bl"
+path="res://.godot/imported/windlass_well_4.glb-8b58f337becc1934845ebd3dd0753aa6.scn"
 
 [deps]
 
-source_file="res://assets/props/sawpit_frame_4.glb"
-dest_files=["res://.godot/imported/sawpit_frame_4.glb-d1b3cb2c93d60c4948c8fb68a2b99058.scn"]
+source_file="res://assets/props/windlass_well_4.glb"
+dest_files=["res://.godot/imported/windlass_well_4.glb-8b58f337becc1934845ebd3dd0753aa6.scn"]
 
 [params]
 

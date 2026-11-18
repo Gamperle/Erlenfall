@@ -2,49 +2,63 @@
 	"schema": 1,
 	"asset": "assets/props/sawpit_frame_1.glb",
 	"kind": "ai_prop",
-	"origin": "backfill",
-	"batch": "klein3",
-	"object": "sawpit_frame",
-	"name": "sawpit_frame_1",
-	"chosen_by": "Claude for Markus Gamperle",
-	"subject": "wooden sawpit frame with a log held on top and a pit saw",
-	"prompt": "A single wooden sawpit frame with a log held on top and a pit saw, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
-	"seed": 8221,
+	"origin": "pipeline",
 	"stages": [
 		{
 			"step": "image",
 			"tool": "FLUX.2 klein 4B",
-			"versions": {},
-			"date": null,
+			"versions": {
+				"python": "3.12.10",
+				"torch": "2.14.0+rocm10.1.0",
+				"diffusers": "0.42.1",
+				"model": "black-forest-labs/FLUX.2-klein-4B",
+				"model_revision": "e7b7dc27f91deacad38e78976d1f2b499d76a294"
+			},
+			"date": "2026-11-17",
 			"width": 1024,
 			"height": 1024,
 			"steps": 4,
 			"guidance": 1.0,
-			"candidate": 1
+			"candidate": 1,
+			"picture_sha256": "754954818b24fbe40c2fe18afc59a82c3db33500c22e9463e79fc42106d2d4e4"
 		},
 		{
 			"step": "mesh",
 			"tool": "TRELLIS.2 (Comfy-Org int8 build)",
 			"versions": {
-				"ComfyUI": "0.43.0"
+				"ComfyUI": "0.43.0",
+				"pytorch": "2.14.0+rocm10.1.0",
+				"python": "3.12.10"
 			},
+			"date": "2026-11-17",
 			"helpers": [
 				"BiRefNet",
 				"DINOv3"
 			],
-			"date": null,
-			"faces": 5000
+			"faces": 5000,
+			"workflow": "trellis2_api.json",
+			"workflow_sha256": "a35c55abacb3f67eabd94098e9e075bd91e74fc4209c7bd8ae4ec38648bf9777",
+			"picture_sha256": "754954818b24fbe40c2fe18afc59a82c3db33500c22e9463e79fc42106d2d4e4",
+			"comfy_prompt_id": "d626dbbb-2e37-4a53-9539-bebe41b04498"
 		},
 		{
 			"step": "size",
 			"tool": "Blender",
 			"versions": {
-				"Blender": "5.2"
+				"Blender": "5.2.3 LTS"
 			},
-			"date": null,
-			"meters": 3.0
+			"date": "2026-11-17",
+			"meters": 3.0,
+			"turn_degrees": 0.0,
+			"script": "size_glb.py"
 		}
 	],
 	"manual_edits": [],
-	"backfill_note": "Rebuilt from ASSETS.md and the batch file. Dates and tool versions it doesn't state are null."
+	"batch": "klein5",
+	"object": "sawpit_frame",
+	"name": "sawpit_frame_1",
+	"subject": "long tree trunk lying on two sturdy wooden A-frame trestles, with a long two-man pit saw standing upright in a cut along the trunk",
+	"prompt": "A single long tree trunk lying on two sturdy wooden A-frame trestles, with a long two-man pit saw standing upright in a cut along the trunk, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
+	"seed": 10011,
+	"chosen_by": "Claude for Markus Gamperle"
 }

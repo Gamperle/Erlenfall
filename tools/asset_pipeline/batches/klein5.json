@@ -1,0 +1,22 @@
+{
+	"seed": 10000,
+	"chosen_by": "Claude for Markus Gamperle",
+	"objects": {
+		"crosscut_saw": {
+			"subject": "long two-man crosscut saw: one long flat steel blade with a row of sharp teeth along its lower edge and an upright wooden handle at each end, seen from the side",
+			"faces": 1500,
+			"meters": 1.5
+		},
+		"sawpit_frame": {
+			"subject": "long tree trunk lying on two sturdy wooden A-frame trestles, with a long two-man pit saw standing upright in a cut along the trunk",
+			"faces": 5000,
+			"meters": 3.0
+		},
+		"windlass_well": {
+			"subject": "round fieldstone well with two wooden posts holding a horizontal wooden roller with a crank handle, a rope wound on the roller and a wooden bucket hanging from it",
+			"faces": 5000,
+			"meters": 1.8
+		}
+	},
+	"turns": {}
+}

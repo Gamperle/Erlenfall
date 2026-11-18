@@ -30,11 +30,18 @@ PROVENANCE = os.path.join(ROOT, sys.argv[1], "provenance")
 
 
 def model_revision():
-    """The commit of the downloaded model, which names its exact weights. None if it can't be found."""
-    try:
-        from huggingface_hub import snapshot_download
+    """The commit of the downloaded model, which names its exact weights. None if it can't be found.
 
-        return os.path.basename(snapshot_download(MODEL, local_files_only=True))
+    It is read from the cache's refs/main file, which the download that loaded the model wrote. Asking
+    snapshot_download(local_files_only=True) fails with IncompleteSnapshotError, because the cache holds only
+    the files the pipeline needs.
+    """
+    try:
+        from huggingface_hub import constants
+
+        ref = os.path.join(constants.HF_HUB_CACHE, "models--" + MODEL.replace("/", "--"), "refs", "main")
+        with open(ref, encoding="utf-8") as file:
+            return file.read().strip() or None
     except Exception:
         return None
 

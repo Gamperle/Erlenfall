@@ -145,6 +145,8 @@ def check_record(record, name=""):
         for key in ("prompt", "subject", "name", "batch"):
             if not record.get(key):
                 found.append("%s is missing" % key)
+        if origin == "pipeline" and not record.get("chosen_by"):
+            found.append("chosen_by is missing (set it in the batch file or with CHOSEN_BY when making the model)")
         if not isinstance(record.get("seed"), int):
             found.append("seed is not an integer")
         steps = [s.get("step") for s in stages if isinstance(s, dict)]

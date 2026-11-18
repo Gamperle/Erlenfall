@@ -219,11 +219,14 @@ class PipelineStagesTest(unittest.TestCase):
             subject="upright oak barrel", prompt="A single upright oak barrel, 3d game prop.", seed=6002)
         provenance.add_stage(
             path, {"step": "mesh", "tool": "TRELLIS.2", "versions": {"ComfyUI": "0.43.0"}, "date": "2026-11-14"},
-            kind="ai_prop", asset="assets/props/barrel_2.glb", batch="b1", object="barrel", name="barrel_2", subject="upright oak barrel")
+            kind="ai_prop", asset="assets/props/barrel_2.glb", batch="b1", object="barrel", name="barrel_2", subject="upright oak barrel",
+            chosen_by="Someone")
         record = provenance.add_stage(
             path, {"step": "size", "tool": "Blender", "versions": {"Blender": "5.2.0"}, "date": "2026-11-14", "meters": 1.0},
             kind="ai_prop", asset="assets/props/barrel_2.glb", name="barrel_2")
         self.assertEqual(provenance.check_record(record, "barrel_2"), [])
+        del record["chosen_by"]
+        self.assertIn("chosen_by is missing", " ".join(provenance.check_record(record, "barrel_2")))
         # Making the same object again replaces its stage and keeps the earlier ones.
         again = provenance.add_stage(path, {"step": "mesh", "tool": "TRELLIS.2", "versions": {"ComfyUI": "0.44"}, "date": "2026-11-15"}, kind="ai_prop")
         self.assertEqual([s["step"] for s in again["stages"]], ["image", "mesh", "size"])

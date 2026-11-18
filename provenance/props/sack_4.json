@@ -24,29 +24,34 @@
 		},
 		{
 			"step": "mesh",
-			"tool": "TripoSR",
+			"tool": "TRELLIS.2 (Comfy-Org int8 build)",
 			"versions": {
-				"TripoSR": "107cefd"
+				"ComfyUI": "0.43.0",
+				"pytorch": "2.14.0+rocm10.1.0",
+				"python": "3.12.10"
 			},
+			"date": "2026-11-17",
 			"helpers": [
-				"rembg u2net"
+				"BiRefNet",
+				"DINOv3"
 			],
-			"date": null
-		},
-		{
-			"step": "cleanup",
-			"tool": "Automatic cleanup (cleanup_mesh.py)",
-			"versions": {},
-			"date": null
+			"faces": 1500,
+			"workflow": "trellis2_api.json",
+			"workflow_sha256": "a35c55abacb3f67eabd94098e9e075bd91e74fc4209c7bd8ae4ec38648bf9777",
+			"picture_sha256": "c9d43f1af4a2b34fde800632d7b746f6168c3666b9389f521acdda2ccb1d4ea6",
+			"comfy_prompt_id": "0f473414-cb50-4d8a-8307-daa53384fee0",
+			"shape_seed": 777
 		},
 		{
 			"step": "size",
 			"tool": "Blender",
 			"versions": {
-				"Blender": "5.2"
+				"Blender": "5.2.3 LTS"
 			},
-			"date": null,
-			"meters": 0.8
+			"date": "2026-11-17",
+			"meters": 0.8,
+			"turn_degrees": 0.0,
+			"script": "size_glb.py"
 		},
 		{
 			"step": "textures",
@@ -55,7 +60,7 @@
 			"versions": {
 				"Pillow": "12.1.1"
 			},
-			"date": "2026-11-17",
+			"date": "2026-11-28",
 			"longest_side_meters": 0.8,
 			"texture_edge": 512,
 			"from_edge": 1024,
@@ -64,5 +69,5 @@
 		}
 	],
 	"manual_edits": [],
-	"backfill_note": "Rebuilt from ASSETS.md and the batch file. Dates and tool versions it doesn't state are null."
+	"backfill_note": "The image stage was rebuilt from ASSETS.md and the batch file, so its date and tool versions are null. The mesh and size stages were written by the pipeline on 2026-11-17, when the model was remade with shape seed 777 (#154)."
 }

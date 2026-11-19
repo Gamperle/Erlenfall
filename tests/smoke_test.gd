@@ -885,6 +885,18 @@ func _test_character_models(player: Player) -> void:
 	_check(root.get_tree().get_first_node_in_group(Enemy.GROUP)._body is CharacterModel, "goblins use a rigged model")
 
 
+## The file names of the .glb props in the ASSETS.md rows, sorted.
+func _listed_prop_files() -> PackedStringArray:
+	var names := PackedStringArray()
+	var regex := RegEx.create_from_string("`assets/props/([^`/]+\\.glb)`")
+	for line in FileAccess.get_file_as_string("res://ASSETS.md").split("\n"):
+		if line.begins_with("| `"):
+			for found in regex.search_all(line.get_slice(" | ", 0)):
+				names.append(found.get_string(1))
+	names.sort()
+	return names
+
+
 func _test_generated_props() -> void:
 	var files := DirAccess.get_files_at("res://assets/props")
 	var count := 0
@@ -902,7 +914,14 @@ func _test_generated_props() -> void:
 		# The model file itself, before data/prop_tuning.json, whose lifts are deliberate, such as a haystack set into the ground.
 		_check(absf(meshes[0].get_aabb().position.y) < PROP_GROUND_TOLERANCE, file + " stands on the ground")
 		prop.free()
-	_check(count == 205, "all generated props are present")
+	# The expected set is the props ASSETS.md lists (#483), so adding a prop needs no edit here, and a listed prop that is missing, or an unlisted one, fails.
+	var listed := _listed_prop_files()
+	var present := PackedStringArray()
+	for file in files:
+		if file.ends_with(".glb"):
+			present.append(file)
+	present.sort()
+	_check(count > 0 and count == present.size() and present == listed, "all generated props are present, and exactly the ones ASSETS.md lists (%d on disk, %d listed)" % [present.size(), listed.size()])
 	var tuner: Node = load("res://tools/prop_tuner/prop_tuner.tscn").instantiate()
 	_check(tuner != null, "the prop tuner scene loads")
 	tuner.free()

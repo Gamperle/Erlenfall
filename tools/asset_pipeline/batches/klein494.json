@@ -1,0 +1,57 @@
+{
+	"seed": 14000,
+	"chosen_by": "Claude for Markus Gamperle",
+	"objects": {
+		"hanging_chain": {
+			"subject": "long iron chain of heavy oval links hanging straight down from a single iron hook, the links with open gaps",
+			"faces": 1500,
+			"meters": 1.5
+		},
+		"chain_pile": {
+			"subject": "coil of heavy rusty iron chain lying in a loose heap, many oval links with open gaps",
+			"faces": 2000,
+			"meters": 0.6
+		},
+		"wooden_ladder": {
+			"subject": "tall wooden ladder with two long side rails and eight thin round rungs with open gaps between them",
+			"faces": 2500,
+			"meters": 3.0
+		},
+		"rope_ladder": {
+			"subject": "rope ladder with two thin hanging ropes and small wooden rungs tied between them, open gaps between the rungs",
+			"faces": 2000,
+			"meters": 2.5
+		},
+		"split_rail_fence": {
+			"subject": "section of split-rail wooden fence with three thin horizontal rails held in two upright posts, open gaps between the rails",
+			"faces": 2500,
+			"meters": 2.5
+		},
+		"garden_rake": {
+			"subject": "long wooden garden rake with a row of thin iron tines on a head bar, standing upright",
+			"faces": 1500,
+			"meters": 1.6
+		},
+		"pitchfork": {
+			"subject": "long wooden pitchfork with three thin iron tines, standing upright",
+			"faces": 1500,
+			"meters": 1.6
+		},
+		"scythe": {
+			"subject": "long scythe with a curved thin steel blade and a bent wooden snath with two small handles",
+			"faces": 1500,
+			"meters": 1.8
+		},
+		"wire_cage": {
+			"subject": "rectangular cage made of thin iron wire mesh with a small door, empty, open gaps between the wires",
+			"faces": 2500,
+			"meters": 0.7
+		},
+		"fishing_net_frame": {
+			"subject": "fishing net stretched on a wooden frame, thin cords forming a mesh with open gaps",
+			"faces": 2500,
+			"meters": 1.5
+		}
+	},
+	"turns": {}
+}

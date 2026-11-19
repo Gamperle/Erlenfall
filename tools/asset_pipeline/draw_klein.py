@@ -17,7 +17,8 @@ import provenance
 ROOT = os.environ.get("ASSET_ROOT", r"D:\erlenfall-assets")
 OUT = os.path.join(ROOT, sys.argv[1], "candidates")
 MODEL = "black-forest-labs/FLUX.2-klein-4B"
-CANDIDATES = 6
+# CANDIDATES in the environment overrides the number of pictures per object (a comparison run needs fewer).
+CANDIDATES = int(os.environ.get("CANDIDATES", "6"))
 STYLE = (
     "A single {}, 3d game prop, straight-on front view at eye level, centered, the entire object visible "
     "with empty space around it, isolated on a plain white background, realistic proportions, "

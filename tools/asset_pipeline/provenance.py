@@ -17,7 +17,8 @@ Command line, from the repository root:
 A record, as JSON:
   schema        1
   asset         "assets/props/anvil_2.glb"
-  kind          "ai_prop", "character", "derived_texture" (relief maps) or "ui_texture" (assets/ui)
+  kind          "ai_prop", "character", "derived_texture" (relief maps), "ui_texture" (assets/ui) or
+                "polyhaven_prop" (a Poly Haven model converted by polyhaven_prop.py)
   origin        "pipeline" if a script wrote it as the asset was made, or "backfill" if it was rebuilt
                 from ASSETS.md afterwards. A backfilled record has null for what ASSETS.md doesn't say
   stages        what ran, in order: {"step", "tool", "versions", "date", plus the step's settings}
@@ -25,6 +26,8 @@ A record, as JSON:
   TRELLIS.2 mesh stages also have "models": the weight files the workflow loaded, each {"node", "class", "input",
   "file", "path", "size", "sha256"} (#450). A backfilled record has null, because the files used then are unknown.
   ai_prop also has: batch, object, name, chosen_by, subject, prompt, seed
+  polyhaven_prop also has: name, license ("CC0 1.0"), authors, and source: {"page", "polyhaven_asset", "resolution", "license",
+  "license_url", "authors", "files": [{"file", "url", "bytes", "sha256"}]} (the files as downloaded, before any edit)
 """
 import datetime
 import hashlib
@@ -34,12 +37,12 @@ import re
 import sys
 
 SCHEMA = 1
-KINDS = ("ai_prop", "character", "derived_texture", "ui_texture")
+KINDS = ("ai_prop", "character", "derived_texture", "ui_texture", "polyhaven_prop")
 PROP_STEPS = ("image", "mesh", "cleanup", "size", "textures")
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 # The kind decides the folder under provenance/.
-FOLDERS = {"ai_prop": "props", "character": "characters", "derived_texture": "textures", "ui_texture": "ui"}
+FOLDERS = {"ai_prop": "props", "polyhaven_prop": "props", "character": "characters", "derived_texture": "textures", "ui_texture": "ui"}
 
 
 def today():
@@ -218,6 +221,35 @@ def check_record(record, name=""):
                 found.append("has no %s stage" % needed)
         if record.get("prompt") and record.get("subject") and record["subject"] not in record["prompt"]:
             found.append("prompt does not contain the subject")
+    if kind == "polyhaven_prop":
+        found += check_polyhaven(record)
+    return found
+
+
+def check_polyhaven(record):
+    """Problems with the source and license of a Poly Haven prop's record."""
+    found = []
+    if not record.get("name"):
+        found.append("name is missing")
+    if record.get("license") != "CC0 1.0":
+        found.append("license is not CC0 1.0")
+    if not (isinstance(record.get("authors"), list) and record["authors"]):
+        found.append("authors is missing")
+    source = record.get("source")
+    if not isinstance(source, dict):
+        return found + ["source is missing"]
+    if not str(source.get("page", "")).startswith("https://polyhaven.com/a/"):
+        found.append("source.page is not a polyhaven.com/a/ link")
+    if source.get("license") != "CC0 1.0" or not source.get("license_url"):
+        found.append("source.license and license_url must say CC0 1.0 and where")
+    files = source.get("files")
+    if not isinstance(files, list) or not files:
+        found.append("source.files is empty")
+    else:
+        for file in files:
+            if not (isinstance(file, dict) and str(file.get("url", "")).startswith("https://") and re.fullmatch(r"[0-9a-f]{64}", str(file.get("sha256")))):
+                found.append("a source file has no https url or SHA-256")
+                break
     return found
 
 
@@ -486,7 +518,7 @@ def validate(root=ROOT, out=print):
 
 def required_records(root, text):
     """(asset, kind) for each file that an ASSETS.md row says a script generated or derived, other than AI props
-    (generated_rows covers those): character models, relief maps and UI textures. A pattern that matches no file
+    (generated_rows covers those): character models, relief maps, UI textures and Poly Haven props. A pattern that matches no file
     is yielded as it is, so it is reported too."""
     import glob
 
@@ -498,6 +530,8 @@ def required_records(root, text):
                 kind = "derived_texture"
             elif pattern.startswith("assets/ui/") and cells[1].startswith(("Built by", "Drawn in code")):
                 kind = "ui_texture"
+            elif re.fullmatch(r"assets/props/[^/]*\.glb", pattern) and cells[1].startswith("[Poly Haven:"):
+                kind = "polyhaven_prop"
             else:
                 continue
             files = sorted(glob.glob(os.path.join(root, pattern)))

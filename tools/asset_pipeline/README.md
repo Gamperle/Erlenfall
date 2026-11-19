@@ -159,6 +159,7 @@ Last, list every new file in [ASSETS.md](../../ASSETS.md) with its seed and subj
 | `setup_comfy.ps1` | Installs ComfyUI with ROCm PyTorch and the TRELLIS.2 models |
 | `run_trellis.ps1`, `make_trellis.py`, `trellis2_api.json` | Make models with TRELLIS.2 |
 | `size_models.ps1`, `size_glb.py` | Scale models to real size for Godot |
+| `polyhaven_prop.py` | Converts a Poly Haven glTF model into a single-surface prop, with provenance (#220) |
 | `shrink_textures.py` | Shrinks embedded textures to 512 px for props up to 1.25 m, run after sizing |
 | `shoot_models.gd` | Photographs single props up close, for comparing texture changes |
 | `shoot_props.gd` | Photographs placed props in the game |

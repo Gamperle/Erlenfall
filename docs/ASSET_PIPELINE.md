@@ -291,7 +291,43 @@ What this means for the game:
 - **Apache 2.0 and MIT** ask that the license text and copyright notice go with a redistributed copy of the code or weights. They place no condition on images or meshes made with the tool. Nothing here is redistributed in the game.
 - **Which props are affected:** the TripoSR props in [ASSETS.md](../ASSETS.md) list "rembg u2net" in their tools column. The TRELLIS.2 props use BiRefNet.
 
-Still to do: compare BiRefNet (and BEN2 Base, MIT) with u2net on thin parts such as tongs, chains, and handles. That needs the asset PC, so it is tracked in [#218](https://github.com/Gamperle/Erlenfall/issues/218).
+The comparison that was still to do is in the next section.
+
+### Background removal comparison (#218)
+
+Run on 2026-11-19 on the asset PC, in `D:\erlenfall-assets\bgcompare218` (nothing outside that folder was changed; `ASSET_PC` below is that PC). The scripts are in [`tools/asset_pipeline/bg_compare`](../tools/asset_pipeline/bg_compare). Twelve existing FLUX.2 klein pictures with thin parts were run through three models: tongs, crosscut saw, hand saw, cant hook, pickaxe, short bow (a bow seen edge-on, 2% of the picture), spoked wheel, a hanging rack, a lantern and a mine lantern (loop, wire cage, glass), a windlass well, and a forge tool rack (hammers, tongs, chisels on boards). No picture of a chain exists in the klein batches, so chains were **not** tested.
+
+| Model | Weights used | Source and license | sha256 |
+| --- | --- | --- | --- |
+| rembg u2net (rembg 2.0.69, default settings as TripoSR's `run.py` uses them) | `u2net.onnx`, 175,997,641 bytes, already on the PC since 2026-11-01 | rembg's default download; license gap as described above | `8D10D2F3BB75AE3B6D527C77944FC5E7DCD94B29809D47A739A7A728A912B491` |
+| BiRefNet, as TRELLIS.2 uses it (ComfyUI's `RemoveBackground` node) | `comfyui/models/background_removal/birefnet.safetensors`, 444,473,596 bytes | the file the pipeline already uses (listed in the batch `models.json` records); MIT per the model card | `9ab37426bf4de0567af6b5d21b16151357149139362e6e8992021b8ce356a154` |
+| BEN2 Base | `model.safetensors`, 380,577,976 bytes, and the model code `BEN2.py` (53,513 bytes), both from [PramaLLC/BEN2](https://huggingface.co/PramaLLC/BEN2) at revision `e48a20765fb421d19dcdb0bf3cc61e802ca5ec8f`, downloaded with the maintainer's approval | MIT (model card metadata). Trained on DIS5k and a proprietary 22K segmentation set owned by the publisher, so the training-data caveat is the same kind as for the others. The larger BEN2 model is only offered through a web demo and API and was not used | `model.safetensors` `EA8B7907176A09667C86343DC7D00DE6A6D871076CB90BB5F753618FD6FB3EBB` (matches the hash Hugging Face lists); `BEN2.py` `16E6132FAEFC112EA97072B93DF40C847A33AAD7C04A2E578B417E9EBB6094A7` |
+
+BEN2 ran from its own `BEN2.py` in a new venv (`bgcompare218\venv-ben2`: torch 2.15 CPU, timm 1.0.31, einops, kornia, opencv-headless), loading the safetensors file, not the pickled `.pth`. It needs about 8.5 s per 1024 px picture on the CPU. BiRefNet and BEN2 are not RMBG-1.4 or 2.0; those were not touched.
+
+**Masks (threshold 0.5, all 12 pictures).** Intersection over union between models was 0.95 to 0.99 for most pictures, and the three masks look the same for tongs, saws, pickaxe, cant hook, both lanterns, hanging rack and well. Differences:
+
+| Picture | u2net | BiRefNet | BEN2 |
+| --- | --- | --- | --- |
+| spoked wheel | **Fills the gaps between all 16 spokes** (44% of the picture is foreground, against 27%) | 16 gaps open | 16 gaps open (IoU with BiRefNet 0.985) |
+| forge tool rack | complete | **bites 3 holes out of the board** (24% against 26%) | complete |
+| short bow (a 2% sliver) | IoU only 0.82 to 0.91 between every pair of models; no clear winner | same | same |
+| lantern, mine lantern | glass area partly cut away (fewer holes, 6 and 8 against 10 and 12) | keeps the wire cage openings | keeps them, IoU with BiRefNet 0.99 |
+
+So u2net fails on thin parts that are separated by gaps (the wheel), BiRefNet showed one bad failure (the rack), BEN2 showed none and agrees with BiRefNet everywhere else.
+
+**Meshes.** For tongs, wheel, tool rack and mine lantern, the same pictures were turned into models with the masks swapped:
+
+- *TRELLIS.2* (the default): the real workflow with 12,000 faces and the in-workflow BiRefNet mask replaced by each model's mask file (a control run with the unchanged workflow gave a near identical tongs model: 12,000 faces, 0.447 by 1.0 by 0.092, against 0.447 by 1.0 by 0.094 with the BiRefNet mask file, so the file route is faithful). TRELLIS.2 only uses the mask to crop and center the picture, so mask errors hardly matter: the wheel kept all 16 spokes with all three masks, tongs and mine lantern looked the same. The one visible effect was the tool rack, where the BiRefNet mask's bite shows up as a hole in the boards, and BEN2 gave a model without it.
+- *TripoSR* (the fallback, 256 resolution, baked): the u2net wheel has a membrane across the spoke gaps. The BiRefNet and BEN2 wheels have open spokes. Tongs and mine lantern are alike with all three, and the rack came out a little different with each mask, with no clear winner.
+
+**Recommendation.**
+
+1. **Keep BiRefNet as the default.** It is already what TRELLIS.2 uses inside ComfyUI, BEN2 is not a ComfyUI node (using it there would need a custom node), and the evidence is one picture per prop, 12 pictures, with BEN2 ahead in one case (rack) and equal elsewhere, so it is not clear enough to change the pipeline. The pipeline default is not changed in this PR.
+2. **Stop using u2net for new TripoSR props.** The wheel shows its weakness on thin gaps, and moving to BiRefNet or BEN2 also removes the unstated weight license. Proposed for the maintainer: pass the TripoSR fallback a BiRefNet or BEN2 mask (`bg_compare/prep_triposr.py` shows how, and `run.py --no-remove-bg` takes the result). The six existing u2net props stay as decided on 2026-11-17.
+3. **BEN2 Base is a good second opinion** when a BiRefNet mask looks wrong (the rack). A cheap check for a new batch is `bg_compare/mask_birefnet.py` and `bg_compare/mask_ben2.py`, then comparing the masks.
+
+Not verified: chains and other very thin parts (no picture), a bigger sample, whether BEN2 inside TRELLIS.2 itself changes meshes (only its mask was substituted, and TRELLIS.2 uses it just for the crop), BEN2's GPU speed, and the training-data licenses of all three models.
 
 ### SDXL license
 

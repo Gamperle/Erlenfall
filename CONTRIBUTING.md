@@ -91,6 +91,8 @@ Give every issue at least one area label. Add more when it fits, for example `gr
 
 By contributing, you agree that your code is licensed under [MIT](LICENSE) and your creative content under [CC BY-SA 4.0](LICENSE-ASSETS), unless the file is listed otherwise in [ASSETS.md](ASSETS.md).
 
+New art (props, buildings, characters, interface) follows [the art style guide](docs/ART_STYLE.md): check its asset checklist before you open a pull request.
+
 Add every asset you did not create entirely yourself to [ASSETS.md](ASSETS.md), including AI-generated ones.
 
 Every AI-generated asset also needs a provenance record in [`provenance/`](provenance), with the prompt, seed, tool versions, dates, and manual edits. The pipeline scripts write it, and `python3 tools/asset_pipeline/provenance.py validate` checks it against ASSETS.md (CI runs this). If you change a generated asset by hand, add the change with `provenance.py note`. See [the asset pipeline](docs/ASSET_PIPELINE.md#provenance-records).

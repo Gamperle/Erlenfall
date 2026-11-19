@@ -1,6 +1,6 @@
 # How Erlenfall makes props from text
 
-Erlenfall's furniture, tools, and village clutter start as a sentence. FLUX.2 klein draws the object, TRELLIS.2 turns the picture into a textured, game-ready mesh, and Blender scales it to real size. This page walks through the second batch, `klein2`, which added 19 props to the village. Setup, access, and known problems are in [the pipeline reference](../../docs/ASSET_PIPELINE.md).
+Erlenfall's furniture, tools, and village clutter start as a sentence. FLUX.2 klein draws the object, TRELLIS.2 turns the picture into a textured, game-ready mesh, and Blender scales it to real size. This page walks through the second batch, `klein2`, which added 19 props to the village. Setup, access, and known problems are in [the pipeline reference](../../docs/ASSET_PIPELINE.md), and the look to aim for is in [the art style guide](../../docs/ART_STYLE.md).
 
 ![A well: the drawn picture, the earlier TripoSR model, and the TRELLIS.2 model](examples/0_well_steps.jpg)
 

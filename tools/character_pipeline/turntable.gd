@@ -1,9 +1,12 @@
 extends SceneTree
 ## Shows each character in a folder in turn and takes screenshots from 8 angles around it.
 ## Saves each view, plus one sheet per character with all the views.
-## Run from the project folder, with an optional animation library that has an "Idle" animation:
+## Characters stand in the first frame of "Idle" from the game's humanoid animations, so they do not hold a T pose.
+## Run from the project folder, with an optional other animation library that has an "Idle" animation
+## (pass "none" to show the bind pose instead). Models without a humanoid skeleton, such as the goblin, are shown as they are:
 ## godot --path . --script res://tools/character_pipeline/turntable.gd -- <models folder> <output folder> [animation library]
 
+const DEFAULT_ANIMATIONS := "res://assets/animations/humanoid.glb"
 const ANGLES := 8
 const VIEW_SIZE := Vector2i(480, 720)
 const SHEET_COLUMNS := 4
@@ -33,7 +36,8 @@ func _run() -> void:
 	root.size = VIEW_SIZE
 	var stage := _build_stage()
 	var camera: Camera3D = stage.get_node("Camera")
-	var library := _load_animations(arguments[2]) if arguments.size() > 2 else null
+	var library_path := arguments[2] if arguments.size() > 2 else DEFAULT_ANIMATIONS
+	var library := null if library_path == "none" else _load_animations(library_path)
 
 	var names := DirAccess.get_files_at(models)
 	names.sort()
@@ -75,6 +79,9 @@ func _shoot(person_name: String, camera: Camera3D, output: String) -> void:
 func _pose(person: Node3D, library: AnimationLibrary) -> void:
 	if library == null:
 		return
+	var skeleton := person.find_child("GeneralSkeleton", true, false)
+	if skeleton == null:
+		return
 	var player := AnimationPlayer.new()
 	person.add_child(player)
 	player.owner = person
@@ -83,7 +90,7 @@ func _pose(person: Node3D, library: AnimationLibrary) -> void:
 	player.play("Idle")
 	player.seek(0.0, true)
 	player.pause()
-	person.find_child("GeneralSkeleton", true, false).add_child(PostureModifier.new())
+	skeleton.add_child(PostureModifier.new())
 
 
 func _load_animations(path: String) -> AnimationLibrary:

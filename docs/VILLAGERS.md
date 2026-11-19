@@ -245,3 +245,17 @@ A villager plays the first conversation in their list whose conditions hold, so 
 | Bertram | Gives the first quest | Reminder, can ask about ore again | Speaks up for Brandt | Points to the ladder | Questions about forging, Anselm, and the mine |
 | Greta | Her leaking roof, and the inn | Thanks the player for the nails | Same | Warns about the roof | Grateful, then questions about guests, Jakob, and the inn |
 | Brandt | Introduces himself, can ask how long he has been mayor | Same | Confrontation and choice | Warm or cold, by that choice | Respected: questions about the mine and his rules. Annoyed: cold, with an apology or the mine |
+
+## Clothing variety (plan)
+
+The fourteen villagers in the game are each a sweater, tunic, or robe over trousers or a skirt, so they read as one outfit in different colors. This plan lists what to add, using the pipeline's existing clothing assets first (see `tools/character_pipeline/villagers.json`) and marking wishes for new assets. Nothing here is built yet.
+
+| Layer | Who | Idea |
+| --- | --- | --- |
+| Aprons | Bertram (leather, already in the notes), Greta, Hanne | A second layer over the top, in `colors` so each differs |
+| Hats and hoods | Konrad (straw hat), Oswin (miner's cap), Wendel (hood), Brandt (council cap) | Wish: hat and hood assets, not in the packs yet |
+| Accessories | Brandt's chain, Mira's hatchet belt, Falk's quiver, Marek's pack | Wish: props attached to bones, like the torch and sword |
+| Outerwear | Cloaks or vests for Falk, Wendel, Marek, Gerold | Wish: a vest or cloak asset |
+| Color and wear | Everyone | Vary `colors` per villager, and add patches or dirt to workers' clothes |
+
+Check each new outfit with the turntable, which now shows the idle pose. The goblin is flat-shaded and does not match the villagers' style. That is tracked separately.

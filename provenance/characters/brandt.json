@@ -2,19 +2,29 @@
 	"schema": 1,
 	"asset": "assets/characters/brandt.glb",
 	"kind": "character",
-	"origin": "backfill",
+	"origin": "pipeline",
 	"name": "brandt",
 	"stages": [
 		{
 			"step": "build",
 			"tool": "build_character.py with MPFB",
-			"date": null,
+			"date": "2026-11-19",
 			"versions": {
-				"Blender": null,
+				"Blender": "5.2.3 LTS",
 				"MPFB": null
 			},
 			"recipe": {
 				"id": "brandt",
+				"accessories": [
+					{
+						"type": "chain",
+						"color": [
+							0.85,
+							0.68,
+							0.2
+						]
+					}
+				],
 				"shape": {
 					"gender": 1.0,
 					"age": 0.85,
@@ -45,15 +55,20 @@
 				"brows": "eyebrow009",
 				"eyes": "low-poly"
 			},
-			"recipes_file_sha256": null,
-			"asset_packs": [
-				"system assets",
-				"Suits 02"
+			"recipes_file_sha256": "70718a80e1e3c1b9975929f7127d6e886a59b8a41269a4a487610d55cf0660d5",
+			"asset_folders": [
+				"makehuman_system_assets",
+				"bodyparts05",
+				"pants01",
+				"shirts01",
+				"skirts01",
+				"suits02",
+				"hats01",
+				"hair01"
 			],
-			"full_detail": null,
-			"output_sha256": "09d3a85daff43b71cbe66a475fc50b271a9c60221738360c071b4262bf1d343a"
+			"full_detail": false,
+			"output_sha256": "d4ffdec1e27e77efcd2a06c41aaef85bd902fad6ca65549e0d9743830168a1e7"
 		}
 	],
-	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
 	"manual_edits": []
 }

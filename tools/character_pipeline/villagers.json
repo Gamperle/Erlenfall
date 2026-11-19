@@ -80,6 +80,7 @@
 	},
 	{
 		"id": "bertram",
+		"accessories": [{ "type": "apron", "color": [0.42, 0.28, 0.15] }],
 		"shape": {
 			"gender": 1.0,
 			"age": 0.65,
@@ -99,6 +100,7 @@
 	},
 	{
 		"id": "brandt",
+		"accessories": [{ "type": "chain", "color": [0.85, 0.68, 0.2] }],
 		"shape": {
 			"gender": 1.0,
 			"age": 0.85,
@@ -118,6 +120,7 @@
 	},
 	{
 		"id": "konrad",
+		"accessories": [{ "type": "hat", "color": [0.82, 0.68, 0.36], "brim": 0.12, "crown": 0.1 }],
 		"shape": {
 			"gender": 1,
 			"age": 0.63,
@@ -146,6 +149,7 @@
 	},
 	{
 		"id": "agnes",
+		"vests": [{ "from": "toigo_fisherman_sweater", "color": [0.5, 0.36, 0.22] }],
 		"shape": {
 			"gender": 0,
 			"age": 0.82,
@@ -179,9 +183,10 @@
 			"weight": 0.45
 		},
 		"skin": "old_caucasian_male",
-		"clothes": ["toigo_wool_pants", "toigo_fisherman_sweater", "shoes03"],
+		"clothes": ["toigo_wool_pants", "toigo_fisherman_sweater", "shoes03", "donitz_monk_robe_hood"],
 		"footwear": ["shoes03"],
 		"colors": {
+			"donitz_monk_robe_hood": [0.27, 0.32, 0.2],
 			"toigo_wool_pants": [0.3, 0.27, 0.2],
 			"toigo_fisherman_sweater": [0.3, 0.38, 0.25],
 			"grinsegold_beard_sigmund_wip": [0.3, 0.28, 0.26]
@@ -196,7 +201,8 @@
 		},
 		"trim_above": {
 			"shoes03": 0.11
-		}
+		},
+		"covered_by": { "short02": "donitz_monk_robe_hood" }
 	},
 	{
 		"id": "oswin",
@@ -207,9 +213,10 @@
 			"weight": 0.4
 		},
 		"skin": "old_caucasian_male",
-		"clothes": ["toigo_wool_pants", "toigo_fisherman_sweater", "shoes03"],
+		"clothes": ["toigo_wool_pants", "toigo_fisherman_sweater", "shoes03", "jujube_newsboy_cap"],
 		"footwear": ["shoes03"],
 		"colors": {
+			"jujube_newsboy_cap": [0.32, 0.22, 0.13],
 			"toigo_wool_pants": [0.3, 0.26, 0.2],
 			"toigo_fisherman_sweater": [0.5, 0.42, 0.32],
 			"grinsegold_beard_sigmund_wip": [0.65, 0.63, 0.6]
@@ -224,7 +231,8 @@
 		},
 		"trim_above": {
 			"shoes03": 0.11
-		}
+		},
+		"covered_by": { "short01": "jujube_newsboy_cap" }
 	},
 	{
 		"id": "albrecht",
@@ -275,6 +283,7 @@
 	},
 	{
 		"id": "falk",
+		"accessories": [{ "type": "quiver", "color": [0.3, 0.2, 0.12] }],
 		"shape": {
 			"gender": 1,
 			"age": 0.62,
@@ -282,9 +291,10 @@
 			"weight": 0.4
 		},
 		"skin": "middleage_caucasian_male",
-		"clothes": ["toigo_wool_pants", "toigo_fisherman_sweater", "shoes03"],
+		"clothes": ["toigo_wool_pants", "toigo_fisherman_sweater", "shoes03", "donitz_monk_robe_hood"],
 		"footwear": ["shoes03"],
 		"colors": {
+			"donitz_monk_robe_hood": [0.22, 0.17, 0.12],
 			"toigo_wool_pants": [0.22, 0.18, 0.14],
 			"toigo_fisherman_sweater": [0.25, 0.2, 0.15],
 			"grinsegold_beard_sigmund_wip": [0.1, 0.09, 0.08]
@@ -299,10 +309,12 @@
 		},
 		"trim_above": {
 			"shoes03": 0.11
-		}
+		},
+		"covered_by": { "short02": "donitz_monk_robe_hood" }
 	},
 	{
 		"id": "marek",
+		"accessories": [{ "type": "pack", "color": [0.45, 0.35, 0.22] }, { "type": "hat", "color": [0.3, 0.22, 0.2], "brim": 0.11, "crown": 0.12, "droop": 0.03 }],
 		"shape": {
 			"gender": 1,
 			"age": 0.66,

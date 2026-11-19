@@ -7,6 +7,7 @@ With "full", it skips removing hidden parts and all reduction, for telling wheth
 from those steps or from the assets.
 """
 import json
+import math
 import os
 import struct
 import sys
@@ -293,6 +294,358 @@ def finish_materials(path, cutout_names, colors):
         file.write(rest)
 
 
+ACCESSORY_OFFSET = 0.014
+
+
+class Solids:
+    """The body and its clothes as points and a ray-casting tree, for fitting accessories to them."""
+
+    def __init__(self, objects):
+        vertices = []
+        polygons = []
+        self.body = numpy.array([tuple(vertex.co) for vertex in objects[0].data.vertices])
+        for mesh_object in objects:
+            start = len(vertices)
+            vertices += [vertex.co.copy() for vertex in mesh_object.data.vertices]
+            polygons += [tuple(start + index for index in polygon.vertices) for polygon in mesh_object.data.polygons]
+        self.points = numpy.array([tuple(vertex) for vertex in vertices])
+        self.tree = mathutils.bvhtree.BVHTree.FromPolygons(vertices, polygons)
+
+    def near(self, x, z, reach=0.03):
+        """The points around a spot."""
+        mask = (abs(self.points[:, 0] - x) < reach) & (abs(self.points[:, 2] - z) < reach)
+        return self.points[mask]
+
+    def front(self, x, z, reach=0.03):
+        found = self.near(x, z, reach)
+        return float(found[:, 1].min()) if len(found) else None
+
+    def back(self, x, z, reach=0.03):
+        found = self.near(x, z, reach)
+        return float(found[:, 1].max()) if len(found) else None
+
+    def row(self, z, half_width=0.15, thickness=0.02):
+        mask = (abs(self.points[:, 0]) < half_width) & (abs(self.points[:, 2] - z) < thickness)
+        return self.points[mask]
+
+    def row_front(self, z, half_width=0.15, thickness=0.02):
+        return float(self.row(z, half_width, thickness)[:, 1].min())
+
+    def row_back(self, z, half_width=0.15, thickness=0.02):
+        return float(self.row(z, half_width, thickness)[:, 1].max())
+
+    def shoulder(self, x, limit):
+        """The height of the top of the shoulder at a sideways position, ignoring anything above the limit."""
+        found = self.points[(abs(self.points[:, 0] - x) < 0.03) & (abs(self.points[:, 1] + 0.02) < 0.06) & (self.points[:, 2] < limit)]
+        return float(found[:, 2].max()) if len(found) else limit
+
+    def drop(self, x, y, top):
+        """The height where a ray from above, at a spot, first meets the body or clothes."""
+        hit = self.tree.ray_cast(mathutils.Vector((x, y, top)), mathutils.Vector((0, 0, -1)), 2.0)
+        return None if hit[0] is None else hit[0].z
+
+
+def plain_material(name, color, metallic=0.0, roughness=0.9):
+    material = bpy.data.materials.new(name)
+    material.use_nodes = True
+    material.use_backface_culling = False
+    shader = material.node_tree.nodes["Principled BSDF"]
+    # Recipes use the sRGB values a color picker shows, and Blender's colors are linear.
+    shader.inputs["Base Color"].default_value = (*(channel ** 2.2 for channel in color), 1.0)
+    shader.inputs["Metallic"].default_value = metallic
+    shader.inputs["Roughness"].default_value = roughness
+    return material
+
+
+def add_part(name, geometry, color, metallic=0.0, roughness=0.9):
+    """Makes an object with a plain colored material from lists of vertices and faces."""
+    vertices, faces = geometry
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata([tuple(vertex) for vertex in vertices], [], faces)
+    mesh.update()
+    mesh_object = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(mesh_object)
+    material = plain_material(name, color, metallic, roughness)
+    mesh.materials.append(material)
+    return mesh_object
+
+
+def bmesh_geometry(mesh):
+    vertices = [vertex.co.copy() for vertex in mesh.verts]
+    faces = [tuple(vertex.index for vertex in face.verts) for face in mesh.faces]
+    mesh.free()
+    return vertices, faces
+
+
+def grid_geometry(rows):
+    """Joins rows of points (all of one length) into a sheet of quads."""
+    width = len(rows[0])
+    vertices = [point for row in rows for point in row]
+    faces = [(r * width + c, r * width + c + 1, (r + 1) * width + c + 1, (r + 1) * width + c)
+             for r in range(len(rows) - 1) for c in range(width - 1)]
+    return vertices, faces
+
+
+def strip_geometry(path, width, up):
+    """A flat band along a path of points, as wide as `width` across the path and the up direction."""
+    rows = []
+    for index, point in enumerate(path):
+        before = mathutils.Vector(path[max(index - 1, 0)])
+        after = mathutils.Vector(path[min(index + 1, len(path) - 1)])
+        side = (after - before).cross(mathutils.Vector(up)).normalized() * (width / 2)
+        rows.append([mathutils.Vector(point) - side, mathutils.Vector(point) + side])
+    return grid_geometry(rows)
+
+
+def box_geometry(center, size, tilt=0.0):
+    """A box, optionally tilted around the front-to-back axis."""
+    mesh = bmesh.new()
+    bmesh.ops.create_cube(mesh, size=1.0)
+    bmesh.ops.scale(mesh, vec=mathutils.Vector(size), verts=mesh.verts)
+    bmesh.ops.rotate(mesh, cent=(0, 0, 0), matrix=mathutils.Matrix.Rotation(tilt, 3, "Y"), verts=mesh.verts)
+    bmesh.ops.translate(mesh, vec=mathutils.Vector(center), verts=mesh.verts)
+    return bmesh_geometry(mesh)
+
+
+def tube_geometry(start, end, radius, sides=8, taper=1.0):
+    """A closed cylinder between two points, whose far end can be narrower."""
+    start = mathutils.Vector(start)
+    end = mathutils.Vector(end)
+    axis = end - start
+    mesh = bmesh.new()
+    bmesh.ops.create_cone(mesh, cap_ends=True, cap_tris=False, segments=sides, radius1=radius, radius2=radius * taper, depth=axis.length)
+    bmesh.ops.rotate(mesh, cent=(0, 0, 0), matrix=axis.to_track_quat("Z", "Y").to_matrix(), verts=mesh.verts)
+    bmesh.ops.translate(mesh, vec=(start + end) / 2, verts=mesh.verts)
+    return bmesh_geometry(mesh)
+
+
+def bead_geometry(center, size, direction):
+    """A small stretched blob along a direction, one link of a chain."""
+    mesh = bmesh.new()
+    bmesh.ops.create_icosphere(mesh, subdivisions=1, radius=1.0)
+    for vertex in mesh.verts:
+        vertex.co = mathutils.Vector((vertex.co.x * size * 0.8, vertex.co.y * size * 1.6, vertex.co.z * size * 0.8))
+    bmesh.ops.rotate(mesh, cent=(0, 0, 0), matrix=mathutils.Vector(direction).to_track_quat("Y", "Z").to_matrix(), verts=mesh.verts)
+    bmesh.ops.translate(mesh, vec=mathutils.Vector(center), verts=mesh.verts)
+    return bmesh_geometry(mesh)
+
+
+def merge_geometry(*parts):
+    vertices = []
+    faces = []
+    for part_vertices, part_faces in parts:
+        start = len(vertices)
+        vertices += part_vertices
+        faces += [tuple(start + index for index in face) for face in part_faces]
+    return vertices, faces
+
+
+def bone_height(rig, name):
+    return rig.data.bones[name].head_local.z
+
+
+def torso_ellipse(solids, z, margin):
+    """The centre and half sizes of an ellipse around the torso at a height, without the arms."""
+    ring = solids.row(z, 0.23)
+    front, back = ring[:, 1].min(), ring[:, 1].max()
+    return (front + back) / 2, float(ring[:, 0].max()) + margin, (back - front) / 2 + margin
+
+
+def make_apron(rig, solids, ground, options):
+    """A bib apron with a skirt panel fitted to the front, neck straps over the shoulders, and a waist tie."""
+    top = bone_height(rig, "clavicle_l") - 0.06
+    waist = bone_height(rig, "spine_01") + 0.01
+    hem = ground + options.get("hem", 0.5)
+    hips = bone_height(rig, "pelvis") - 0.04
+    bib_end = waist + 0.04
+    levels = [top, top - 0.06, top - 0.12, bib_end, waist - 0.04]
+    steps = 6
+    levels += [waist - 0.04 - (waist - 0.04 - hem) * (step + 1) / steps for step in range(steps)]
+    rows = []
+    for z in levels:
+        # A narrow bib that widens to the waist, then a skirt that flares a little.
+        if z > bib_end:
+            half = 0.085 + 0.075 * (top - z) / (top - bib_end)
+        else:
+            half = 0.16 + 0.04 * (bib_end - z) / max(bib_end - hem, 0.01)
+        flat = solids.row_front(z, thickness=0.08)
+        row = []
+        for column in range(7):
+            x = half * (column / 3 - 1)
+            y = flat + 0.03 * (x / half) ** 2
+            seen = solids.front(x, z)
+            if seen is not None and z > hips:
+                y = min(y, seen)
+            row.append(mathutils.Vector((x, y - ACCESSORY_OFFSET - 0.012, z)))
+        rows.append(row)
+    parts = [grid_geometry(rows)]
+    # The straps run from the bib's top corners over the shoulders and down the back.
+    for side in (-1, 1):
+        x = 0.075 * side
+        shoulder = solids.shoulder(x, bone_height(rig, "clavicle_l") + 0.07)
+        front_y = rows[0][3 + side * 2].y
+        back_y = solids.back(x, top - 0.02) or solids.row_back(top)
+        centre_y = (front_y + back_y) / 2
+        path = [(x, front_y, top), (x, front_y + (centre_y - front_y) * 0.5, shoulder + 0.012), (x, centre_y + (back_y - centre_y) * 0.5, shoulder + 0.012),
+                (x, back_y + ACCESSORY_OFFSET, shoulder - 0.08), (x, back_y + ACCESSORY_OFFSET, top - 0.06)]
+        parts.append(strip_geometry(path, 0.03, (0, 1, 0)))
+    # The waist tie runs all the way around.
+    centre, reach_x, reach_y = torso_ellipse(solids, waist, ACCESSORY_OFFSET)
+    around = [(reach_x * math.sin(step * math.tau / 20), centre - reach_y * math.cos(step * math.tau / 20), waist + 0.01) for step in range(21)]
+    parts.append(strip_geometry(around, 0.045, (0, 0, 1)))
+    return merge_geometry(*parts)
+
+
+def make_chain(rig, solids, ground, options):
+    """A chain of links resting on the shoulders and hanging in a V on the chest, with a medallion."""
+    top = bone_height(rig, "neck_01") - 0.02
+    mid_y = (solids.row_front(top - 0.1) + solids.row_back(top - 0.1)) / 2
+    beads = []
+    for step in range(36):
+        angle = step * math.tau / 36
+        # Angle 0 is the front. The ring is drawn out at the front, so the chain hangs there in a V.
+        sway = math.cos(angle)
+        x = (0.115 + 0.012 * max(sway, 0)) * math.sin(angle)
+        y = mid_y - (0.1 + 0.05 * max(sway, 0)) * sway
+        z = solids.drop(x, y, top)
+        if z is not None:
+            beads.append(mathutils.Vector((x, y, z + 0.012)))
+    parts = [bead_geometry(point, 0.014, beads[(index + 1) % len(beads)] - beads[index - 1]) for index, point in enumerate(beads)]
+    lowest = min(beads, key=lambda point: point.z)
+    parts.append(box_geometry((lowest.x, lowest.y - 0.012, lowest.z - 0.03), (0.05, 0.012, 0.05), 0.785))
+    return merge_geometry(*parts)
+
+
+def make_quiver(rig, solids, ground, options):
+    """A quiver on the back, hung from a strap across the chest, with arrow ends sticking out."""
+    top = bone_height(rig, "spine_03") + 0.2
+    low = bone_height(rig, "pelvis") + 0.02
+    back_y = solids.row_back((top + low) / 2)
+    base = (-0.05, back_y + 0.075, low)
+    tip = (0.05, back_y + 0.075, top + 0.12)
+    parts = [tube_geometry(base, tip, 0.06, 10, 1.1)]
+    direction = (mathutils.Vector(tip) - mathutils.Vector(base)).normalized()
+    for index, offset in enumerate(((-0.025, 0), (0.0, 0.02), (0.025, -0.005), (0.01, -0.02))):
+        start = mathutils.Vector(tip) + mathutils.Vector((offset[0], offset[1], 0)) - direction * 0.05
+        parts.append(tube_geometry(start, start + direction * (0.15 + 0.02 * index), 0.007, 5))
+    # The strap goes from the right shoulder, across the chest, down to the left hip.
+    shoulder_z = bone_height(rig, "clavicle_l") + 0.02
+    path = []
+    for step in range(11):
+        t = step / 10
+        z = shoulder_z - t * (shoulder_z - low - 0.06)
+        x = 0.1 - 0.2 * t
+        path.append((x, (solids.front(x, z) or solids.row_front(z)) - ACCESSORY_OFFSET, z))
+    parts.append(strip_geometry(path, 0.04, (0, 1, 0)))
+    return merge_geometry(*parts)
+
+
+def make_pack(rig, solids, ground, options):
+    """A pack on the back with a bedroll on top, and two shoulder straps."""
+    top = bone_height(rig, "clavicle_l") - 0.04
+    low = bone_height(rig, "spine_01") - 0.06
+    back_y = solids.row_back((top + low) / 2)
+    parts = [box_geometry((0, back_y + 0.1, (top + low) / 2 - 0.02), (0.34, 0.2, top - low - 0.04))]
+    parts.append(tube_geometry((-0.2, back_y + 0.12, top + 0.04), (0.2, back_y + 0.12, top + 0.04), 0.075, 10))
+    for side in (-1, 1):
+        x = 0.1 * side
+        front_y = solids.front(x, top - 0.02) or solids.row_front(top)
+        shoulder = solids.shoulder(x, bone_height(rig, "clavicle_l") + 0.07)
+        centre_y = (front_y + back_y) / 2
+        path = [(x, back_y + 0.012, top - 0.03), (x, back_y + 0.012, top + 0.01),
+                (x, centre_y + (back_y - centre_y) * 0.5, shoulder + 0.012), (x, centre_y - (centre_y - front_y) * 0.5, shoulder + 0.012),
+                (x, front_y - ACCESSORY_OFFSET, top - 0.02), (x, front_y - ACCESSORY_OFFSET, top - 0.12)]
+        parts.append(strip_geometry(path, 0.04, (0, 1, 0)))
+    return merge_geometry(*parts)
+
+
+def make_hat(rig, solids, ground, options):
+    """A hat on the head: a crown that covers the hair and a brim around it, as wide and tall as the options say."""
+    top = float(solids.body[:, 2].max())
+    brow = top - options.get("sink", 0.075)
+    height = options.get("crown", 0.1)
+    brim = options.get("brim", 0.1)
+    droop = options.get("droop", 0.02)
+    margin = options.get("margin", 0.035)
+    head = solids.body[(solids.body[:, 2] > top - 0.06) & (solids.body[:, 2] < top - 0.03)]
+    centre = float((head[:, 1].min() + head[:, 1].max()) / 2)
+    reach_x = float(head[:, 0].max()) + margin
+    reach_y = float((head[:, 1].max() - head[:, 1].min()) / 2) + margin
+    # Rings from the brim's edge in to the crown, up its side, and over the top: how far out, and how high.
+    profile = [(brim, -droop), (brim * 0.5, -droop * 0.3), (0.0, 0.0), (0.0, height * 0.5), (-0.005, height * 0.85), (-0.03, height), (-0.06, height * 1.02), (-reach_x * 0.5, height * 1.03), (-reach_x + 0.001, height * 1.03)]
+    rows = []
+    for out, rise in profile:
+        scale_x = max(reach_x + out, 0.001)
+        scale_y = max(reach_y + out, 0.001)
+        rows.append([mathutils.Vector((scale_x * math.sin(step * math.tau / 24), centre - scale_y * math.cos(step * math.tau / 24), brow + rise)) for step in range(24)] + [mathutils.Vector((0, centre - scale_y, brow + rise))])
+    return grid_geometry(rows)
+
+
+ACCESSORIES = {"apron": make_apron, "chain": make_chain, "quiver": make_quiver, "pack": make_pack, "hat": make_hat}
+ACCESSORY_LOOKS = {"chain": {"metallic": 0.8, "roughness": 0.35}, "hat": {"roughness": 1.0}}
+
+
+def copy_weights(accessory, body, rig):
+    """Skins an accessory to the same bones as the body around it, vertex by vertex."""
+    tree = mathutils.kdtree.KDTree(len(body.data.vertices))
+    for vertex in body.data.vertices:
+        tree.insert(vertex.co, vertex.index)
+    tree.balance()
+    bones = {bone.name for bone in rig.data.bones}
+    groups = {}
+    for vertex in accessory.data.vertices:
+        nearest = body.data.vertices[tree.find(vertex.co)[1]]
+        for element in nearest.groups:
+            name = body.vertex_groups[element.group].name
+            if name in bones and element.weight > 0:
+                groups.setdefault(name, []).append((vertex.index, element.weight))
+    for name, weights in groups.items():
+        group = accessory.vertex_groups.new(name=name)
+        for index, weight in weights:
+            group.add([index], weight, "REPLACE")
+    accessory.parent = rig
+    modifier = accessory.modifiers.new("Armature", "ARMATURE")
+    modifier.object = rig
+
+
+def add_accessories(recipe, body, rig, clothes):
+    """Makes the recipe's accessories, fitted to the body and the clothes over it."""
+    solids = Solids([body] + clothes)
+    ground = min(vertex.co.z for vertex in body.data.vertices)
+    made = []
+    for options in recipe.get("accessories", []):
+        kind = options["type"]
+        accessory = add_part("accessory_" + kind, ACCESSORIES[kind](rig, solids, ground, options), options["color"], **ACCESSORY_LOOKS.get(kind, {}))
+        copy_weights(accessory, body, rig)
+        made.append(accessory)
+    return made
+
+
+VEST_GROUPS = ("upperarm", "lowerarm", "hand", "clavicle", "neck", "head")
+VEST_LIFT = 0.012
+
+
+def make_vest(source, color):
+    """A sleeveless vest made from a copy of a top: no sleeves or collar, a little larger, in a plain color."""
+    vest = source.copy()
+    vest.data = source.data.copy()
+    vest.name = "vest"
+    bpy.context.scene.collection.objects.link(vest)
+    mesh = bmesh.new()
+    mesh.from_mesh(vest.data)
+    mesh.verts.ensure_lookup_table()
+    sleeves = vertices_in_groups(vest, VEST_GROUPS)
+    bmesh.ops.delete(mesh, geom=[mesh.verts[index] for index in sleeves], context="VERTS")
+    mesh.normal_update()
+    for vertex in mesh.verts:
+        vertex.co += vertex.normal * VEST_LIFT
+    mesh.to_mesh(vest.data)
+    mesh.free()
+    vest.data.materials.clear()
+    vest.data.materials.append(plain_material("vest", color))
+    return vest
+
+
 def build(recipe, folders, output, full_detail=False):
     from bl_ext.blender_org.mpfb.entities.objectproperties import HumanObjectProperties
     from bl_ext.blender_org.mpfb.services.humanservice import HumanService
@@ -310,6 +663,9 @@ def build(recipe, folders, output, full_detail=False):
     for kind, asset_type in (("clothes", "Clothes"), ("hair", "Hair"), ("beard", "Clothes"), ("brows", "Eyebrows"), ("eyes", "Eyes")):
         for name in as_list(recipe.get(kind, [])):
             asset = HumanService.add_mhclo_asset(find_asset(folders, name), body, asset_type=asset_type, subdiv_levels=0, material_type="MAKESKIN")
+            if not asset.data.materials:
+                # Some assets, such as the newsboy cap, come without a material. The recipe's colors paint it.
+                asset.data.materials.append(plain_material(asset.name, (0.5, 0.5, 0.5)))
             meshes[asset.name] = (asset, kind, name)
     HumanService.set_character_skin(find_skin(folders, recipe["skin"]), body, skin_type="MAKESKIN")
     bpy.context.view_layer.update()
@@ -317,6 +673,7 @@ def build(recipe, folders, output, full_detail=False):
     bake_modifiers(body)
     for asset, _kind, _name in meshes.values():
         bake_modifiers(asset)
+    extras = add_accessories(recipe, body, rig, [item[0] for item in meshes.values() if item[1] == "clothes"])
     if not full_detail:
         remove_covered(body, [item[0] for item in meshes.values() if item[1] == "clothes"])
         reduce_body(body)
@@ -334,6 +691,10 @@ def build(recipe, folders, output, full_detail=False):
             remove_covered(named_parts[hidden], [named_parts[over]], LAYER_DISTANCE)
     for name in recipe.get("smooth_chest", []):
         smooth_chest(named_parts[name])
+    for options in recipe.get("vests", []):
+        vest = make_vest(named_parts[options["from"]], options["color"])
+        meshes[vest.name] = (vest, "clothes", "vest")
+        named_parts["vest"] = vest
     if "hair_color" in recipe:
         hair = named_parts[as_list(recipe["hair"])[0]]
         for slot in hair.material_slots:
@@ -348,7 +709,7 @@ def build(recipe, folders, output, full_detail=False):
         if not full_detail:
             reduce_mesh(asset, PART_BUDGETS[kind] * triangles(asset) // kind_totals[kind])
 
-    all_meshes = [body] + [item[0] for item in meshes.values()]
+    all_meshes = [body] + [item[0] for item in meshes.values()] + extras
     feet = [item[0] for item in meshes.values() if item[2] in recipe.get("footwear", [])]
     ground = min(vertex.co.z for mesh_object in (feet or all_meshes) for vertex in mesh_object.data.vertices)
     stand_on_ground(rig, all_meshes, ground)

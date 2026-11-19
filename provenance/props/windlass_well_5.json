@@ -1,64 +1,66 @@
 {
-	"schema": 1,
-	"asset": "assets/props/windlass_well_5.glb",
-	"kind": "ai_prop",
-	"origin": "pipeline",
-	"stages": [
-		{
-			"step": "image",
-			"tool": "FLUX.2 klein 4B",
-			"versions": {
-				"python": "3.12.10",
-				"torch": "2.14.0+rocm10.1.0",
-				"diffusers": "0.42.1",
-				"model": "black-forest-labs/FLUX.2-klein-4B",
-				"model_revision": "e7b7dc27f91deacad38e78976d1f2b499d76a294"
-			},
-			"date": "2026-11-17",
-			"width": 1024,
-			"height": 1024,
-			"steps": 4,
-			"guidance": 1.0,
-			"candidate": 5,
-			"picture_sha256": "6bfc42a4c66db5c90494ee6b0e5250c7c1bd0779d8612699fa5f182f7fe05638"
-		},
-		{
-			"step": "mesh",
-			"tool": "TRELLIS.2 (Comfy-Org int8 build)",
-			"versions": {
-				"ComfyUI": "0.43.0",
-				"pytorch": "2.14.0+rocm10.1.0",
-				"python": "3.12.10"
-			},
-			"date": "2026-11-17",
-			"helpers": [
-				"BiRefNet",
-				"DINOv3"
-			],
-			"faces": 5000,
-			"workflow": "trellis2_api.json",
-			"workflow_sha256": "a35c55abacb3f67eabd94098e9e075bd91e74fc4209c7bd8ae4ec38648bf9777",
-			"picture_sha256": "6bfc42a4c66db5c90494ee6b0e5250c7c1bd0779d8612699fa5f182f7fe05638",
-			"comfy_prompt_id": "e4d8449c-1b63-419c-949f-9ec070e843b3"
-		},
-		{
-			"step": "size",
-			"tool": "Blender",
-			"versions": {
-				"Blender": "5.2.3 LTS"
-			},
-			"date": "2026-11-17",
-			"meters": 1.8,
-			"turn_degrees": 0.0,
-			"script": "size_glb.py"
-		}
-	],
-	"manual_edits": [],
-	"batch": "klein5",
-	"object": "windlass_well",
-	"name": "windlass_well_5",
-	"subject": "round fieldstone well with two wooden posts holding a horizontal wooden roller with a crank handle, a rope wound on the roller and a wooden bucket hanging from it",
-	"prompt": "A single round fieldstone well with two wooden posts holding a horizontal wooden roller with a crank handle, a rope wound on the roller and a wooden bucket hanging from it, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
-	"seed": 10025,
-	"chosen_by": "Claude for Markus Gamperle"
+  "schema": 1,
+  "asset": "assets/props/windlass_well_5.glb",
+  "kind": "ai_prop",
+  "origin": "pipeline",
+  "stages": [
+    {
+      "step": "image",
+      "tool": "FLUX.2 klein 4B",
+      "versions": {
+        "python": "3.12.10",
+        "torch": "2.14.0+rocm10.1.0",
+        "diffusers": "0.42.1",
+        "model": "black-forest-labs/FLUX.2-klein-4B",
+        "model_revision": "e7b7dc27f91deacad38e78976d1f2b499d76a294"
+      },
+      "date": "2026-11-17",
+      "width": 1024,
+      "height": 1024,
+      "steps": 4,
+      "guidance": 1.0,
+      "candidate": 5,
+      "picture_sha256": "6bfc42a4c66db5c90494ee6b0e5250c7c1bd0779d8612699fa5f182f7fe05638"
+    },
+    {
+      "step": "mesh",
+      "tool": "TRELLIS.2 (Comfy-Org int8 build)",
+      "versions": {
+        "ComfyUI": "0.43.0",
+        "pytorch": "2.14.0+rocm10.1.0",
+        "python": "3.12.10"
+      },
+      "date": "2026-11-17",
+      "helpers": [
+        "BiRefNet",
+        "DINOv3"
+      ],
+      "faces": 5000,
+      "workflow": "trellis2_api.json",
+      "workflow_sha256": "a35c55abacb3f67eabd94098e9e075bd91e74fc4209c7bd8ae4ec38648bf9777",
+      "picture_sha256": "6bfc42a4c66db5c90494ee6b0e5250c7c1bd0779d8612699fa5f182f7fe05638",
+      "comfy_prompt_id": "e4d8449c-1b63-419c-949f-9ec070e843b3",
+      "models": null,
+      "models_note": "made before the weight files were recorded (#450)"
+    },
+    {
+      "step": "size",
+      "tool": "Blender",
+      "versions": {
+        "Blender": "5.2.3 LTS"
+      },
+      "date": "2026-11-17",
+      "meters": 1.8,
+      "turn_degrees": 0.0,
+      "script": "size_glb.py"
+    }
+  ],
+  "manual_edits": [],
+  "batch": "klein5",
+  "object": "windlass_well",
+  "name": "windlass_well_5",
+  "subject": "round fieldstone well with two wooden posts holding a horizontal wooden roller with a crank handle, a rope wound on the roller and a wooden bucket hanging from it",
+  "prompt": "A single round fieldstone well with two wooden posts holding a horizontal wooden roller with a crank handle, a rope wound on the roller and a wooden bucket hanging from it, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
+  "seed": 10025,
+  "chosen_by": "Claude for Markus Gamperle"
 }

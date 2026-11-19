@@ -95,12 +95,14 @@ for name in names:
         continue
     saved = history["outputs"]["save"]["3d"][0]
     shutil.copy(os.path.join(COMFY, "output", saved["subfolder"], saved["filename"]), target)
-    # TRELLIS.2 also runs BiRefNet and DINOv3 inside this workflow, so the workflow file's hash names the set.
+    # TRELLIS.2 also runs BiRefNet and DINOv3 inside this workflow. "models" names every weight file the workflow loads
+    # (file, size, SHA-256), so a file swapped on the PC shows in the record. The workflow file's hash fixes the other settings.
     provenance.add_stage(
         os.path.join(base, "provenance" + VARIANT, name + ".json"),
         {"step": "mesh", "tool": "Pixal3D shape model in TRELLIS.2 workflow (Comfy-Org int8 build)" if PIXAL3D else "TRELLIS.2 (Comfy-Org int8 build)", "versions": comfy_versions(), "date": provenance.today(),
          "helpers": ["BiRefNet", "DINOv3"], "faces": item["faces"], "workflow": "trellis2_api.json",
-         "workflow_sha256": provenance.sha256(os.path.join(HERE, "trellis2_api.json")), "picture_sha256": provenance.sha256(picture),
+         "workflow_sha256": provenance.sha256(os.path.join(HERE, "trellis2_api.json")),
+         "models": provenance.workflow_models(workflow, os.path.join(COMFY, "models")), "picture_sha256": provenance.sha256(picture),
          "comfy_prompt_id": prompt_id,
          **({"shape_seed": SHAPE_SEED} if SHAPE_SEED is not None else {})},
         kind="ai_prop", asset=f"assets/props/{name}.glb", batch=batch, object=name.rsplit("_", 1)[0], name=name, subject=item["subject"],

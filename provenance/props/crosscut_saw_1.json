@@ -1,64 +1,66 @@
 {
-	"schema": 1,
-	"asset": "assets/props/crosscut_saw_1.glb",
-	"kind": "ai_prop",
-	"origin": "pipeline",
-	"stages": [
-		{
-			"step": "image",
-			"tool": "FLUX.2 klein 4B",
-			"versions": {
-				"python": "3.12.10",
-				"torch": "2.14.0+rocm10.1.0",
-				"diffusers": "0.42.1",
-				"model": "black-forest-labs/FLUX.2-klein-4B",
-				"model_revision": "e7b7dc27f91deacad38e78976d1f2b499d76a294"
-			},
-			"date": "2026-11-17",
-			"width": 1024,
-			"height": 1024,
-			"steps": 4,
-			"guidance": 1.0,
-			"candidate": 1,
-			"picture_sha256": "b2040b6d0548c60700f93180e7fa63b83a8aded0ca07d71f8241701b9cf4d4cf"
-		},
-		{
-			"step": "mesh",
-			"tool": "TRELLIS.2 (Comfy-Org int8 build)",
-			"versions": {
-				"ComfyUI": "0.43.0",
-				"pytorch": "2.14.0+rocm10.1.0",
-				"python": "3.12.10"
-			},
-			"date": "2026-11-17",
-			"helpers": [
-				"BiRefNet",
-				"DINOv3"
-			],
-			"faces": 1500,
-			"workflow": "trellis2_api.json",
-			"workflow_sha256": "a35c55abacb3f67eabd94098e9e075bd91e74fc4209c7bd8ae4ec38648bf9777",
-			"picture_sha256": "b2040b6d0548c60700f93180e7fa63b83a8aded0ca07d71f8241701b9cf4d4cf",
-			"comfy_prompt_id": "67faba90-29eb-4c2b-82f9-1891734ec61b"
-		},
-		{
-			"step": "size",
-			"tool": "Blender",
-			"versions": {
-				"Blender": "5.2.3 LTS"
-			},
-			"date": "2026-11-17",
-			"meters": 1.5,
-			"turn_degrees": 0.0,
-			"script": "size_glb.py"
-		}
-	],
-	"manual_edits": [],
-	"batch": "klein5",
-	"object": "crosscut_saw",
-	"name": "crosscut_saw_1",
-	"subject": "long two-man crosscut saw: one long flat steel blade with a row of sharp teeth along its lower edge and an upright wooden handle at each end, seen from the side",
-	"prompt": "A single long two-man crosscut saw: one long flat steel blade with a row of sharp teeth along its lower edge and an upright wooden handle at each end, seen from the side, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
-	"seed": 10001,
-	"chosen_by": "Claude for Markus Gamperle"
+  "schema": 1,
+  "asset": "assets/props/crosscut_saw_1.glb",
+  "kind": "ai_prop",
+  "origin": "pipeline",
+  "stages": [
+    {
+      "step": "image",
+      "tool": "FLUX.2 klein 4B",
+      "versions": {
+        "python": "3.12.10",
+        "torch": "2.14.0+rocm10.1.0",
+        "diffusers": "0.42.1",
+        "model": "black-forest-labs/FLUX.2-klein-4B",
+        "model_revision": "e7b7dc27f91deacad38e78976d1f2b499d76a294"
+      },
+      "date": "2026-11-17",
+      "width": 1024,
+      "height": 1024,
+      "steps": 4,
+      "guidance": 1.0,
+      "candidate": 1,
+      "picture_sha256": "b2040b6d0548c60700f93180e7fa63b83a8aded0ca07d71f8241701b9cf4d4cf"
+    },
+    {
+      "step": "mesh",
+      "tool": "TRELLIS.2 (Comfy-Org int8 build)",
+      "versions": {
+        "ComfyUI": "0.43.0",
+        "pytorch": "2.14.0+rocm10.1.0",
+        "python": "3.12.10"
+      },
+      "date": "2026-11-17",
+      "helpers": [
+        "BiRefNet",
+        "DINOv3"
+      ],
+      "faces": 1500,
+      "workflow": "trellis2_api.json",
+      "workflow_sha256": "a35c55abacb3f67eabd94098e9e075bd91e74fc4209c7bd8ae4ec38648bf9777",
+      "picture_sha256": "b2040b6d0548c60700f93180e7fa63b83a8aded0ca07d71f8241701b9cf4d4cf",
+      "comfy_prompt_id": "67faba90-29eb-4c2b-82f9-1891734ec61b",
+      "models": null,
+      "models_note": "made before the weight files were recorded (#450)"
+    },
+    {
+      "step": "size",
+      "tool": "Blender",
+      "versions": {
+        "Blender": "5.2.3 LTS"
+      },
+      "date": "2026-11-17",
+      "meters": 1.5,
+      "turn_degrees": 0.0,
+      "script": "size_glb.py"
+    }
+  ],
+  "manual_edits": [],
+  "batch": "klein5",
+  "object": "crosscut_saw",
+  "name": "crosscut_saw_1",
+  "subject": "long two-man crosscut saw: one long flat steel blade with a row of sharp teeth along its lower edge and an upright wooden handle at each end, seen from the side",
+  "prompt": "A single long two-man crosscut saw: one long flat steel blade with a row of sharp teeth along its lower edge and an upright wooden handle at each end, seen from the side, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
+  "seed": 10001,
+  "chosen_by": "Claude for Markus Gamperle"
 }

@@ -22,6 +22,8 @@ A record, as JSON:
                 from ASSETS.md afterwards. A backfilled record has null for what ASSETS.md doesn't say
   stages        what ran, in order: {"step", "tool", "versions", "date", plus the step's settings}
   manual_edits  [{"text", "date"}] for changes made by hand after the pipeline. Empty if none are known
+  TRELLIS.2 mesh stages also have "models": the weight files the workflow loaded, each {"node", "class", "input",
+  "file", "path", "size", "sha256"} (#450). A backfilled record has null, because the files used then are unknown.
   ai_prop also has: batch, object, name, chosen_by, subject, prompt, seed
 """
 import datetime
@@ -50,6 +52,38 @@ def sha256(path):
         for block in iter(lambda: file.read(1 << 20), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+MODEL_SUFFIXES = (".safetensors", ".ckpt", ".pth", ".pt", ".gguf")
+_model_hashes = {}
+
+
+def workflow_models(workflow, models_dir):
+    """The model files a ComfyUI API workflow loads, as [{"node", "class", "input", "file", "path", "size", "sha256"}].
+
+    A loader is any node with a string input that names a weight file (a name ending in .safetensors and the like),
+    for example VAELoader's vae_name. Each file is looked up by name anywhere under models_dir (path is relative to it,
+    with forward slashes). A file that isn't found gets null for path, size and sha256, never a guess. Hashes are
+    remembered for the life of the process, so a batch reads each file once (about 13 GB in 20 s on the asset PC)."""
+    found = []
+    for node, entry in sorted(workflow.items()):
+        if not isinstance(entry, dict):
+            continue
+        for key, value in sorted(entry.get("inputs", {}).items()):
+            if isinstance(value, str) and value.lower().endswith(MODEL_SUFFIXES):
+                found.append({"node": node, "class": entry.get("class_type"), "input": key, "file": value})
+    index = {}
+    for folder, _, files in os.walk(models_dir):
+        for name in files:
+            index.setdefault(name, os.path.join(folder, name))
+    for model in found:
+        path = index.get(model["file"])
+        model["path"] = os.path.relpath(path, models_dir).replace(os.sep, "/") if path else None
+        model["size"] = os.path.getsize(path) if path else None
+        if path and path not in _model_hashes:
+            _model_hashes[path] = sha256(path)
+        model["sha256"] = _model_hashes.get(path)
+    return found
 
 
 def read_text(path):
@@ -106,6 +140,28 @@ def module_version(name):
 # --- Validation ---------------------------------------------------------------------------------
 
 
+def check_models(stage, origin):
+    """Problems with a TRELLIS.2 mesh stage's "models": the weight files its workflow loaded (#450).
+    A pipeline record needs every file named with its size and SHA-256. A backfilled one may have null
+    (the files used then are unknown) but not leave the key out."""
+    if "models" not in stage:
+        return ["mesh stage has no models (null if unknown)"]
+    models = stage["models"]
+    if models is None:
+        if origin == "pipeline" and not stage.get("models_note"):
+            return ["mesh stage has null models, but a pipeline record must name the weight files (or say in models_note why not)"]
+        return []
+    if not isinstance(models, list) or not models:
+        return ["mesh stage models is not a non-empty list"]
+    found = []
+    for model in models:
+        if not (isinstance(model, dict) and model.get("file")):
+            found.append("a mesh model has no file name")
+        elif origin == "pipeline" and not (isinstance(model.get("size"), int) and re.fullmatch(r"[0-9a-f]{64}", str(model.get("sha256")))):
+            found.append("mesh model %s has no size or SHA-256 (file not found under models?)" % model["file"])
+    return found
+
+
 def check_record(record, name=""):
     """Returns the problems in one record. name is the file's base name, which must match the asset."""
     found = []
@@ -141,6 +197,8 @@ def check_record(record, name=""):
                 found.append("stage %s has no date" % stage["step"])
             if not stage.get("versions"):
                 found.append("stage %s has no tool versions" % stage["step"])
+        if stage.get("step") == "mesh" and str(stage.get("tool", "")).startswith("TRELLIS"):
+            found += check_models(stage, origin)
     if kind == "ai_prop":
         for key in ("prompt", "subject", "name", "batch"):
             if not record.get(key):
@@ -211,6 +269,8 @@ def tool_stage(source):
             stages.append({"step": "image", "tool": tool, "versions": {}})
         elif tool.startswith("TRELLIS") or tool.startswith("TripoSR"):
             stage = {"step": "mesh", "tool": tool, "versions": {}}
+            if tool.startswith("TRELLIS"):
+                stage["models"] = None  # ASSETS.md doesn't name the weight files (#450)
             found = re.search(r"in ComfyUI ([\d.]+)", tool)
             if found:
                 stage["tool"] = re.sub(r" in ComfyUI [\d.]+", "", tool)

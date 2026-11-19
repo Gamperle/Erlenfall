@@ -112,7 +112,7 @@ That is **60 Gen names** in one batch. The ones marked High are tried but not pr
 | --- | --- | --- |
 | `smithy_forge_shed` | Open-sided lean-to extension for the forge, with a chimney | Placed against the forge's east wall around the kiln (`forge_shed`) |
 | `lumber_shed` | Open-fronted roofed shed for drying planks and logs | Placed in the lumber yard on the road into the forest (`lumber_shed`) |
-| `sawmill_lean_to` | Roofed frame over the sawpit, open on three sides | Placed in the yard, with a log on trestles inside it. It does not yet hold the generated `sawpit_frame` ([#468](https://github.com/Gamperle/Erlenfall/issues/468)) |
+| `sawmill_lean_to` | Roofed frame over the sawpit, open on three sides | Placed in the yard. Variant 1 leaves out the code-built log and holds the generated `sawpit_frame_1` instead ([#468](https://github.com/Gamperle/Erlenfall/issues/468)) |
 | `carpenter_workshop` | Small timber workshop with wide doors and a loft | Placed in the village (`carpenter_workshop`). The doors do not open and there is no interior ([#469](https://github.com/Gamperle/Erlenfall/issues/469)) |
 | `small_barn` | Storage barn with a hay loft door and large double doors | 3 variants (plain, side lean-to, porch), all at the north farm. West and south farm stand on slopes ([#467](https://github.com/Gamperle/Erlenfall/issues/467)) |
 | `granary` | Timber store on staddle stones with an outside stair | 1 variant at the north farm, with a solid stair |
@@ -122,7 +122,7 @@ That is **60 Gen names** in one batch. The ones marked High are tried but not pr
 | `ore_chute` | Wooden chute and hopper by the mine entrance | Placed beside the mine's plaza (`ore_chute`) |
 | `yard_fence_log` | Log fence and gate for the lumber yard | A `palisade` wall of 2.2 m with a 4 m gate on the road side |
 
-Small pieces that a generated model might do better than boxes (a mine cart on the track, timber supports) are in [#468](https://github.com/Gamperle/Erlenfall/issues/468).
+Small pieces that a generated model does better than boxes were tried in [#468](https://github.com/Gamperle/Erlenfall/issues/468) (`klein468`, Blender renders from three sides): the `sawpit_frame_1` log on trestles with the saw replaces the code-built log in the sawmill, `mine_cart_ore_2` stands on the rails and `mine_cart_3` under the ore chute's lip, and `mine_support_frame_0` stands by the mine's mouth. `mine_support_frame_5` came out as a leaning tripod and is not used. The mine is collapsed, so there is no tunnel to put supports in. The ore-filled hopper (`ore_hopper_a_1`, `ore_hopper_a_3`) is placed beside the chute, not in it: the chute's trough starts at 1.7 m, higher than a hopper on its own legs.
 
 ## Open questions for you
 

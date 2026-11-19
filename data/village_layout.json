@@ -80,7 +80,7 @@
 	"structures": [
 		{ "id": "forge_shed", "kind": "smithy_forge_shed", "x": 21.1, "z": 15.6, "rotation": 75, "width": 5.0, "depth": 3.6, "height": 3.2, "color": "#5f5852" },
 		{ "id": "lumber_shed", "kind": "lumber_shed", "x": -146, "z": -131, "rotation": 0, "width": 7.0, "depth": 4.0, "height": 3.0, "color": "#6b5a45" },
-		{ "id": "sawmill", "kind": "sawmill_lean_to", "x": -133, "z": -129, "rotation": 0, "width": 6.0, "depth": 4.0, "height": 3.0, "color": "#6b5a45" },
+		{ "id": "sawmill", "kind": "sawmill_lean_to", "variant": 1, "x": -133, "z": -129, "rotation": 0, "width": 6.0, "depth": 4.0, "height": 3.0, "color": "#6b5a45" },
 		{ "id": "carpenter_workshop", "kind": "carpenter_workshop", "x": -8, "z": 40, "rotation": 90, "width": 8.0, "depth": 6.0, "height": 3.4, "color": "#8a6f52" },
 		{ "id": "tool_shed_west", "kind": "tool_shed", "variant": 0, "x": -32, "z": -14, "rotation": 80, "width": 2.4, "depth": 2.0, "height": 2.1, "color": "#6a5340" },
 		{ "id": "tool_shed_south", "kind": "tool_shed", "variant": 1, "x": -26, "z": 34, "rotation": 10, "width": 2.4, "depth": 2.0, "height": 2.1, "color": "#5d4a38" },
@@ -263,6 +263,11 @@
     {"model": "well_1", "building": "south_farm", "x": 6, "z": 9},
     {"model": "campfire_4", "x": 118, "z": -145},
     {"model": "goblin_tent_2", "roof_cover": true, "x": 126, "z": -153, "rotation": -40},
-    {"model": "goblin_tent_3", "roof_cover": true, "x": 109, "z": -151, "rotation": 40}
+    {"model": "goblin_tent_3", "roof_cover": true, "x": 109, "z": -151, "rotation": 40},
+    {"model": "sawpit_frame_1", "x": -133, "z": -128.8},
+    {"model": "mine_cart_ore_2", "x": 44, "z": -210.5, "rotation": 90},
+    {"model": "mine_cart_3", "x": 49.3, "z": -212},
+    {"model": "ore_hopper_a_3", "x": 56, "z": -208.5, "rotation": 90},
+    {"model": "mine_support_frame_0", "x": 38.5, "z": -210.5, "rotation": 15}
   ]
 }

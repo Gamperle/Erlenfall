@@ -38,9 +38,9 @@ Usage, from the repository root:
   --keep-blend  keep parts whose material is see-through (glass, alphaMode BLEND), drawn opaque. A prop has one
                 opaque surface, so by default they are left out (a lantern without its panes beats black panes)
 
-The decimation measures cost by quadric error and moves a vertex onto its neighbor, never to a new place, so
-the UV of every corner stays one the model already had. A collapse that would flip a face, pinch two UV
-islands together or break a neighboring triangle is skipped.
+The decimation measures cost by quadric error plus how far the texture would slide against the surface, and moves a
+vertex onto its neighbor, never to a new place, so the UV of every corner stays one the model already had. A collapse
+that would flip a face (in space or in UV), pinch two UV islands together or break a neighboring triangle is skipped.
 """
 import argparse
 import hashlib
@@ -66,6 +66,9 @@ API = "https://api.polyhaven.com"
 LICENSE = "CC0 1.0"
 LICENSE_URL = "https://polyhaven.com/license"
 DEFAULT_FACES = 3000
+REPEAT_SLACK = 0.25  # a triangle may run this far past a whole repeat before the texture is tiled for it (beyond it, clamped)
+MAX_REPEATS = 4  # most repeats of a tiling texture an atlas cell holds
+UV_WEIGHT = 1.0  # how much the reduction weighs a texture sliding against the surface, next to the surface error itself
 COMPONENTS = {5120: np.int8, 5121: np.uint8, 5122: np.int16, 5123: np.uint16, 5125: np.uint32, 5126: np.float32}
 SIZES = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT4": 16}
 TYPES = {1: "SCALAR", 2: "VEC2", 3: "VEC3", 4: "VEC4"}
@@ -284,12 +287,36 @@ def texture_image(gltf, material_texture, warn, what):
     """(Pillow image, texcoord set) for a glTF textureInfo, or (None, 0)."""
     if not material_texture:
         return None, 0
-    if "KHR_texture_transform" in material_texture.get("extensions", {}):
-        warn("%s uses KHR_texture_transform, which is ignored" % what)
     texture = gltf.doc["textures"][material_texture["index"]]
     if "source" not in texture:
         return None, 0
     return gltf.image(texture["source"], warn), material_texture.get("texCoord", 0)
+
+
+def uv_matrix(gltf, index, warn):
+    """The 3 x 3 matrix of the KHR_texture_transform on a material's maps (the base color's, else the first map that has one),
+    or None. Maps with different transforms cannot share one UV set; the others are warned about and read with this one."""
+    if index is None:
+        return None
+    material = gltf.doc["materials"][index]
+    pbr = material.get("pbrMetallicRoughness", {})
+    found = []
+    for key, info in (("base color", pbr.get("baseColorTexture")), ("normal", material.get("normalTexture")),
+                      ("metallic roughness", pbr.get("metallicRoughnessTexture")), ("occlusion", material.get("occlusionTexture")),
+                      ("emissive", material.get("emissiveTexture"))):
+        transform = (info or {}).get("extensions", {}).get("KHR_texture_transform")
+        if transform:
+            found.append((key, transform))
+    if not found:
+        return None
+    transform = found[0][1]
+    if any(t != transform for _, t in found[1:]) or (found[0][0] != "base color" and pbr.get("baseColorTexture")):
+        warn("%s has maps with different KHR_texture_transform values; the %s map's is used for all" % (material.get("name", "material %s" % index), found[0][0]))
+    ox, oy = transform.get("offset", [0, 0])
+    sx, sy = transform.get("scale", [1, 1])
+    r = transform.get("rotation", 0.0)
+    c, n = math.cos(r), math.sin(r)
+    return np.array([[c * sx, n * sy, ox], [-n * sx, c * sy, oy], [0, 0, 1]])
 
 
 def channels(image, size):
@@ -309,8 +336,6 @@ def bake_material(gltf, index, size, warn):
     name = material.get("name", "material %s" % index)
     if material.get("alphaMode", "OPAQUE") != "OPAQUE":
         warn("%s has alphaMode %s; the prop is drawn opaque" % (name, material["alphaMode"]))
-    if any(material.get("emissiveFactor", [0, 0, 0])):
-        warn("%s is emissive, which a prop does not keep" % name)
     for key in ("KHR_materials_transmission", "KHR_materials_clearcoat", "KHR_materials_volume"):
         if key in material.get("extensions", {}):
             warn("%s uses %s, which is dropped" % (name, key))
@@ -319,6 +344,12 @@ def bake_material(gltf, index, size, warn):
     base_image, base_uv = texture_image(gltf, pbr.get("baseColorTexture"), warn, name + " base color")
     base = channels(base_image, size)[:, :, :3] if base_image else np.ones((height, width, 3), np.float32)
     base = base * factor[:3]
+    emissive = np.array(material.get("emissiveFactor", [0, 0, 0]), np.float32) * material.get("extensions", {}).get("KHR_materials_emissive_strength", {}).get("emissiveStrength", 1.0)
+    if emissive.any():
+        glow_image, _ = texture_image(gltf, material.get("emissiveTexture"), warn, name + " emissive")
+        glow = channels(glow_image, size)[:, :, :3] * emissive if glow_image else np.ones((height, width, 3), np.float32) * emissive
+        base = np.clip(base + glow, 0, 1)
+        warn("%s is emissive; the glow is added to its base color, because a prop has no emissive map" % name)
     normal_image, normal_uv = texture_image(gltf, material.get("normalTexture"), warn, name + " normal")
     normal = channels(normal_image, size)[:, :, :3] if normal_image else np.dstack([np.full((height, width), v, np.float32) for v in (0.5, 0.5, 1.0)])
     scale = material.get("normalTexture", {}).get("scale", 1.0)
@@ -367,9 +398,14 @@ def merge_materials(gltf, parts, edge, warn):
     One material: its maps are resized and the UVs stay as they are. Several: a grid of cells, one per material in
     use, each edge/columns px, holds the material's maps, and each triangle's UVs are moved into its cell. A
     triangle whose UVs lie outside 0..1 (tiling) is shifted into the unit square by its own whole-number offset,
-    and its vertices are split off so a neighbor keeps its own; UVs that still leave the square are clamped and
-    counted in a warning."""
+    and its vertices are split off so a neighbor keeps its own. If some triangles still span several repeats, the
+    material's cell holds its maps repeated up to MAX_REPEATS times; beyond that the UVs are clamped and counted in a
+    warning. A KHR_texture_transform is applied to the UVs first."""
     used = sorted({p["material"] for p in parts}, key=lambda m: -1 if m is None else m)
+    for part in parts:
+        matrix = uv_matrix(gltf, part["material"], warn)
+        if matrix is not None:
+            part["uvs"] = part["uvs"] @ matrix[:2, :2].T + matrix[:2, 2]
     if len(used) == 1:
         source = largest_texture(gltf, used[0])
         if source is None:
@@ -388,24 +424,38 @@ def merge_materials(gltf, parts, edge, warn):
     split_parts = []
     for slot, material in enumerate(used):
         column, row = slot % columns, slot // columns
-        maps = bake_material(gltf, material, (cell, cell), warn)
+        mine = [unindex(part) for part in parts if part["material"] == material]
+        # Each triangle is shifted into the unit square by its own whole-number offset. A triangle that still spans
+        # more than one repeat tiles the texture, so the material's cell then holds the map repeated `repeats` times
+        # (each repeat at 1 / repeats of the resolution) and the UVs are divided by `repeats`; the repeats line up, so
+        # the pattern stays seamless. More than MAX_REPEATS is clamped and counted in a warning.
+        extent = 1.0
+        for part in mine:
+            uv = part["uvs"].reshape(-1, 3, 2)
+            uv = uv - np.floor(uv.min(axis=1, keepdims=True) + 1e-4)
+            part["uvs"] = uv.reshape(-1, 2)
+            extent = max(extent, float(uv.max()))
+        repeats = min(MAX_REPEATS, max(1, math.ceil(extent - REPEAT_SLACK)))
+        sub = cell // repeats
+        maps = bake_material(gltf, material, (sub, sub), warn)
+        if repeats > 1:
+            maps = tuple(np.pad(np.tile(m, (repeats, repeats, 1)), ((0, cell - sub * repeats), (0, cell - sub * repeats), (0, 0)), mode="edge") for m in maps)
+            warn("%s tiles its texture up to %d times across a triangle; its cell holds the map repeated %d x %d, each repeat at %d px"
+                 % (gltf.doc["materials"][material].get("name", "material %s" % material) if material is not None else "a material", math.ceil(extent - REPEAT_SLACK), repeats, repeats, sub))
         for target, source in zip(atlas, maps):
             target[row * cell:(row + 1) * cell, column * cell:(column + 1) * cell] = source
-        for part in parts:
-            if part["material"] != material:
-                continue
-            part = unindex(part)
+        fraction = sub * repeats / cell
+        for part in mine:
             uv = part["uvs"].reshape(-1, 3, 2)
-            shift = np.floor(uv.mean(axis=1, keepdims=True) - 1e-6)
-            uv = uv - shift
-            clamped += int(((uv < -1e-4) | (uv > 1 + 1e-4)).any(axis=(1, 2)).sum())
-            uv = np.clip(uv, 0, 1) * (1 - 2 * pad) + pad
+            clamped += int((uv > repeats + 1e-4).any(axis=(1, 2)).sum())
+            uv = np.clip(uv, 0, repeats) / repeats * fraction  # 0..1 of the filled part of the cell
+            uv = uv * (1 - 2 * pad) + pad
             uv[:, :, 0] = (uv[:, :, 0] + column) / columns
             uv[:, :, 1] = (uv[:, :, 1] + row) / rows
             part["uvs"] = uv.reshape(-1, 2)
             split_parts.append(part)
     if clamped:
-        warn("%d triangles tile a texture across more than one repeat; their UVs were clamped into the atlas cell" % clamped)
+        warn("%d triangles tile a texture across more than %d repeats; their UVs were clamped into the atlas cell" % (clamped, MAX_REPEATS))
     parts[:] = split_parts
     return tuple(a[: cell * rows, : cell * columns] for a in atlas)
 
@@ -469,6 +519,31 @@ def plane_quadric(a, b, c):
     return np.outer(plane, plane) * (length / 2), normal
 
 
+def uv_slide(old_positions, old_uvs, new_position, new_uv):
+    """How far, in meters of surface, the texture slides when the corner of a triangle moves onto new_position and takes
+    new_uv: the UV the old triangle's own mapping gives at new_position, minus new_uv, divided by the triangle's
+    texture density (UV length per meter). Also returns the triangle's area, and whether its UV winding is kept
+    (the new triangle's UV area has the same sign as the old one's, and is not far smaller or bigger). Triangles with
+    no UV area give no slide."""
+    p0, p1, p2 = old_positions
+    e1, e2 = p1 - p0, p2 - p0
+    basis = np.array([e1, e2])
+    gram = basis @ basis.T
+    determinant = gram[0, 0] * gram[1, 1] - gram[0, 1] ** 2
+    area = math.sqrt(max(determinant, 0.0)) / 2
+    uv_area = ((old_uvs[1] - old_uvs[0])[0] * (old_uvs[2] - old_uvs[0])[1] - (old_uvs[1] - old_uvs[0])[1] * (old_uvs[2] - old_uvs[0])[0]) / 2
+    if determinant < 1e-24 or abs(uv_area) < 1e-12:
+        return 0.0, area, True
+    s, t = np.linalg.solve(gram, basis @ (new_position - p0))
+    mapped = old_uvs[0] + s * (old_uvs[1] - old_uvs[0]) + t * (old_uvs[2] - old_uvs[0])
+    density = math.sqrt(abs(uv_area) / area)
+    return float(np.linalg.norm(mapped - new_uv)) / density, area, True
+
+
+def uv_area(uvs):
+    return ((uvs[1][0] - uvs[0][0]) * (uvs[2][1] - uvs[0][1]) - (uvs[1][1] - uvs[0][1]) * (uvs[2][0] - uvs[0][0])) / 2
+
+
 def decimate(positions, normals, uvs, triangles, target):
     """Reduces the mesh to about target triangles by edge collapse. See the module text.
 
@@ -476,7 +551,9 @@ def decimate(positions, normals, uvs, triangles, target):
     cannot tear open, and each triangle corner keeps the index of its own vertex (position, normal, UV) as a corner
     vertex ("sv"). Collapsing pid a onto pid b moves a's corners onto the b vertex of the same UV island, found
     from the triangles that the collapse removes. A collapse that leaves some other island's corner at a with no
-    such vertex is skipped. Returns (positions, normals, uvs, triangles) of the reduced mesh."""
+    such vertex is skipped. The cost of a collapse is the quadric error plus UV_WEIGHT times the squared slide of
+    the texture over the faces that move (see uv_slide), so a collapse that stretches the texture is taken late,
+    and one that flips a face in UV space is skipped. Returns (positions, normals, uvs, triangles) of the reduced mesh."""
     if target <= 0 or len(triangles) <= target:
         return positions, normals, uvs, triangles
     _, pid_first, pid_of = np.unique(np.round(positions * 1e6).astype(np.int64), axis=0, return_index=True, return_inverse=True)
@@ -512,9 +589,54 @@ def decimate(positions, normals, uvs, triangles, target):
     version = [0] * len(pid_position)
     heap = []
 
+    def neighbors(p):
+        found = set()
+        for f in around[p]:
+            found.update(faces[f])
+        found.discard(p)
+        return found
+
+    def collapse(a, b):
+        """(shared faces, corner mapping, moving faces) of collapsing pid a onto pid b, or None if the topology forbids it."""
+        shared = around[a] & around[b]
+        if not shared or len(shared) > 2:
+            return None
+        opposite = {p for f in shared for p in faces[f] if p != a and p != b}
+        if neighbors(a) & neighbors(b) != opposite:
+            return None  # collapsing would join two parts of the surface that only touch at the edge
+        mapping = {}
+        for f in shared:
+            corner_a = corners[f][faces[f].index(a)]
+            corner_b = corners[f][faces[f].index(b)]
+            if mapping.setdefault(corner_a, corner_b) != corner_b:
+                return None
+        return shared, mapping, around[a] - shared
+
+    def slide(a, b, mapping, moving):
+        """The squared texture slide over the moving faces, weighted by their area, and whether none of them turns over in UV space."""
+        total = 0.0
+        for f in moving:
+            corner = corners[f][faces[f].index(a)]
+            if corner not in mapping:
+                return total, False
+            old_uvs = [uvs[v] for v in corners[f]]
+            new_uvs = [uvs[mapping[v]] if v == corner else uvs[v] for v in corners[f]]
+            before, after = uv_area(old_uvs), uv_area(new_uvs)
+            if before * after < 0 or (before != 0 and abs(after) < 0.1 * abs(before)):
+                return total, False
+            distance, area, _ = uv_slide([pid_position[p] for p in faces[f]], old_uvs, pid_position[b], uvs[mapping[corner]])
+            total += area * distance * distance
+        return total, True
+
     def cost(a, b):
         v = np.append(pid_position[b], 1.0)
-        return float(v @ (quadric[a] + quadric[b]) @ v)
+        error = float(v @ (quadric[a] + quadric[b]) @ v)
+        if UV_WEIGHT:
+            plan = collapse(a, b)
+            if plan is not None:
+                total, ok = slide(a, b, plan[1], plan[2])
+                error += UV_WEIGHT * total if ok else 1e9
+        return error
 
     def push(a, b):
         heapq.heappush(heap, (cost(a, b), a, b, version[a], version[b]))
@@ -524,37 +646,18 @@ def decimate(positions, normals, uvs, triangles, target):
         push(b, a)
     count = len(faces)
 
-    def neighbors(p):
-        found = set()
-        for f in around[p]:
-            found.update(faces[f])
-        found.discard(p)
-        return found
-
     while heap and count > target:
         _, a, b, va, vb = heapq.heappop(heap)
         if version[a] != va or version[b] != vb:
             continue
-        shared = around[a] & around[b]
-        if not shared or len(shared) > 2:
+        plan = collapse(a, b)
+        if plan is None:
             continue
-        opposite = {p for f in shared for p in faces[f] if p != a and p != b}
-        if neighbors(a) & neighbors(b) != opposite:
-            continue  # collapsing would join two parts of the surface that only touch at the edge
-        mapping = {}
+        shared, mapping, moving = plan
+        if not slide(a, b, mapping, moving)[1]:
+            continue
         ok = True
-        for f in shared:
-            corner_a = corners[f][faces[f].index(a)]
-            corner_b = corners[f][faces[f].index(b)]
-            if mapping.setdefault(corner_a, corner_b) != corner_b:
-                ok = False
-        if not ok:
-            continue
-        moving = around[a] - shared
         for f in moving:
-            if corners[f][faces[f].index(a)] not in mapping:
-                ok = False
-                break
             old = faces[f]
             new = [b if p == a else p for p in old]
             _, before = plane_quadric(*(pid_position[p] for p in old))

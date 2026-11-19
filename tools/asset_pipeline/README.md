@@ -164,7 +164,7 @@ Last, list every new file in [ASSETS.md](../../ASSETS.md) with its seed and subj
 | `shoot_models.gd` | Photographs single props up close, for comparing texture changes |
 | `shoot_props.gd` | Photographs placed props in the game |
 | `../prop_tuner/prop_tuner.tscn` | Shows every prop beside a 2 m pole to correct its size and height |
-| `make_models.ps1`, `run_triposr.py`, `render_preview.py`, `watchdog.ps1` | Make models with TripoSR, the fallback |
+| `make_models.ps1`, `make_masks.py`, `run_triposr.py`, `render_preview.py`, `watchdog.ps1` | Make models with TripoSR, the fallback (masks from BiRefNet) |
 | `clean_models.ps1`, `cleanup_mesh.py`, `adjust_glb.py` | Clean and reshape TripoSR models |
 | `check_mesh.py` | Prints a raw model's face count and whether it's watertight |
 | `setup_pc.ps1`, `torchmcubes.py` | Set up the TripoSR and SDXL environments |

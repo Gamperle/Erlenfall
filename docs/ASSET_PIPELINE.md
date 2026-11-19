@@ -28,6 +28,7 @@ The scripts are in [tools/asset_pipeline](../tools/asset_pipeline):
 | `setup_comfy.ps1` | Installs ComfyUI with ROCm PyTorch and downloads the TRELLIS.2 models |
 | `run_trellis.ps1`, `make_trellis.py`, `trellis2_api.json` | Start ComfyUI, make a batch's models, and stop it again |
 | `size_models.ps1`, `size_glb.py` | Scale models to real size and turn them to face Godot's front |
+| `polyhaven_prop.py` | Turns a Poly Haven glTF model into a single-surface prop (see "Poly Haven props") |
 | `shoot_props.gd` | Photographs placed props in the game |
 | [`tools/prop_tuner`](../tools/prop_tuner) | A scene for correcting each prop's size and height against the player, saved to `data/prop_tuning.json` |
 | `setup_pc.ps1` | Installs the TripoSR and SDXL environments |
@@ -36,6 +37,20 @@ The scripts are in [tools/asset_pipeline](../tools/asset_pipeline):
 | `clean_models.ps1`, `cleanup_mesh.py`, `adjust_glb.py` | Clean TripoSR models, and reshape ones it gets out of proportion |
 | `check_mesh.py` | Prints a raw model's face count and whether it's watertight |
 | `draw_pictures.py` | The older SDXL drawing script, kept for reference |
+
+## Poly Haven props
+
+`tools/asset_pipeline/polyhaven_prop.py` turns a model from [Poly Haven](https://polyhaven.com/models) (CC0, see [POLY_HAVEN_PROPS.md](POLY_HAVEN_PROPS.md)) into a prop that passes the smoke test's one-mesh, one-textured-surface check (#220). It needs only Python with numpy and Pillow, not Blender or the asset PC:
+
+```
+python3 tools/asset_pipeline/polyhaven_prop.py painted_wooden_stool --provenance
+```
+
+It downloads the glTF from Poly Haven's public API (checking each file's MD5), bakes the node transforms and merges all meshes into one, and merges the materials into one: a single material keeps its UVs, several are packed into one atlas of base color, normal and ORM (occlusion, roughness, metal) maps. Parts whose material is see-through (glass) are left out, unless `--keep-blend` draws them opaque. Models over 3,000 faces (`--faces`) are reduced by quadric edge collapse that keeps UV islands, open edges and winding. Textures are resized to the size tier of `shrink_textures.py` (512 px up to 1.25 m, else 1024 px) and embedded as PNG. The model is stood on the origin like `size_glb.py` does, at its real size unless `--meters` is given. The output is `assets/props/<name>.glb`; `size_glb.py` can still scale or turn it afterwards. `--provenance` writes a `polyhaven_prop` record in `provenance/props/` with the source URLs, SHA-256 of each downloaded file, author, license (CC0 1.0), settings and warnings. The script also prints an ASSETS.md row to paste.
+
+After adding a prop, add the ASSETS.md row, correct its size in the prop tuner, and raise the prop count in the smoke test's "all generated props are present" check. `provenance.py validate` then requires the record for any `assets/props` row whose source is `[Poly Haven: ...]`. The face limit and texture size are the pipeline's, not Poly Haven's, so a model that looks too soft at 3,000 faces can be given a higher `--faces`; the prop's look beside the generated props is a judgment for the maintainer.
+
+Limits: skins and animations are dropped, emissive and clearcoat are ignored, `KHR_texture_transform` is ignored, a second UV set is ignored, tiled UVs inside an atlas are clamped to one repeat, and only triangle lists are read. Each is reported as a warning in the record.
 
 ## Provenance records
 

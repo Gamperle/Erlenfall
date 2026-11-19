@@ -41,7 +41,9 @@ jobs:
 
       - name: Check provenance records
         run: |
+          sudo apt-get install -y --no-install-recommends python3-numpy python3-pil
           python3 tools/asset_pipeline/test_provenance.py
+          python3 tools/asset_pipeline/test_polyhaven_prop.py
           python3 -B tools/asset_pipeline/provenance.py validate
 
       - name: Run smoke test

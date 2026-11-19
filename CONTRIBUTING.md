@@ -19,6 +19,10 @@ godot --headless --path . --import
 git checkout -- '*.import'   # revert .import files the import rewrote
 ```
 
+`tools/prepare_worktree.sh` does all of these steps (it fetches the LFS files, imports with retries, checks that the class cache exists, and reverts only the rewritten `.import` files). Run it once in every new worktree before the smoke test. The first import takes a few minutes.
+
+If the smoke test says `Identifier "Village" not declared` or `Could not resolve external class member PHOTOS`, the worktree has no `.godot/global_script_class_cache.cfg` yet, or the import ran on LFS pointer files. Run the script again.
+
 Import after `git lfs pull`, never before: importing pointer files rewrites many tracked `.import` files, and any import run can rewrite some. Those rewrites are not part of your change. Revert them with the last command unless you changed an asset on purpose, and check `git status` before you commit. If the import crashes (#196), run it again; it worked on a second run.
 
 The smoke test checks for pointer files first and stops with a message telling you to run `git lfs pull`.

@@ -623,6 +623,21 @@ def add_accessories(recipe, body, rig, clothes):
 
 VEST_GROUPS = ("upperarm", "lowerarm", "hand", "clavicle", "neck", "head")
 VEST_LIFT = 0.012
+VEST_SMOOTH_STEPS = 6
+
+
+def smooth_cut_edge(candidates):
+    """Relaxes the open edge of a cut along itself, so armholes are smooth curves instead of stair-steps."""
+    edge_vertices = [vertex for vertex in candidates if vertex.is_valid and vertex.is_boundary]
+    wanted = set(edge_vertices)
+    for step in range(VEST_SMOOTH_STEPS):
+        moves = {}
+        for vertex in edge_vertices:
+            neighbours = [edge.other_vert(vertex) for edge in vertex.link_edges if edge.is_boundary and edge.other_vert(vertex) in wanted]
+            if len(neighbours) == 2:
+                moves[vertex] = (neighbours[0].co + neighbours[1].co) / 2 - vertex.co
+        for vertex, move in moves.items():
+            vertex.co += move * 0.5
 
 
 def make_vest(source, color):
@@ -635,7 +650,11 @@ def make_vest(source, color):
     mesh.from_mesh(vest.data)
     mesh.verts.ensure_lookup_table()
     sleeves = vertices_in_groups(vest, VEST_GROUPS)
+    deleted = set(sleeves)
+    # The cut follows the bone-weight boundary, so it is a stair-step. Remember the vertices next to it, to smooth them afterwards.
+    cut = {other for index in sleeves for edge in mesh.verts[index].link_edges for other in edge.verts if other.index not in deleted}
     bmesh.ops.delete(mesh, geom=[mesh.verts[index] for index in sleeves], context="VERTS")
+    smooth_cut_edge([vertex for vertex in cut if vertex.is_valid])
     mesh.normal_update()
     for vertex in mesh.verts:
         vertex.co += vertex.normal * VEST_LIFT

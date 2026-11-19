@@ -41,6 +41,7 @@ jobs:
 
       - name: Check provenance records
         run: |
+          sudo apt-get update
           sudo apt-get install -y --no-install-recommends python3-numpy python3-pil
           python3 tools/asset_pipeline/test_provenance.py
           python3 tools/asset_pipeline/test_polyhaven_prop.py

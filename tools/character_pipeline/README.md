@@ -31,7 +31,7 @@ Each character is about 15,000 triangles with 1024-pixel textures. A test with 5
 godot --path . --script res://tools/character_pipeline/turntable.gd -- res://path/to/characters /path/to/output res://path/to/animations.glb
 ```
 
-The animation library is optional. With one, characters stand in the first frame of its `Idle` animation, and they need the import settings below.
+The animation library is optional. Without one, characters stand in the first frame of `Idle` from `res://assets/animations/humanoid.glb`, so review sheets and docs images do not show a T pose. Pass another library to use its `Idle`, or `none` to see the bind pose. Characters need the import settings below. Models without a `GeneralSkeleton`, such as the goblin, are shown as they come.
 
 ## Recipes
 

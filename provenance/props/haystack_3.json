@@ -46,7 +46,9 @@
 			"workflow": "trellis2_api.json",
 			"workflow_sha256": "a35c55abacb3f67eabd94098e9e075bd91e74fc4209c7bd8ae4ec38648bf9777",
 			"picture_sha256": "a14b1fb421c288a6131859f56aa6edc2b111729cfd11a1f8f2716f3d2a9785be",
-			"comfy_prompt_id": "65d0fbcd-6c1c-455f-9aa9-8dce9af3e046"
+			"comfy_prompt_id": "65d0fbcd-6c1c-455f-9aa9-8dce9af3e046",
+			"models": null,
+			"models_note": "Made with the same ComfyUI TRELLIS.2 workflow before weight hashes were recorded (#450); the weight files were not hashed at the time."
 		},
 		{
 			"step": "size",

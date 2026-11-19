@@ -7,7 +7,7 @@ Builds rigged villagers from short recipes. Everything used is CC0, so the resul
 ## Setup
 
 1. Install Blender 5.2 and the [MPFB](https://extensions.blender.org/add-ons/mpfb/) extension.
-2. Download these CC0 packs from [MakeHuman's asset packs](https://static.makehumancommunity.org/assets/assetpacks.html) and unzip them, outside the repository: MakeHuman system assets, Bodyparts 05, Pants 01, Shirts 01, Skirts 01, and Suits 02.
+2. Download these CC0 packs from [MakeHuman's asset packs](https://static.makehumancommunity.org/assets/assetpacks.html) and unzip them, outside the repository: MakeHuman system assets, Bodyparts 05, Pants 01, Shirts 01, Skirts 01, and Suits 02. Recipes that use a cap also need Hats 01, and the hair in the recipes needs Hair 01.
 
 Only use packs marked CC0. Packs marked CC-BY need credit and aren't used here.
 
@@ -40,7 +40,7 @@ The animation library is optional. Without one, characters stand in the first fr
 | `id` | The character's name |
 | `shape` | MPFB body settings, such as `gender`, `age`, `muscle`, and `weight`, from 0 to 1. An `age` of 0.5 is a young adult, and values near 0.3 look like a child |
 | `skin` | Skin material |
-| `clothes` | Clothes and shoes |
+| `clothes` | Clothes and shoes, and also hoods and caps, such as `donitz_monk_robe_hood` (Suits 02) and `jujube_newsboy_cap` (Hats 01). Colors in `colors` paint a part that comes without a material |
 | `footwear` | Which clothes reach the ground |
 | `colors` | Plain sRGB colors that replace a part's printed pattern |
 | `tucked` | Layers cut off where another layer covers them, as `{ "under": "over" }` |
@@ -49,6 +49,8 @@ The animation library is optional. Without one, characters stand in the first fr
 | `trim_above` | Parts cut off above a height in meters, such as shoe shafts inside pants |
 | `hair`, `hair_color` | Hair, and an optional sRGB color to repaint it |
 | `beard` | Beard or moustache |
+| `accessories` | Plain-colored parts that the script generates, fitted to the body and its clothes and skinned to the same bones: `apron`, `chain`, `quiver`, `pack`, and `hat`. Each has a `type` and a `color`, and some take sizes (`hem` for the apron, `brim`, `crown`, `droop`, `margin`, and `sink` for the hat). They are listed in `ACCESSORIES` in `build_character.py` |
+| `vests` | Sleeveless outer layers made from a copy of one of the clothes, as `{ "from": "toigo_fisherman_sweater", "color": [r, g, b] }`. The copy loses its sleeves and collar and is a little larger |
 | `smooth_chest` | Tight clothes whose chest area is smoothed |
 | `brows`, `eyes` | Eyebrows and eyes |
 

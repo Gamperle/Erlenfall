@@ -234,6 +234,8 @@ The world has fourteen villagers (`data/village_layout.json`): the five from the
 
 The new nine have recipes in `tools/character_pipeline/villagers.json`, written from the appearance notes above, but no models yet, so they appear as the plain placeholder figures. Their dialogue is a single placeholder line each. Both are tracked in the issues "Build the models for the nine new villagers" and "Write the dialogue for the nine new villagers". Their places are rough, and their daily routines are issue #16. The dialogue mentions Konrad, Agnes, Wendel, Oswin, Albrecht, Jakob, Falk, Marek, and Lene by those draft names, and uses the draft names Anselm, Jorin, Talbrück, and The Alder Bough. Changing any of these names means changing those lines in `localization/strings.csv` too.
 
+Clothing variety comes from the recipes' `accessories`, `vests`, and cap or hood clothes (see `tools/character_pipeline/README.md`). In the game now, Bertram wears a leather apron and Brandt the mayor's chain. The recipes of the new nine also have theirs, checked on turntable sheets but not yet built into models (issue 191): Konrad's straw hat, Oswin's cap, Wendel's and Falk's hoods, Falk's quiver, Marek's pack and wide hat, and Agnes's sheepskin vest. Not yet made: Runa's and Jakob's aprons, belts and satchels, cloaks, headscarves, shawls, and Hanne's, Veit's, and Gerold's outfits.
+
 ### What each villager says, and when
 
 A villager plays the first conversation in their list whose conditions hold, so the later quest steps come first and a plain fallback comes last.

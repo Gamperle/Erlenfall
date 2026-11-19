@@ -58,4 +58,7 @@ foreach ($image in Get-ChildItem "$base\input\*.png" | Sort-Object Name) {
         "$name ok attempts=$attempt $stats"
     } else { "$name FAILED after $attempt attempts" }
 }
+# Every mesh needs its provenance record with the TripoSR commit (#497). provenance.py is copied next to the scripts.
+& $py "$Root\provenance.py" check-batch $base
+if ($LASTEXITCODE -ne 0) { "PROVENANCE CHECK FAILED: see the lines above"; "finished with missing provenance"; exit 1 }
 "finished"

@@ -13,6 +13,8 @@ Command line, from the repository root:
   provenance.py backfill [--force]   write records for AI-generated props, characters and relief maps
                        from what ASSETS.md and the recipes record
   provenance.py note ASSET TEXT      add a manual edit to an asset's record
+  provenance.py check-batch BATCH    after a TripoSR run on the asset PC: every <BATCH>\\models\\<name>\\0\\mesh.obj needs a
+                       provenance\\<name>.json with a TripoSR mesh stage that names the commit (exit 1 if not, #497)
 
 A record, as JSON:
   schema        1
@@ -131,6 +133,88 @@ def record_path(kind, asset, root=ROOT):
     return os.path.join(root, "provenance", FOLDERS[kind], os.path.splitext(os.path.basename(asset))[0] + ".json")
 
 
+def git_commit(repo, length=7):
+    """Returns (short commit, None) of the checkout in repo, or (None, reason). Reads .git/HEAD itself (a .git file as in a
+    worktree, a loose ref, packed-refs), so it doesn't depend on git being on PATH or on git's ownership check (#496).
+    Only if that fails does it ask git."""
+    reason = "no .git in %s" % repo
+    try:
+        dot_git = os.path.join(repo, ".git")
+        if os.path.isfile(dot_git):
+            text = read_text(dot_git).strip()
+            if text.startswith("gitdir:"):
+                dot_git = os.path.normpath(os.path.join(repo, text[len("gitdir:"):].strip()))
+        if os.path.isdir(dot_git):
+            head = read_text(os.path.join(dot_git, "HEAD")).strip()
+            seen = 0
+            while head.startswith("ref:") and seen < 5:
+                ref = head[4:].strip()
+                seen += 1
+                path = os.path.join(dot_git, *ref.split("/"))
+                if os.path.exists(path):
+                    head = read_text(path).strip()
+                    continue
+                head = ""
+                packed = os.path.join(dot_git, "packed-refs")
+                if os.path.exists(packed):
+                    for line in read_text(packed).splitlines():
+                        parts = line.split()
+                        if len(parts) == 2 and parts[1] == ref:
+                            head = parts[0]
+                if not head:
+                    reason = "ref %s not found in %s" % (ref, dot_git)
+            if re.fullmatch(r"[0-9a-f]{40,64}", head):
+                return head[:length], None
+            reason = reason if not reason.startswith("no .git") else "HEAD in %s is not a commit" % dot_git
+    except Exception as error:
+        reason = "could not read .git: %s" % error
+    try:
+        import subprocess
+
+        done = subprocess.run(["git", "-C", repo, "rev-parse", "--short=%d" % length, "HEAD"], capture_output=True, text=True, timeout=30)
+        if done.returncode == 0 and done.stdout.strip():
+            return done.stdout.strip(), None
+        reason += "; git rev-parse failed: %s" % (done.stderr.strip() or "exit %d" % done.returncode)
+    except Exception as error:
+        reason += "; git not usable: %s" % error
+    return None, reason
+
+
+def mesh_record_problems(batch):
+    """Problems after a TripoSR run (#497): every <batch>/models/<name>/0/mesh.obj needs <batch>/provenance/<name>.json
+    with a TripoSR mesh stage that names the TripoSR commit. Returns a list of messages."""
+    found = []
+    models = os.path.join(batch, "models")
+    names = sorted(n for n in os.listdir(models) if os.path.exists(os.path.join(models, n, "0", "mesh.obj"))) if os.path.isdir(models) else []
+    for name in names:
+        path = os.path.join(batch, "provenance", name + ".json")
+        if not os.path.exists(path):
+            found.append("%s has a mesh but no provenance record %s" % (name, path))
+            continue
+        try:
+            record = load(path)
+            stages = [s for s in record.get("stages", []) if isinstance(s, dict) and s.get("step") == "mesh"]
+        except Exception as error:
+            found.append("%s: record %s can't be read: %s" % (name, path, error))
+            continue
+        if not stages:
+            found.append("%s: record %s has no mesh stage" % (name, path))
+        elif not str(stages[-1].get("tool", "")).startswith("TripoSR"):
+            found.append("%s: the mesh stage's tool is %r, not TripoSR" % (name, stages[-1].get("tool")))
+        elif not (stages[-1].get("versions") or {}).get("TripoSR"):
+            found.append("%s: the mesh stage doesn't name the TripoSR commit (%s)" % (name, stages[-1].get("commit_error") or "no reason recorded"))
+    return found
+
+
+def check_batch(batch, out=print):
+    problems = mesh_record_problems(batch)
+    for problem in problems:
+        out("PROVENANCE MISSING: " + problem)
+    if not problems:
+        out("provenance: every TripoSR mesh in %s has a record" % batch)
+    return 1 if problems else 0
+
+
 def module_version(name):
     try:
         import importlib.metadata
@@ -200,6 +284,9 @@ def check_record(record, name=""):
                 found.append("stage %s has no date" % stage["step"])
             if not stage.get("versions"):
                 found.append("stage %s has no tool versions" % stage["step"])
+        if origin == "pipeline" and stage.get("step") == "mesh" and str(stage.get("tool", "")).startswith("TripoSR") \
+                and not (stage.get("versions") or {}).get("TripoSR"):
+            found.append("TripoSR mesh stage has no commit in versions (%s)" % (stage.get("commit_error") or "no reason recorded"))
         if stage.get("step") == "mesh" and str(stage.get("tool", "")).startswith("TRELLIS"):
             found += check_models(stage, origin)
     if kind == "ai_prop":
@@ -554,13 +641,18 @@ def add_note(asset, text, root=ROOT):
 
 
 def main(argv):
-    if not argv or argv[0] not in ("validate", "backfill", "note"):
+    if not argv or argv[0] not in ("validate", "backfill", "note", "check-batch"):
         print(__doc__)
         return 2
     if argv[0] == "validate":
         return validate()
     if argv[0] == "backfill":
         return backfill(force="--force" in argv)
+    if argv[0] == "check-batch":
+        if len(argv) != 2:
+            print("usage: provenance.py check-batch BATCH_FOLDER")
+            return 2
+        return check_batch(argv[1])
     if len(argv) != 3:
         print("usage: provenance.py note ASSET TEXT")
         return 2

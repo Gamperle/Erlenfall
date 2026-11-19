@@ -11,7 +11,8 @@ failed with "Cannot open path ...\\0\\mesh.obj" after a full run (#493). This cr
 
 When run.py has made <output-dir>/0/mesh.obj, this adds a "mesh" stage to <batch>\\provenance\\<name>.json (see
 provenance.py, #398) that names the mask model and its weight file. The output folder is <batch>\\models\\<name>,
-as make_models.ps1 sets it.
+as make_models.ps1 sets it. The TripoSR commit is read from .git/HEAD (git is only the fallback, #496); if it can't be found
+the stage records null and "commit_error" says why, and make_models.ps1's check after the run (provenance.py check-batch, #497) fails.
 
 With cuDNN off, a large MIOpen DLL no longer loads, the first convolution takes 0.16 s rather than 10.9 s,
 and the output is practically unchanged. Whether this prevents the startup crash isn't known (issue #59).
@@ -27,7 +28,6 @@ import faulthandler
 import json
 import os
 import runpy
-import subprocess
 import sys
 
 import torch
@@ -93,14 +93,16 @@ def write_provenance(picture, mask_path):
         return
     name = os.path.basename(output)
     base = os.path.dirname(os.path.dirname(output))
-    try:
-        commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
-    except Exception:
-        commit = None
+    # The checkout is the folder run.py is in (the working directory, as the script's header says). Read from .git directly (#496).
+    commit, commit_error = provenance.git_commit(os.getcwd())
+    if not commit:
+        print(f"ERROR: could not read the TripoSR commit: {commit_error}. The record gets null with the reason, and "
+              "provenance.py check-batch will fail for it.", file=sys.stderr, flush=True)
     provenance.add_stage(
         os.path.join(base, "provenance", name + ".json"),
-        {"step": "mesh", "tool": "TripoSR", "versions": {"TripoSR": commit or None, "torch": torch.__version__, "python": sys.version.split()[0]},
+        {"step": "mesh", "tool": "TripoSR", "versions": {"TripoSR": commit, "torch": torch.__version__, "python": sys.version.split()[0]},
          "date": provenance.today(), **mask_record(mask_path), "mc_resolution": int(option("--mc-resolution", 256)),
+         **({"commit_error": commit_error} if commit_error else {}),
          "bake_texture": "--bake-texture" in sys.argv, "cudnn": False, "script": "run_triposr.py",
          "picture_sha256": provenance.sha256(picture) if picture and os.path.exists(picture) else None},
         kind="ai_prop", asset=f"assets/props/{name}.glb", batch=os.path.basename(base), name=name,

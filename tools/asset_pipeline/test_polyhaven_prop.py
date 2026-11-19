@@ -63,8 +63,9 @@ def png(size, color):
     return out.getvalue()
 
 
-def write_gltf(folder):
-    """Writes model.gltf, model.bin and texture.png under folder. Returns the .gltf path."""
+def write_gltf(folder, tile=1.0):
+    """Writes model.gltf, model.bin and texture.png under folder. Returns the .gltf path. With tile other than 1 the textured
+    material goes on the box, whose large triangles get UVs of 0 to tile, and the sphere gets the flat-colored one."""
     blob = b""
     views, accessors = [], []
 
@@ -80,7 +81,10 @@ def write_gltf(folder):
         return len(accessors) - 1
 
     primitives = []
-    for (positions, uvs, triangles), material in ((sphere(), 0), (box(), 1)):
+    tiled = tile != 1.0
+    box_parts = box()
+    box_parts = (box_parts[0], ((box_parts[0][:, :2] + 0.5) * tile).astype(np.float32), box_parts[2])
+    for (positions, uvs, triangles), material in ((sphere(), 1 if tiled else 0), (box_parts, 0 if tiled else 1)):
         normals = positions / np.maximum(np.linalg.norm(positions, axis=1, keepdims=True), 1e-9)
         primitives.append({"attributes": {"POSITION": add(positions, 34962, 5126, "VEC3", True), "NORMAL": add(normals.astype(np.float32), 34962, 5126, "VEC3"),
                                           "TEXCOORD_0": add(uvs, 34962, 5126, "VEC2")},
@@ -231,6 +235,98 @@ class ConvertTest(unittest.TestCase):
         os.remove(path)
         self.assertEqual(provenance.validate(root, out=out.append), 1)
         self.assertTrue(any("has no provenance record" in line for line in out), out)
+
+    def convert_gltf(self, edit, **options):
+        folder = tempfile.mkdtemp()
+        source = write_gltf(folder, options.pop("tile", 1.0))
+        with open(source) as file:
+            document = json.load(file)
+        edit(document)
+        with open(source, "w") as file:
+            json.dump(document, file)
+        args = argparse.Namespace(faces=0, meters=None, texture_edge=None, keep_blend=False, out=os.path.join(folder, "prop.glb"), name="prop")
+        for key, value in options.items():
+            setattr(args, key, value)
+        warnings = polyhaven_prop.Warnings()
+        stats = polyhaven_prop.convert(source, args, warnings)
+        return args, stats, warnings
+
+    def test_tiling_texture_is_repeated_in_its_atlas_cell(self):
+        args, _, warnings = self.convert_gltf(lambda d: None, tile=3.0)
+        self.assertTrue(any("tiles its texture" in w for w in warnings), warnings)
+        self.assertFalse(any("clamped" in w for w in warnings), warnings)
+        document, binary, accessor = read_glb(args.out)
+        uvs = accessor(document["meshes"][0]["primitives"][0]["attributes"]["TEXCOORD_0"])
+        self.assertTrue(((uvs >= 0) & (uvs <= 1)).all())
+        # the wood (material 0) has the left half of the atlas
+        view = document["bufferViews"][document["images"][0]["bufferView"]]
+        image = np.asarray(Image.open(io.BytesIO(binary[view["byteOffset"]:view["byteOffset"] + view["byteLength"]])).convert("RGB"), np.float32)
+        left = image[:, : image.shape[1] // 2]
+        sub = image.shape[1] // 2 // 3
+        self.assertTrue(np.allclose(left[:sub, :sub], left[:sub, sub:2 * sub]))  # three repeats side by side
+        self.assertTrue(np.allclose(left[:sub, :sub], left[sub:2 * sub, :sub]))
+
+    def test_more_repeats_than_the_cell_holds_are_clamped_and_warned(self):
+        _, _, warnings = self.convert_gltf(lambda d: None, tile=12.0)
+        self.assertTrue(any("clamped" in w for w in warnings), warnings)
+
+    def test_emissive_glow_is_added_to_the_base_color(self):
+        def edit(document):
+            document["materials"][1]["emissiveFactor"] = [1.0, 0.0, 0.0]
+        args, _, warnings = self.convert_gltf(edit)
+        self.assertTrue(any("emissive" in w for w in warnings), warnings)
+        document, binary, _ = read_glb(args.out)
+        view = document["bufferViews"][document["images"][0]["bufferView"]]
+        image = np.asarray(Image.open(io.BytesIO(binary[view["byteOffset"]:view["byteOffset"] + view["byteLength"]])).convert("RGB"), np.float32)
+        right = image[:, image.shape[1] // 2:]
+        self.assertGreater(float(right[:, :, 0].mean()), 250)
+        self.assertLess(float(right[:, :, 1].mean()), 80)
+
+    def test_texture_transform_matrix(self):
+        class Fake:
+            doc = {"materials": [{"pbrMetallicRoughness": {"baseColorTexture": {"index": 0, "extensions": {"KHR_texture_transform": {"offset": [0.5, 0.25], "scale": [2, 3]}}}}},
+                                 {"pbrMetallicRoughness": {"baseColorTexture": {"index": 0, "extensions": {"KHR_texture_transform": {"rotation": math.pi / 2}}}}},
+                                 {"pbrMetallicRoughness": {"baseColorTexture": {"index": 0}}}]}
+        warnings = polyhaven_prop.Warnings()
+        matrix = polyhaven_prop.uv_matrix(Fake, 0, warnings)
+        self.assertTrue(np.allclose(matrix @ [1, 1, 1], [2.5, 3.25, 1]))
+        self.assertTrue(np.allclose(polyhaven_prop.uv_matrix(Fake, 1, warnings) @ [1, 0, 1], [0, -1, 1], atol=1e-9))
+        self.assertIsNone(polyhaven_prop.uv_matrix(Fake, 2, warnings))
+        self.assertIsNone(polyhaven_prop.uv_matrix(Fake, None, warnings))
+        self.assertEqual(warnings, [])
+
+
+class DecimationTest(unittest.TestCase):
+    def grid(self, n=24):
+        """A flat n x n grid of quads in the plane z = 0 whose UVs follow x on the left half and wobble on the right half."""
+        xs = np.linspace(0, 1, n + 1)
+        positions, uvs = [], []
+        for y in xs:
+            for x in xs:
+                positions.append((x, y, 0.0))
+                uvs.append((x + (0.04 * math.sin(10 * math.pi * x) if x > 0.5 else 0.0), y))
+        triangles = []
+        for j in range(n):
+            for i in range(n):
+                a = j * (n + 1) + i
+                triangles += [(a, a + 1, a + n + 1), (a + 1, a + n + 2, a + n + 1)]
+        normals = np.tile([0.0, 0.0, 1.0], (len(positions), 1))
+        return np.array(positions), normals, np.array(uvs), np.array(triangles)
+
+    def test_the_reduction_keeps_triangles_where_the_texture_bends(self):
+        positions, normals, uvs, triangles = self.grid()
+        out_positions, _, _, out = polyhaven_prop.decimate(positions, normals, uvs, triangles, len(triangles) // 3)
+        centers = out_positions[out].mean(axis=1)[:, 0]
+        self.assertLessEqual(len(out), len(triangles) // 3 + 2)
+        # the flat-textured half is cheap to reduce, the wobbling half must keep most of what it has
+        self.assertGreater(int((centers > 0.5).sum()), 2 * int((centers < 0.5).sum()))
+
+    def test_uv_slide_is_zero_on_an_affine_mapping_and_grows_when_it_bends(self):
+        pos = [np.array(p, float) for p in ((0, 0, 0), (1, 0, 0), (0, 1, 0))]
+        uv = [np.array(p, float) for p in ((0, 0), (1, 0), (0, 1))]
+        target = np.array([1.0, 1.0, 0.0])
+        self.assertAlmostEqual(polyhaven_prop.uv_slide(pos, uv, target, np.array([1.0, 1.0]))[0], 0.0)
+        self.assertAlmostEqual(polyhaven_prop.uv_slide(pos, uv, target, np.array([1.0, 1.5]))[0], 0.5)
 
 
 if __name__ == "__main__":

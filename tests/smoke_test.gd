@@ -902,12 +902,12 @@ func _test_generated_props() -> void:
 		# The model file itself, before data/prop_tuning.json, whose lifts are deliberate, such as a haystack set into the ground.
 		_check(absf(meshes[0].get_aabb().position.y) < PROP_GROUND_TOLERANCE, file + " stands on the ground")
 		prop.free()
-	_check(count == 203, "all generated props are present")
+	_check(count == 205, "all generated props are present")
 	var tuner: Node = load("res://tools/prop_tuner/prop_tuner.tscn").instantiate()
 	_check(tuner != null, "the prop tuner scene loads")
 	tuner.free()
 	var layout: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/village_layout.json"))
-	_check((layout["props"] as Array).size() == 60, "60 generated props are placed, and the anvil, furnace, and bed are separate")
+	_check((layout["props"] as Array).size() == 65, "65 generated props are placed, and the anvil, furnace, and bed are separate")
 
 
 func _test_feature_flags() -> void:

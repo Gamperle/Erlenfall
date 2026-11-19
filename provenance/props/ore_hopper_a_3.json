@@ -1,0 +1,129 @@
+{
+	"schema": 1,
+	"asset": "assets/props/ore_hopper_a_3.glb",
+	"kind": "ai_prop",
+	"origin": "pipeline",
+	"stages": [
+		{
+			"step": "image",
+			"tool": "FLUX.2 klein 4B",
+			"versions": {
+				"python": "3.12.10",
+				"torch": "2.14.0+rocm10.1.0",
+				"diffusers": "0.42.1",
+				"model": "black-forest-labs/FLUX.2-klein-4B",
+				"model_revision": "e7b7dc27f91deacad38e78976d1f2b499d76a294"
+			},
+			"date": "2026-11-19",
+			"width": 1024,
+			"height": 1024,
+			"steps": 4,
+			"guidance": 1.0,
+			"candidate": 3,
+			"picture_sha256": "a258efa466a6d8491ad69118d2599209f1d69cae01506993252e70b51c4ac2ec"
+		},
+		{
+			"step": "mesh",
+			"tool": "TRELLIS.2 (Comfy-Org int8 build)",
+			"versions": {
+				"ComfyUI": "0.43.0",
+				"pytorch": "2.14.0+rocm10.1.0",
+				"python": "3.12.10"
+			},
+			"date": "2026-11-19",
+			"helpers": [
+				"BiRefNet",
+				"DINOv3"
+			],
+			"faces": 3500,
+			"workflow": "trellis2_api.json",
+			"workflow_sha256": "a35c55abacb3f67eabd94098e9e075bd91e74fc4209c7bd8ae4ec38648bf9777",
+			"picture_sha256": "a258efa466a6d8491ad69118d2599209f1d69cae01506993252e70b51c4ac2ec",
+			"comfy_prompt_id": "8b3aaad2-1069-4468-a28f-c5051a617fe3",
+			"models": [
+				{
+					"node": "117",
+					"class": "VAELoader",
+					"input": "vae_name",
+					"file": "trellis_2_shape_vae_bf16.safetensors",
+					"path": "vae/trellis_2_shape_vae_bf16.safetensors",
+					"size": 1095844024,
+					"sha256": "de0cb4949a76c59ee5c091a995a69bcc8c51d5aeda939f0c641a50d2a72341f4"
+				},
+				{
+					"node": "118",
+					"class": "VAELoader",
+					"input": "vae_name",
+					"file": "trellis_2_texture_vae_bf16.safetensors",
+					"path": "vae/trellis_2_texture_vae_bf16.safetensors",
+					"size": 948461364,
+					"sha256": "714e5ebf094a610e12a8e3b5175c18a62f37f6ea4218acb6073644456b73ab0e"
+				},
+				{
+					"node": "15",
+					"class": "CLIPVisionLoader",
+					"input": "clip_name",
+					"file": "dino_v3_L_naf_fp32.safetensors",
+					"path": "clip_vision/dino_v3_L_naf_fp32.safetensors",
+					"size": 1215214176,
+					"sha256": "4ad2ec4e0879a5b5b04cd97325cc37da954a7b6edca5170b86510f17f2b2290f"
+				},
+				{
+					"node": "193",
+					"class": "LoadBackgroundRemovalModel",
+					"input": "bg_removal_name",
+					"file": "birefnet.safetensors",
+					"path": "background_removal/birefnet.safetensors",
+					"size": 444473596,
+					"sha256": "9ab37426bf4de0567af6b5d21b16151357149139362e6e8992021b8ce356a154"
+				},
+				{
+					"node": "319",
+					"class": "UNETLoader",
+					"input": "unet_name",
+					"file": "pixal3d_int8_convrot.safetensors",
+					"path": "diffusion_models/pixal3d_int8_convrot.safetensors",
+					"size": 5584555824,
+					"sha256": "4621eac3b715484f79303c7152af641fe0b2b14f4d0e3d394fd6922d00f955ec"
+				},
+				{
+					"node": "40",
+					"class": "UNETLoader",
+					"input": "unet_name",
+					"file": "trellis_2_int8_convrot.safetensors",
+					"path": "diffusion_models/trellis_2_int8_convrot.safetensors",
+					"size": 5253048192,
+					"sha256": "d01952ad137213f6a868f86b6b877026276f84af5eec23069217475a0bad3a31"
+				},
+				{
+					"node": "55",
+					"class": "LoadMoGeModel",
+					"input": "model_name",
+					"file": "moge_2_vitl_normal_fp16.safetensors",
+					"path": "geometry_estimation/moge_2_vitl_normal_fp16.safetensors",
+					"size": 661859924,
+					"sha256": "cb1a692d03235671e959e81360d7b4d9f44aefadb1f852d6ca6aa17799d5e31f"
+				}
+			]
+		},
+		{
+			"step": "size",
+			"tool": "Blender",
+			"versions": {
+				"Blender": "5.2.3 LTS"
+			},
+			"date": "2026-11-19",
+			"meters": 2.2,
+			"turn_degrees": 0.0,
+			"script": "size_glb.py"
+		}
+	],
+	"manual_edits": [],
+	"batch": "klein468",
+	"object": "ore_hopper_a",
+	"name": "ore_hopper_a_3",
+	"subject": "wooden ore hopper, a square funnel-shaped bin of thick rough planks with iron bands, heaped full of chunky rust-brown iron ore, standing on four thick wooden legs",
+	"prompt": "A single wooden ore hopper, a square funnel-shaped bin of thick rough planks with iron bands, heaped full of chunky rust-brown iron ore, standing on four thick wooden legs, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
+	"seed": 13003,
+	"chosen_by": "Claude for Markus Gamperle"
+}

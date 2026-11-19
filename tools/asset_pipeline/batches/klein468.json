@@ -1,0 +1,9 @@
+{
+	"seed": 13000,
+	"chosen_by": "Claude for Markus Gamperle",
+	"objects": {
+		"ore_hopper_a": { "subject": "wooden ore hopper, a square funnel-shaped bin of thick rough planks with iron bands, heaped full of chunky rust-brown iron ore, standing on four thick wooden legs", "faces": 3500, "meters": 2.2 },
+		"ore_hopper_b": { "subject": "mine ore hopper, a wide open-topped wooden box that narrows to a spout at the bottom, thick timber frame and iron straps, filled to the brim with large rough dark iron ore lumps, on a sturdy timber stand", "faces": 3500, "meters": 2.2 }
+	},
+	"turns": {}
+}

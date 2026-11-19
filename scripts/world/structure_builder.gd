@@ -39,7 +39,7 @@ static func build(kind: String, width: float, depth: float, height: float, color
 		"lumber_shed":
 			_lumber_shed(body, look, width, depth, height)
 		"sawmill_lean_to":
-			_sawmill(body, look, width, depth, height)
+			_sawmill(body, look, width, depth, height, variant)
 		"carpenter_workshop":
 			_workshop(body, look, width, depth, height, color)
 		"small_barn":
@@ -176,7 +176,8 @@ static func _lumber_shed(body: StaticBody3D, look: Node3D, width: float, depth: 
 
 # -- Sawmill: a roofed frame over the work place, open on three sides ------------------------------
 
-static func _sawmill(body: StaticBody3D, look: Node3D, width: float, depth: float, height: float) -> void:
+## Variant 1 leaves the log and trestles out: the layout places the generated `sawpit_frame_1` there (#468).
+static func _sawmill(body: StaticBody3D, look: Node3D, width: float, depth: float, height: float, variant := 0) -> void:
 	# A gable roof on a frame of six posts, with a plank back and a log lying on trestles.
 	_floor(look, width, depth, Color(0.36, 0.28, 0.2))
 	var posts := 3
@@ -193,26 +194,30 @@ static func _sawmill(body: StaticBody3D, look: Node3D, width: float, depth: floa
 	look.add_child(ModelBuilder.box(back, Surfaces.Pattern.UPRIGHT_WOOD, PLANK.darkened(0.2), back_at))
 	_collider(body, back, back_at)
 	_gable_roof(look, width, depth, height, 1.4)
-	# A long log on two A-shaped trestles, with sawdust under it.
 	var log_length := minf(width - 1.0, 4.2)
-	var log_mesh := CylinderMesh.new()
-	log_mesh.top_radius = 0.28
-	log_mesh.bottom_radius = 0.31
-	log_mesh.height = log_length
-	log_mesh.radial_segments = 8
-	log_mesh.material = Surfaces.get_material(Surfaces.Pattern.UPRIGHT_WOOD, Color(0.36, 0.26, 0.17))
-	var log_node := MeshInstance3D.new()
-	log_node.mesh = log_mesh
-	log_node.position = Vector3(0.0, 0.95, 0.2)
-	log_node.rotation.z = PI / 2.0
-	look.add_child(log_node)
-	for x: float in [-1.0, 1.0]:
-		var trestle_x := x * log_length * 0.32
-		for lean: float in [-1.0, 1.0]:
-			_strut(look, Vector3(trestle_x, 0.0, 0.2 + lean * 0.5), Vector3(trestle_x, 0.78, 0.2 + lean * 0.12), 0.12, WOOD)
-		look.add_child(ModelBuilder.box(Vector3(0.12, 0.12, 0.9), Surfaces.Pattern.WOOD, WOOD, Vector3(trestle_x, 0.72, 0.2)))
-	look.add_child(ModelBuilder.box(Vector3(log_length + 0.2, 0.05, 1.5), Surfaces.Pattern.PLASTER, Color(0.62, 0.5, 0.34), Vector3(0.0, 0.1, 0.2)))
-	_collider(body, Vector3(log_length, 1.3, 0.7), Vector3(0.0, 0.65, 0.2))
+	if variant == 1:
+		# Sawdust only, under the generated log on trestles.
+		look.add_child(ModelBuilder.box(Vector3(3.2, 0.05, 1.5), Surfaces.Pattern.PLASTER, Color(0.62, 0.5, 0.34), Vector3(0.0, 0.1, 0.2)))
+	else:
+		# A long log on two A-shaped trestles, with sawdust under it.
+		var log_mesh := CylinderMesh.new()
+		log_mesh.top_radius = 0.28
+		log_mesh.bottom_radius = 0.31
+		log_mesh.height = log_length
+		log_mesh.radial_segments = 8
+		log_mesh.material = Surfaces.get_material(Surfaces.Pattern.UPRIGHT_WOOD, Color(0.36, 0.26, 0.17))
+		var log_node := MeshInstance3D.new()
+		log_node.mesh = log_mesh
+		log_node.position = Vector3(0.0, 0.95, 0.2)
+		log_node.rotation.z = PI / 2.0
+		look.add_child(log_node)
+		for x: float in [-1.0, 1.0]:
+			var trestle_x := x * log_length * 0.32
+			for lean: float in [-1.0, 1.0]:
+				_strut(look, Vector3(trestle_x, 0.0, 0.2 + lean * 0.5), Vector3(trestle_x, 0.78, 0.2 + lean * 0.12), 0.12, WOOD)
+			look.add_child(ModelBuilder.box(Vector3(0.12, 0.12, 0.9), Surfaces.Pattern.WOOD, WOOD, Vector3(trestle_x, 0.72, 0.2)))
+		look.add_child(ModelBuilder.box(Vector3(log_length + 0.2, 0.05, 1.5), Surfaces.Pattern.PLASTER, Color(0.62, 0.5, 0.34), Vector3(0.0, 0.1, 0.2)))
+		_collider(body, Vector3(log_length, 1.3, 0.7), Vector3(0.0, 0.65, 0.2))
 	_set_cover(body, Vector2.ZERO, Vector2(width + OVERHANG * 2.0, depth + OVERHANG * 2.0) / 2.0, height, 1.4)
 
 

@@ -29,6 +29,8 @@ const FACE_LEDGE := 1.8
 const FACE_MARGIN := 4.0
 const FACE_CREST := 3.0
 const ROOT_COLOR := Color(0.2, 0.14, 0.09)
+## How much each 2 m piece of the track in front of the opening bends, in radians (positive is left).
+const RAIL_TURNS: Array[float] = [0.0, 0.0, 0.3]
 
 var mine_id := ""
 var landmark := false
@@ -54,7 +56,14 @@ func _ready() -> void:
 	_build_cliff(look, body)
 	_build_cliff_rocks(look, body, random)
 	_build_base_details(look, body, random)
-	_build_frame(look, body)
+	if _data.get("intact_frame", false):
+		# For a mine that has been cleared: a standing timbered entrance that fits the opening (#436).
+		var entrance := StructureBuilder.mine_timber_entrance(float(_data["opening_width"]), float(_data["opening_height"]))
+		entrance.name = "TimberEntrance"
+		entrance.position = Vector3(0.0, 0.0, 0.5)
+		add_child(entrance)
+	else:
+		_build_frame(look, body)
 	_build_rubble(look, body, random)
 	_build_headframe(look, body)
 	_build_mouth_details(look, random)
@@ -441,12 +450,14 @@ func _build_sacks(look: Node3D, random: RandomNumberGenerator) -> void:
 
 
 func _build_cart_and_rails(look: Node3D, body: StaticBody3D) -> void:
-	# Rails run out of the opening and disappear under the rubble. Sleepers every meter.
-	for i in 6:
-		var z := 4.2 + i * 1.1
-		_add_timber(look, Vector3(2.0, 0.12, 0.25), Vector3(0.0, 0.06, z), Vector3.ZERO, OLD_TIMBER)
-	for side in [-0.7, 0.7]:
-		_add_timber(look, Vector3(0.1, 0.12, 6.4), Vector3(side, 0.16, 6.9), Vector3.ZERO, IRON)
+	# Rails run out of the opening and disappear under the rubble: two straight pieces and then one that
+	# bends away to the left, joined end to end (#436).
+	var track := Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, 4.2))
+	for turn: float in RAIL_TURNS:
+		var piece := StructureBuilder.rail_track(turn, OLD_TIMBER)
+		piece.transform = track
+		look.add_child(piece)
+		track *= StructureBuilder.rail_end(turn)
 	# A cart that tipped over beside the track.
 	var cart := Vector3(2.9, 0.5, 8.0)
 	_add_timber(look, Vector3(1.5, 0.9, 1.1), cart, Vector3(0.0, 0.5, 0.9), IRON)

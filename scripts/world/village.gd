@@ -101,6 +101,7 @@ func _ready() -> void:
 	for field: Dictionary in layout["fields"]:
 		_add_field(field)
 	_add_props(layout["props"], layout["buildings"])
+	_add_structures(layout.get("structures", []))
 	_add_walls(layout["walls"])
 	_add_roads(layout["roads"])
 	_add_trees(layout["trees"], layout["fields"])
@@ -568,6 +569,31 @@ func _add_props(props: Array, buildings: Array) -> void:
 			collision.shape = shape
 			collision.position = bounds.get_center()
 			body.add_child(collision)
+
+
+## Builds the small code-made buildings and work pieces (see StructureBuilder): sheds, barns, a granary,
+## a workshop, and the mine's ore chute. Like houses they stand on level ground, keep trees and grass
+## away, and the roofed ones keep the rain off.
+func _add_structures(structures: Array) -> void:
+	var root := Node3D.new()
+	root.name = "Structures"
+	add_child(root)
+	for data: Dictionary in structures:
+		var body := StructureBuilder.build(data["kind"], data["width"], data["depth"], data["height"], Color(data.get("color", "#6a5340")), int(data.get("variant", 0)))
+		body.name = data["id"]
+		body.position = _ground_position(data["x"], data["z"])
+		body.rotation_degrees.y = data["rotation"]
+		root.add_child(body)
+		_building_spots.append(Vector2(data["x"], data["z"]))
+		if body.has_meta("cover"):
+			var cover: Dictionary = body.get_meta("cover")
+			var offset: Vector2 = cover["offset"]
+			var middle := body.position + Basis(Vector3.UP, body.rotation.y) * Vector3(offset.x, 0.0, offset.y)
+			roof_covers.append({
+				"center": Vector2(middle.x, middle.z), "half": cover["half"], "yaw": body.rotation.y,
+				"base": body.position.y + float(cover["base"]), "rise": cover["rise"], "shape": "ridge", "active": true,
+			})
+			roof_version += 1
 
 
 ## Builds the walls and palisades. Each entry is a line of "points" ([x, z] pairs, open at the ends

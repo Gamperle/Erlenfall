@@ -77,6 +77,19 @@
 		{ "item": "healing_herb", "prompt": "PROMPT_PICK_HERBS", "x": 18, "z": 31, "size": 0.6, "uses": 4, "respawn_seconds": 120, "color": "#4f8a3f" }
 	],
 	"mine": { "id": "buried_mine", "x": 44, "z": -216, "rotation": 0, "width": 13, "height": 7, "opening_width": 4.0, "opening_height": 3.6, "seed": 5, "plaza_radius": 9, "plaza_blend": 14, "compass": true },
+	"structures": [
+		{ "id": "forge_shed", "kind": "smithy_forge_shed", "x": 21.1, "z": 15.6, "rotation": 75, "width": 5.0, "depth": 3.6, "height": 3.2, "color": "#5f5852" },
+		{ "id": "lumber_shed", "kind": "lumber_shed", "x": -146, "z": -131, "rotation": 0, "width": 7.0, "depth": 4.0, "height": 3.0, "color": "#6b5a45" },
+		{ "id": "sawmill", "kind": "sawmill_lean_to", "x": -133, "z": -129, "rotation": 0, "width": 6.0, "depth": 4.0, "height": 3.0, "color": "#6b5a45" },
+		{ "id": "carpenter_workshop", "kind": "carpenter_workshop", "x": -8, "z": 40, "rotation": 90, "width": 8.0, "depth": 6.0, "height": 3.4, "color": "#8a6f52" },
+		{ "id": "tool_shed_west", "kind": "tool_shed", "variant": 0, "x": -32, "z": -14, "rotation": 80, "width": 2.4, "depth": 2.0, "height": 2.1, "color": "#6a5340" },
+		{ "id": "tool_shed_south", "kind": "tool_shed", "variant": 1, "x": -26, "z": 34, "rotation": 10, "width": 2.4, "depth": 2.0, "height": 2.1, "color": "#5d4a38" },
+		{ "id": "barn_north_a", "kind": "small_barn", "variant": 0, "x": 146, "z": -80, "rotation": 35, "width": 7.0, "depth": 5.5, "height": 3.2, "color": "#7a4a38" },
+		{ "id": "barn_north_b", "kind": "small_barn", "variant": 1, "x": 124, "z": -62, "rotation": 0, "width": 7.0, "depth": 5.5, "height": 3.2, "color": "#74503a" },
+		{ "id": "barn_north_c", "kind": "small_barn", "variant": 2, "x": 164, "z": -90, "rotation": 35, "width": 7.0, "depth": 5.5, "height": 3.2, "color": "#7d523c" },
+		{ "id": "granary_north", "kind": "granary", "x": 148, "z": -90, "rotation": 35, "width": 3.6, "depth": 3.0, "height": 3.2, "color": "#6e5238" },
+		{ "id": "ore_chute", "kind": "ore_chute", "x": 52, "z": -212, "rotation": -90, "width": 2.4, "depth": 5.0, "height": 3.2, "color": "#6a5340" }
+	],
 	"roads": [
 		{ "width": 3, "points": [[0, 220], [-3, 165], [0, 110], [3, 60], [0, 20], [0, -12]] },
 		{ "width": 3, "points": [[0, -12], [-13, -20], [-12, -45], [4, -110], [12, -165], [20, -184], [32, -201], [44, -209]] },
@@ -109,7 +122,8 @@
 	],
 	"flat_areas": [
 		{ "x": 118, "z": -145, "radius": 14, "blend": 22 },
-		{ "x": 150, "z": -65, "radius": 20, "blend": 45 }
+		{ "x": 150, "z": -65, "radius": 20, "blend": 45 },
+		{ "x": -139, "z": -127, "radius": 19, "blend": 12 }
 	],
 	"trees": {
 		"seed": 7,
@@ -186,7 +200,8 @@
     {"kind": "palisade", "height": 1.2, "seed": 611, "points": [[104.0, 181.8], [128.4, 190.7], [137.3, 166.3], [108.0, 155.6]]},
     {"kind": "palisade", "height": 1.3, "seed": 811, "points": [[112.1, -78.4], [108.5, -75.9], [103.3, -83.3], [113.1, -90.1], [118.3, -82.8], [114.7, -80.3]]},
     {"kind": "palisade", "height": 1.3, "seed": 911, "points": [[-155.1, 18.4], [-159.5, 19.2], [-161.0, 10.3], [-149.2, 8.2], [-147.7, 17.1], [-152.0, 17.9]]},
-    {"kind": "palisade", "height": 1.3, "seed": 1011, "points": [[55.0, 148.4], [53.5, 152.6], [45.0, 149.5], [49.1, 138.2], [57.6, 141.3], [56.1, 145.4]]}
+    {"kind": "palisade", "height": 1.3, "seed": 1011, "points": [[55.0, 148.4], [53.5, 152.6], [45.0, 149.5], [49.1, 138.2], [57.6, 141.3], [56.1, 145.4]]},
+    {"kind": "palisade", "height": 2.2, "seed": 1111, "points": [[-140.0, -118.0], [-154.0, -118.0], [-154.0, -137.0], [-124.0, -137.0], [-124.0, -118.0], [-136.0, -118.0]]}
   ],
   "props": [
     {"model": "sword_0", "building": "forge", "x": 1.6, "z": 3.75, "tilt": -10},

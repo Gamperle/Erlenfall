@@ -1,6 +1,6 @@
 # Assets to create
 
-The next props to make for a complete **forge**, **lumberjack's yard**, **carpenter's workshop**, **mine**, and **small storage buildings**. **Status: proposed, waiting for the maintainer's greenlight.** Nothing here has been drawn or generated yet.
+The next props to make for a complete **forge**, **lumberjack's yard**, **carpenter's workshop**, **mine**, and **small storage buildings**. **Status: the Gen props are proposed, waiting for the maintainer's greenlight, and nothing has been drawn or generated yet. The Build items are made (#436).**
 
 This is a working list. When an entry is made, its row moves to [ASSETS.md](../ASSETS.md) with the prompt, seed, and tool versions, and the finished models go in `assets/props`. The general asset order is in [ASSET_LIST.md](ASSET_LIST.md).
 
@@ -106,26 +106,28 @@ That is **60 Gen names** in one batch. The ones marked High are tried but not pr
 
 ## Build (code-made, no asset PC)
 
-These need exact sizes and entries in `data/village_layout.json`. Each is built from `ModelBuilder` boxes and the existing CC0 surfaces, like the houses.
+**Status: made in [#436](https://github.com/Gamperle/Erlenfall/issues/436), except where the last column says otherwise.** All eleven are code-built because they need exact sizes, and the asset PC was not used: the earlier finding is that TRELLIS.2 does walls, roofs and buildings poorly (see [WALLS_AND_BUILDINGS.md](WALLS_AND_BUILDINGS.md)), so generating them was not tried. They live in `scripts/world/structure_builder.gd` (`StructureBuilder`), are placed from `structures` in `data/village_layout.json`, and are photographed with `tools/asset_pipeline/shoot_structures.gd`.
 
-| Name | Used for | Notes |
+| Name | Used for | Status |
 | --- | --- | --- |
-| `smithy_forge_shed` | Open-sided lean-to extension for the forge, with a chimney | Extends the forge at (15, 14) |
-| `lumber_shed` | Open-fronted roofed shed for drying planks and logs | Next to the forest edge |
-| `sawmill_lean_to` | Roofed frame over the sawpit, open on three sides | Pairs with `sawpit_frame` |
-| `carpenter_workshop` | Small timber workshop with wide doors and a loft | One building |
-| `small_barn` | Storage barn with a hay loft door and large double doors | 3 variants for the farms |
-| `granary` | Timber store on `staddle_stone` supports with an outside stair | 1 or 2 variants |
-| `tool_shed` | Tiny shed, one door, one window | 2 variants |
-| `mine_rail_track` | Straight and curved rail pieces with sleepers | Pieces of 2 m, joined |
-| `mine_timber_entrance` | Timbered entrance frame for the mine that fits the existing opening | Opening is 4.0 x 3.6 m |
-| `ore_chute` | Wooden chute and hopper by the mine entrance | Small |
-| `yard_fence_log` | Log fence and gate for the lumber yard | Reuses `palisade` |
+| `smithy_forge_shed` | Open-sided lean-to extension for the forge, with a chimney | Placed against the forge's east wall around the kiln (`forge_shed`) |
+| `lumber_shed` | Open-fronted roofed shed for drying planks and logs | Placed in the lumber yard on the road into the forest (`lumber_shed`) |
+| `sawmill_lean_to` | Roofed frame over the sawpit, open on three sides | Placed in the yard, with a log on trestles inside it. It does not yet hold the generated `sawpit_frame` ([#468](https://github.com/Gamperle/Erlenfall/issues/468)) |
+| `carpenter_workshop` | Small timber workshop with wide doors and a loft | Placed in the village (`carpenter_workshop`). The doors do not open and there is no interior ([#469](https://github.com/Gamperle/Erlenfall/issues/469)) |
+| `small_barn` | Storage barn with a hay loft door and large double doors | 3 variants (plain, side lean-to, porch), all at the north farm. West and south farm stand on slopes ([#467](https://github.com/Gamperle/Erlenfall/issues/467)) |
+| `granary` | Timber store on staddle stones with an outside stair | 1 variant at the north farm, with a solid stair |
+| `tool_shed` | Tiny shed, one door, one window | 2 variants, one near the grandmother's house and one near the grandfather's |
+| `mine_rail_track` | Straight and curved rail pieces with sleepers | `StructureBuilder.rail_track(turn)`, 2 m pieces that join with `rail_end`; replaces the old rails in front of the mine |
+| `mine_timber_entrance` | Timbered entrance frame for the mine that fits the existing opening | Built and tested to fit 4.0 x 3.6 m, but off: the mine is collapsed by design (`intact_frame` in the layout, [#466](https://github.com/Gamperle/Erlenfall/issues/466)) |
+| `ore_chute` | Wooden chute and hopper by the mine entrance | Placed beside the mine's plaza (`ore_chute`) |
+| `yard_fence_log` | Log fence and gate for the lumber yard | A `palisade` wall of 2.2 m with a 4 m gate on the road side |
+
+Small pieces that a generated model might do better than boxes (a mine cart on the track, timber supports) are in [#468](https://github.com/Gamperle/Erlenfall/issues/468).
 
 ## Open questions for you
 
 1. **Greenlight scope.** All 60 Gen names, or a trimmed list? A sensible first cut is everything marked Low or Medium, which is about 40 names, and I'd save the High ones for a second pass.
-2. **Build items.** Should I build them with `ModelBuilder` now, or leave them until the interiors work in [#39](https://github.com/Gamperle/Erlenfall/issues/39)?
+2. **Build items.** Answered by doing it: they are built now (#436). Their interiors still wait for [#39](https://github.com/Gamperle/Erlenfall/issues/39).
 3. **Interiors.** The carpenter and forge props only make sense indoors, which the game doesn't have yet beyond the forge. Make them anyway so interiors can use them?
 
 ## Remaining placeholder art ([#21](https://github.com/Gamperle/Erlenfall/issues/21))

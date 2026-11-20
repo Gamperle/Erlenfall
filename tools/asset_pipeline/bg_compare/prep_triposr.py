@@ -9,7 +9,7 @@ from PIL import Image
 sys.path.insert(0, r"D:\erlenfall-assets\TripoSR")
 from tsr.utils import resize_foreground
 
-R = r"D:\erlenfall-assets\bgcompare218"
+R = os.environ.get("BGCOMPARE_RUN", r"D:\erlenfall-assets\bgcompare218")  # #501 ran it with bgcompare501
 out = sys.argv[1]
 os.makedirs(out, exist_ok=True)
 args = sys.argv[2:]

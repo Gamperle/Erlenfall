@@ -27,8 +27,8 @@ const LANDSLIDE_EDGE_NOISE := 0.3
 const SCAR_HALF_WIDTH := 55.0
 const SCAR_DEPTH := 14.0
 
-const GRASS_COLOR := Color(0.24, 0.3, 0.15)
-const LIGHT_GRASS_COLOR := Color(0.33, 0.37, 0.19)
+const GRASS_COLOR := Color(0.27, 0.3, 0.18)
+const LIGHT_GRASS_COLOR := Color(0.35, 0.37, 0.23)
 const ROCK_COLOR := Color(0.38, 0.37, 0.36)
 const RUBBLE_COLOR := Color(0.33, 0.28, 0.23)
 const SNOW_COLOR := Color(0.85, 0.87, 0.9)

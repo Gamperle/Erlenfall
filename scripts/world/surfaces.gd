@@ -19,6 +19,11 @@ const PHOTOS: Dictionary = {
 }
 ## How strongly the photos show, where it isn't the full strength.
 const PHOTO_STRENGTH: Dictionary = { Pattern.ROAD: 0.5 }
+## How much of the photos' own color a surface keeps. Plaster keeps little, so that the moss and
+## stains of its photos darken and lighten the wall without tinting it green and brown (#461).
+const PHOTO_SATURATION: Dictionary = { Pattern.PLASTER: 0.35 }
+## Where the second photo starts to show (0.5 is the default), so that the mossy plaster photo covers less.
+const SECOND_PHOTO_THRESHOLD: Dictionary = { Pattern.PLASTER: 0.6 }
 ## The photos on a road fade over a wide area, so that its look changes gradually.
 const AREA_SOFTNESS: Dictionary = { Pattern.ROAD: 0.35 }
 ## How often the photos change per meter. Rocks are small, so each one needs its own mix.
@@ -53,6 +58,8 @@ static func get_material(pattern: Pattern, color: Color) -> ShaderMaterial:
 				material.set_shader_parameter("surface_relief" + suffix, relief_map(photos[i][0]))
 				material.set_shader_parameter("tile_metres" + suffix, photos[i][1])
 			material.set_shader_parameter("photo_strength", PHOTO_STRENGTH.get(pattern, 1.0))
+			material.set_shader_parameter("photo_saturation", PHOTO_SATURATION.get(pattern, 1.0))
+			material.set_shader_parameter("second_photo_threshold", SECOND_PHOTO_THRESHOLD.get(pattern, 0.5))
 			material.set_shader_parameter("area_softness", AREA_SOFTNESS.get(pattern, 0.05))
 			material.set_shader_parameter("area_frequency", AREA_FREQUENCY.get(pattern, 0.037))
 		_cache[key] = material

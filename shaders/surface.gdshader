@@ -20,6 +20,11 @@ uniform float tile_metres_3 = 0.0;
 uniform float area_softness = 0.05;
 uniform float area_frequency = 0.037;
 uniform float photo_strength = 1.0;
+// How much of the photos' own color stays, where 0 keeps only their light and dark. Plaster uses
+// this to keep its stains and moss from tinting whole walls (#461).
+uniform float photo_saturation = 1.0;
+// Where the second photo starts to show. Higher values give it less of the surface.
+uniform float second_photo_threshold = 0.5;
 uniform vec3 base_color : source_color;
 uniform int pattern = 0;
 // Turns the first photo a quarter turn. The wood photos run in different directions (the first
@@ -37,7 +42,8 @@ varying float edge_fade;
 // Dividing by the photo's average keeps base_color as the overall color. Gradients are passed
 // because these reads sit in branches, where a GPU can't work them out itself.
 vec3 photo_detail(sampler2D photo, vec2 uv, vec2 dx, vec2 dy) {
-	return textureGrad(photo, uv, dx, dy).rgb / max(textureLod(photo, vec2(0.5), 12.0).rgb, vec3(0.02));
+	vec3 detail = textureGrad(photo, uv, dx, dy).rgb / max(textureLod(photo, vec2(0.5), 12.0).rgb, vec3(0.02));
+	return mix(vec3(dot(detail, vec3(0.3, 0.6, 0.1))), detail, photo_saturation);
 }
 
 // Bends the surface's normal by a relief map's x and y. The photo's u and v run along the
@@ -68,7 +74,7 @@ void sample_photos(vec2 uv, vec2 dx, vec2 dy, out vec3 photo, out vec4 relief) {
 		relief = textureGrad(surface_relief, uv / tile_metres, dx / tile_metres, dy / tile_metres);
 	}
 	float area = textureGrad(detail_noise, uv * area_frequency, dx * area_frequency, dy * area_frequency).r + (fine - 0.5) * 0.15;
-	float other = smoothstep(0.5 - area_softness, 0.5 + area_softness, area);
+	float other = smoothstep(second_photo_threshold - area_softness, second_photo_threshold + area_softness, area);
 	if (other > 0.0) {
 		photo = mix(photo, photo_detail(surface_texture_2, uv / tile_metres_2, dx / tile_metres_2, dy / tile_metres_2), other);
 		relief = mix(relief, textureGrad(surface_relief_2, uv / tile_metres_2, dx / tile_metres_2, dy / tile_metres_2), other);

@@ -106,7 +106,7 @@ The prompt is for the picture only. Interface textures are built from the CC0 ph
 Seen in the screenshot above, to be decided with the maintainer. They are tracked as issues, not fixed here.
 
 - Trees and shrubs are flat-shaded low-poly shapes, while props, houses and ground are textured and realistic.
-- The plaster looks heavily mottled with moss-green and brown stains, more than the "patchy" rule above, and the grass is a strongly saturated green ([#461](https://github.com/Gamperle/Erlenfall/issues/461)).
+- ~~The plaster was heavily mottled and the grass strongly saturated~~ Fixed in [#461](https://github.com/Gamperle/Erlenfall/issues/461): plaster keeps 35% of its photos' color and shows the mossy photo on less of the wall (`Surfaces.PHOTO_SATURATION`, `SECOND_PHOTO_THRESHOLD`), and the grass tints and colors are more muted olive.
 - Villagers show a T pose and little color or clothing variety beyond their sweater or robe; the goblin is a different, flat-shaded style ([#462](https://github.com/Gamperle/Erlenfall/issues/462)).
 
 Changes to this guide go in a pull request like any other, and the maintainer approves the direction ([#272](https://github.com/Gamperle/Erlenfall/issues/272)).

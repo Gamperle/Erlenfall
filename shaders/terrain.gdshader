@@ -36,7 +36,7 @@ uniform vec3 rock_color : source_color;
 uniform vec3 snow_color : source_color;
 uniform float snow_height = 165.0;
 // These tint the grass, so 1 leaves it as it is.
-uniform vec3 lush_grass_tint = vec3(0.7, 0.92, 0.62);
+uniform vec3 lush_grass_tint = vec3(0.82, 0.9, 0.74);
 uniform vec3 dry_grass_tint = vec3(1.4, 1.15, 0.6);
 
 // Turning the second layer of a photo keeps its pattern from lining up with the first.
@@ -162,6 +162,8 @@ void fragment() {
 		surface = mix(surface, grass_surface, 0.7);
 		occlusion = mix(occlusion, grass_occlusion, 0.7);
 		grass = mix(grass, detail(grass_texture, TURN * flat_uv / 11.0, TURN * flat_dx / 11.0, TURN * flat_dy / 11.0), 0.5);
+		// The photo's green stays at 40%, so the grass keeps its light and dark but not a strong hue (#461).
+		grass = mix(vec3(dot(grass, vec3(0.3, 0.6, 0.1))), grass, 0.4);
 		ground *= mix(vec3(1.0), grass, 0.7);
 		ground *= mix(lush_grass_tint, dry_grass_tint, dryness);
 

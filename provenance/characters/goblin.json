@@ -14,9 +14,14 @@
 			},
 			"source": "Low Poly Goblin (Rigged) by tbbk, https://opengameart.org/content/low-poly-goblin-rigged",
 			"source_sha256": null,
-			"output_sha256": "756240697d1e271b62edb4aeec01ed4f63eda28d12e97da4553cd5707d00fbdd"
+			"output_sha256": "35fa82efea7bb799fed3dd9e0b98ff3965d60fbfaec2b53343eb5218b53903be"
 		}
 	],
 	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
-	"manual_edits": []
+	"manual_edits": [
+		{
+			"text": "Normals smoothed (85 degree limit) and roughness set to 0.85 with tools/character_pipeline/smooth_goblin.py, without Blender (#474). The mesh, skin and palette are unchanged.",
+			"date": "2026-11-20"
+		}
+	]
 }

@@ -260,4 +260,4 @@ The fourteen villagers in the game are each a sweater, tunic, or robe over trous
 | Outerwear | Cloaks or vests for Falk, Wendel, Marek, Gerold | Wish: a vest or cloak asset |
 | Color and wear | Everyone | Vary `colors` per villager, and add patches or dirt to workers' clothes |
 
-Check each new outfit with the turntable, which now shows the idle pose. The goblin is flat-shaded and does not match the villagers' style. That is tracked separately.
+Check each new outfit with the turntable, which now shows the idle pose. The goblin's shading is smoothed to sit closer to the villagers, but it is still a low-poly model with flat palette colors. That is tracked separately (#474).

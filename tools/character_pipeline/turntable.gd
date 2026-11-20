@@ -4,7 +4,8 @@ extends SceneTree
 ## Characters stand in the first frame of "Idle" from the game's humanoid animations, so they do not hold a T pose.
 ## Run from the project folder, with an optional other animation library that has an "Idle" animation
 ## (pass "none" to show the bind pose instead). Models without a humanoid skeleton, such as the goblin, are shown as they are:
-## godot --path . --script res://tools/character_pipeline/turntable.gd -- <models folder> <output folder> [animation library]
+## godot --path . --script res://tools/character_pipeline/turntable.gd -- <models folder> <output folder> [animation library] [animation] [seconds]
+## The optional animation (default "Idle") and time into it (default 0) show a pose in motion, such as "Walk" 0.3, to test fitted clothes and accessories.
 
 const DEFAULT_ANIMATIONS := "res://assets/animations/humanoid.glb"
 const ANGLES := 8
@@ -14,6 +15,7 @@ const CAMERA_DISTANCE := 3.1
 const CAMERA_HEIGHT := 0.95
 const CAMERA_FOV := 40.0
 const SETTLE_FRAMES := 5
+const DEFAULT_ANIMATION := "Idle"
 const ANGLE_NAMES: Array[String] = ["front", "front_left", "left", "back_left", "back", "back_right", "right", "front_right"]
 const BACKGROUND := Color(0.5, 0.56, 0.6)
 const FLOOR_COLOR := Color(0.35, 0.36, 0.35)
@@ -38,6 +40,12 @@ func _run() -> void:
 	var camera: Camera3D = stage.get_node("Camera")
 	var library_path := arguments[2] if arguments.size() > 2 else DEFAULT_ANIMATIONS
 	var library := null if library_path == "none" else _load_animations(library_path)
+	var animation := arguments[3] if arguments.size() > 3 else DEFAULT_ANIMATION
+	var seconds := float(arguments[4]) if arguments.size() > 4 else 0.0
+	if library != null and not library.has_animation(animation):
+		push_error("The animation library has no '%s' animation" % animation)
+		quit(1)
+		return
 
 	var names := DirAccess.get_files_at(models)
 	names.sort()
@@ -47,7 +55,7 @@ func _run() -> void:
 			continue
 		var person: Node3D = (load(models.path_join(file_name)) as PackedScene).instantiate()
 		stage.add_child(person)
-		_pose(person, library)
+		_pose(person, library, animation, seconds)
 		await _shoot(file_name.get_basename(), camera, output)
 		stage.remove_child(person)
 		person.queue_free()
@@ -76,7 +84,7 @@ func _shoot(person_name: String, camera: Camera3D, output: String) -> void:
 	print("%s: %d views" % [person_name, ANGLES])
 
 
-func _pose(person: Node3D, library: AnimationLibrary) -> void:
+func _pose(person: Node3D, library: AnimationLibrary, animation: String, seconds: float) -> void:
 	if library == null:
 		return
 	var skeleton := person.find_child("GeneralSkeleton", true, false)
@@ -87,8 +95,8 @@ func _pose(person: Node3D, library: AnimationLibrary) -> void:
 	player.owner = person
 	player.root_node = NodePath("..")
 	player.add_animation_library("", library)
-	player.play("Idle")
-	player.seek(0.0, true)
+	player.play(animation)
+	player.seek(seconds, true)
 	player.pause()
 	skeleton.add_child(PostureModifier.new())
 

@@ -31,7 +31,7 @@ Each character is about 15,000 triangles with 1024-pixel textures. A test with 5
 godot --path . --script res://tools/character_pipeline/turntable.gd -- res://path/to/characters /path/to/output res://path/to/animations.glb
 ```
 
-The animation library is optional. Without one, characters stand in the first frame of `Idle` from `res://assets/animations/humanoid.glb`, so review sheets and docs images do not show a T pose. Pass another library to use its `Idle`, or `none` to see the bind pose. Characters need the import settings below. Models without a `GeneralSkeleton`, such as the goblin, are shown as they come.
+The animation library is optional. Without one, characters stand in the first frame of `Idle` from `res://assets/animations/humanoid.glb`, so review sheets and docs images do not show a T pose. Pass another library to use its `Idle`, or `none` to see the bind pose. To test a pose in motion, such as an apron or a pack while walking, add an animation name and a time in seconds after the library: `... res://assets/animations/humanoid.glb Walk 0.3`. Characters need the import settings below. Models without a `GeneralSkeleton`, such as the goblin, are shown as they come.
 
 ## Recipes
 
@@ -50,7 +50,7 @@ The animation library is optional. Without one, characters stand in the first fr
 | `hair`, `hair_color` | Hair, and an optional sRGB color to repaint it |
 | `beard` | Beard or moustache |
 | `accessories` | Plain-colored parts that the script generates, fitted to the body and its clothes and skinned to the same bones: `apron`, `chain`, `quiver`, `pack`, and `hat`. Each has a `type` and a `color`, and some take sizes (`hem` for the apron, `brim`, `crown`, `droop`, `margin`, and `sink` for the hat). They are listed in `ACCESSORIES` in `build_character.py` |
-| `vests` | Sleeveless outer layers made from a copy of one of the clothes, as `{ "from": "toigo_fisherman_sweater", "color": [r, g, b] }`. The copy loses its sleeves and collar and is a little larger |
+| `vests` | Sleeveless outer layers made from a copy of one of the clothes, as `{ "from": "toigo_fisherman_sweater", "color": [r, g, b] }`. The copy loses its sleeves and collar and is a little larger, and the cut edges are relaxed along themselves so armholes are smooth curves |
 | `smooth_chest` | Tight clothes whose chest area is smoothed |
 | `brows`, `eyes` | Eyebrows and eyes |
 

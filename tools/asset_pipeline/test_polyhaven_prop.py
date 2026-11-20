@@ -282,6 +282,124 @@ class ConvertTest(unittest.TestCase):
         self.assertGreater(float(right[:, :, 0].mean()), 250)
         self.assertLess(float(right[:, :, 1].mean()), 80)
 
+    def base_image(self, args):
+        document, binary, _ = read_glb(args.out)
+        view = document["bufferViews"][document["images"][0]["bufferView"]]
+        return np.asarray(Image.open(io.BytesIO(binary[view["byteOffset"]:view["byteOffset"] + view["byteLength"]])).convert("RGB"), np.float32)
+
+    def test_glass_tint_darkens_the_see_through_part_and_opaque_keeps_its_color(self):
+        def edit(document):
+            document["materials"][1]["alphaMode"] = "BLEND"
+            document["materials"][1]["pbrMetallicRoughness"]["baseColorFactor"] = [1.0, 1.0, 1.0, 0.2]
+        _, stats, _ = self.convert_gltf(edit, glass="drop")
+        self.assertEqual(stats["source_meshes"], 1)
+        tinted, stats, warnings = self.convert_gltf(edit, glass="tint")
+        self.assertEqual(stats["source_meshes"], 2)
+        self.assertTrue(any("tinted dark" in w for w in warnings), warnings)
+        opaque, _, _ = self.convert_gltf(edit, glass="opaque")
+        dark = self.base_image(tinted)
+        white = self.base_image(opaque)
+        self.assertLess(float(dark[:, dark.shape[1] // 2:].mean()), 110)  # 0.2 + 0.25 * 0.8 = 0.4 of 255
+        self.assertGreater(float(white[:, white.shape[1] // 2:].mean()), 250)
+        _, stats, _ = self.convert_gltf(edit, keep_blend=True)
+        self.assertEqual(stats["source_meshes"], 2)
+
+    def test_transmission_is_tinted_and_volume_is_warned(self):
+        def edit(document):
+            document["materials"][1]["extensions"] = {"KHR_materials_transmission": {"transmissionFactor": 0.9}, "KHR_materials_volume": {"thicknessFactor": 1.0}}
+            document["materials"][1]["pbrMetallicRoughness"]["metallicFactor"] = 0.0
+            document["materials"][1]["pbrMetallicRoughness"]["baseColorFactor"] = [1.0, 1.0, 1.0, 1.0]
+        args, _, warnings = self.convert_gltf(edit, glass="tint")
+        self.assertTrue(any("transmission" in w for w in warnings), warnings)
+        self.assertTrue(any("volume" in w for w in warnings), warnings)
+        image = self.base_image(args)
+        self.assertLess(float(image[:, image.shape[1] // 2:].mean()), 100)
+
+    def test_transmission_on_a_metal_is_ignored(self):
+        def edit(document):  # the iron has metallicFactor 1: Poly Haven's brass and steel carry a transmission of 1 and are not glass
+            document["materials"][1]["extensions"] = {"KHR_materials_transmission": {"transmissionFactor": 1.0}}
+            document["materials"][1]["pbrMetallicRoughness"]["baseColorFactor"] = [1.0, 1.0, 1.0, 1.0]
+        args, _, warnings = self.convert_gltf(edit, glass="tint")
+        self.assertTrue(any("is metal" in w for w in warnings), warnings)
+        image = self.base_image(args)
+        self.assertGreater(float(image[:, image.shape[1] // 2:].mean()), 250)  # still white, not tinted
+
+    def test_clearcoat_lowers_roughness(self):
+        def roughness(args):
+            document, binary, _ = read_glb(args.out)
+            view = document["bufferViews"][document["images"][2]["bufferView"]]
+            image = np.asarray(Image.open(io.BytesIO(binary[view["byteOffset"]:view["byteOffset"] + view["byteLength"]])).convert("RGB"), np.float32)
+            return float(image[:, image.shape[1] // 2:, 1].mean()) / 255.0  # the iron's, 0.4 without a coat
+        plain, _, _ = self.convert_gltf(lambda d: None)
+
+        def edit(document):
+            document["materials"][1]["extensions"] = {"KHR_materials_clearcoat": {"clearcoatFactor": 1.0, "clearcoatRoughnessFactor": 0.1}}
+        coated, _, warnings = self.convert_gltf(edit)
+        self.assertTrue(any("clearcoat" in w for w in warnings), warnings)
+        self.assertAlmostEqual(roughness(plain), 0.4, delta=0.02)
+        self.assertAlmostEqual(roughness(coated), 0.1, delta=0.02)
+
+    def test_skins_and_animations_are_dropped_with_a_warning(self):
+        def edit(document):
+            document["skins"] = [{"joints": [0]}]
+            document["animations"] = [{"channels": [], "samplers": []}, {"channels": [], "samplers": []}]
+            document["nodes"][0]["skin"] = 0  # a skinned mesh ignores its node's scale and translation
+        _, stats, warnings = self.convert_gltf(edit, meters=1.0)
+        self.assertTrue(any("1 skins and 2 animations" in w for w in warnings), warnings)
+        self.assertEqual(stats["source_meshes"], 2)
+
+    def occlusion_model(self, uv0_scale=1.0):
+        """A quad whose UV1 runs from 0.25 to 0.75 across it, on an occlusion map that is black left of 0.5 and white right of it."""
+        folder = tempfile.mkdtemp()
+        source = write_gltf(folder)
+        with open(source) as file:
+            document = json.load(file)
+        positions = np.array([(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)], np.float32)
+        uv0 = np.array([(0, 0), (1, 0), (1, 1), (0, 1)], np.float32) * uv0_scale
+        uv1 = np.array([(0.25, 0), (0.75, 0), (0.75, 1), (0.25, 1)], np.float32)
+        blob = b""
+        views, accessors = [], []
+        for array, component, kind in ((positions, 5126, "VEC3"), (uv0, 5126, "VEC2"), (uv1, 5126, "VEC2"), (np.array([0, 1, 2, 0, 2, 3], np.uint16), 5123, "SCALAR")):
+            data = array.tobytes()
+            views.append({"buffer": 0, "byteOffset": len(blob), "byteLength": len(data)})
+            blob += data + b"\0" * (-len(data) % 4)
+            accessor = {"bufferView": len(views) - 1, "componentType": component, "count": len(array), "type": kind}
+            if kind == "VEC3":
+                accessor["min"], accessor["max"] = array.min(axis=0).tolist(), array.max(axis=0).tolist()
+            accessors.append(accessor)
+        with open(os.path.join(folder, "model.bin"), "wb") as file:
+            file.write(blob)
+        occlusion = Image.new("L", (64, 64), 255)
+        occlusion.paste(0, (0, 0, 32, 64))
+        occlusion.save(os.path.join(folder, "ao.png"))
+        document.update({"nodes": [{"mesh": 0}], "scenes": [{"nodes": [0]}], "accessors": accessors, "bufferViews": views,
+                         "buffers": [{"uri": "model.bin", "byteLength": len(blob)}],
+                         "meshes": [{"primitives": [{"attributes": {"POSITION": 0, "TEXCOORD_0": 1, "TEXCOORD_1": 2}, "indices": 3, "material": 1}]}]})
+        document["materials"][1]["occlusionTexture"] = {"index": 1, "texCoord": 1}
+        document["textures"].append({"source": 1})
+        document["images"].append({"uri": "ao.png"})
+        with open(source, "w") as file:
+            json.dump(document, file)
+        args = argparse.Namespace(faces=0, meters=None, texture_edge=64, keep_blend=False, out=os.path.join(folder, "prop.glb"), name="prop")
+        warnings = polyhaven_prop.Warnings()
+        polyhaven_prop.convert(source, args, warnings)
+        glb, binary, _ = read_glb(args.out)
+        view = glb["bufferViews"][glb["images"][2]["bufferView"]]
+        orm = np.asarray(Image.open(io.BytesIO(binary[view["byteOffset"]:view["byteOffset"] + view["byteLength"]])).convert("RGB"), np.float32)
+        return orm, warnings
+
+    def test_occlusion_on_the_second_uv_set_is_rasterized_into_the_first(self):
+        orm, warnings = self.occlusion_model()
+        self.assertTrue(any("rasterized" in w for w in warnings), warnings)
+        height, width = orm.shape[:2]
+        self.assertLess(float(orm[height // 2, width // 10, 0]), 20)  # UV0 0.1 reads UV1 0.30: the black half
+        self.assertGreater(float(orm[height // 2, width * 9 // 10, 0]), 235)  # UV0 0.9 reads UV1 0.70: the white half
+
+    def test_occlusion_on_the_second_uv_set_is_dropped_when_the_first_tiles(self):
+        orm, warnings = self.occlusion_model(uv0_scale=2.0)
+        self.assertTrue(any("TEXCOORD_0 tiles" in w for w in warnings), warnings)
+        self.assertGreater(float(orm[:, :, 0].min()), 235)  # no occlusion rather than a wrong one
+
     def test_texture_transform_matrix(self):
         class Fake:
             doc = {"materials": [{"pbrMetallicRoughness": {"baseColorTexture": {"index": 0, "extensions": {"KHR_texture_transform": {"offset": [0.5, 0.25], "scale": [2, 3]}}}}},

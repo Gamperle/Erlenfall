@@ -35,8 +35,18 @@ Usage, from the repository root:
   --work        folder for the downloaded files (default: a new temporary folder)
   --provenance  write the provenance record. A local file also needs --name, --author and --source-url
   --texture-edge  force the texture size in pixels instead of the size tier
-  --keep-blend  keep parts whose material is see-through (glass, alphaMode BLEND), drawn opaque. A prop has one
-                opaque surface, so by default they are left out (a lantern without its panes beats black panes)
+  --glass MODE  what to do with parts whose material is see-through (glass, alphaMode BLEND). A prop has one opaque
+                surface, so: drop (default) leaves them out (a lantern without its panes beats black panes),
+                opaque keeps them drawn opaque in their base color, tint keeps them opaque and mixes the base color
+                with a dark gray by how see-through the material is (alpha, or 1 - KHR_materials_transmission), so
+                glass reads as dark glass instead of a solid pane of its color
+  --keep-blend  the same as --glass opaque
+  --max-repeats N  the most repeats of a tiling texture one atlas cell holds (default 4); more repeats cost
+                resolution per repeat (cell / N px), triangles beyond it are clamped and warned about
+
+Also handled: KHR_materials_clearcoat lowers the roughness toward the coat's (a glossy lacquer look); a
+TEXCOORD_1 ambient occlusion map is rasterized into the TEXCOORD_0 layout when TEXCOORD_0 is a clean 0..1 unwrap
+(otherwise warned and dropped); a skinned mesh is taken in its bind pose and its skins and animations are dropped.
 
 The decimation measures cost by quadric error plus how far the texture would slide against the surface, and moves a
 vertex onto its neighbor, never to a new place, so the UV of every corner stays one the model already had. A collapse
@@ -67,7 +77,10 @@ LICENSE = "CC0 1.0"
 LICENSE_URL = "https://polyhaven.com/license"
 DEFAULT_FACES = 3000
 REPEAT_SLACK = 0.25  # a triangle may run this far past a whole repeat before the texture is tiled for it (beyond it, clamped)
-MAX_REPEATS = 4  # most repeats of a tiling texture an atlas cell holds
+MAX_REPEATS = 4  # most repeats of a tiling texture an atlas cell holds (--max-repeats)
+GLASS_TINT = 0.25  # the gray that --glass tint mixes a see-through material's color with, by how see-through it is
+GLASS_MODES = ("drop", "opaque", "tint")
+CLEARCOAT_ROUGHNESS = 0.08  # roughness a full clearcoat layer pulls the surface toward, when the material gives none
 UV_WEIGHT = 1.0  # how much the reduction weighs a texture sliding against the surface, next to the surface error itself
 COMPONENTS = {5120: np.int8, 5121: np.uint8, 5122: np.int16, 5123: np.uint16, 5125: np.uint32, 5126: np.float32}
 SIZES = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT4": 16}
@@ -212,23 +225,26 @@ def node_matrix(node):
     return matrix
 
 
-def load_parts(gltf, warn, keep_blend=False):
+def load_parts(gltf, warn, glass="drop"):
     """Every triangle primitive in the scene, with its node's transform baked in:
     a list of dicts with positions (n, 3), normals (n, 3), uvs (n, 2), triangles (m, 3) and material (index or None)."""
     doc = gltf.doc
     if doc.get("skins") or doc.get("animations"):
-        warn("the model has skins or animations; they are dropped and the mesh stays in its bind pose")
+        warn("the model has %d skins and %d animations; they are dropped and the mesh stays in its bind pose (a prop does not animate)"
+             % (len(doc.get("skins", [])), len(doc.get("animations", []))))
     scene = doc["scenes"][doc.get("scene", 0)] if doc.get("scenes") else {"nodes": list(range(len(doc.get("nodes", []))))}
     parts = []
 
     def visit(index, parent):
         node = doc["nodes"][index]
         world = parent @ node_matrix(node)
+        if "mesh" in node and "skin" in node:
+            world = np.eye(4)  # a skinned mesh ignores its node's transform; its vertices are already in the bind pose
         if "mesh" in node:
             for primitive in doc["meshes"][node["mesh"]]["primitives"]:
                 material = doc["materials"][primitive["material"]] if primitive.get("material") is not None else {}
-                if material.get("alphaMode") == "BLEND" and not keep_blend:
-                    warn("%s is see-through (glass) and was left out; --keep-blend draws it opaque" % material.get("name", "a material"))
+                if material.get("alphaMode") == "BLEND" and glass == "drop":
+                    warn("%s is see-through (glass) and was left out; --glass opaque or --glass tint keeps it" % material.get("name", "a material"))
                     continue
                 part = read_primitive(gltf, primitive, world, warn)
                 if part:
@@ -268,7 +284,10 @@ def read_primitive(gltf, primitive, world, warn):
         uvs = gltf.accessor(attributes["TEXCOORD_0"]).astype(np.float64)
     else:
         uvs = np.zeros((count, 2))
-    return {"positions": positions, "normals": normals, "uvs": uvs, "triangles": triangles, "material": primitive.get("material")}
+    part = {"positions": positions, "normals": normals, "uvs": uvs, "triangles": triangles, "material": primitive.get("material")}
+    if "TEXCOORD_1" in attributes:
+        part["uvs1"] = gltf.accessor(attributes["TEXCOORD_1"]).astype(np.float64)
+    return part
 
 
 def vertex_normals(positions, triangles):
@@ -334,16 +353,32 @@ def bake_material(gltf, index, size, warn):
     material = doc["materials"][index] if index is not None else {}
     pbr = material.get("pbrMetallicRoughness", {})
     name = material.get("name", "material %s" % index)
-    if material.get("alphaMode", "OPAQUE") != "OPAQUE":
-        warn("%s has alphaMode %s; the prop is drawn opaque" % (name, material["alphaMode"]))
-    for key in ("KHR_materials_transmission", "KHR_materials_clearcoat", "KHR_materials_volume"):
-        if key in material.get("extensions", {}):
-            warn("%s uses %s, which is dropped" % (name, key))
+    extensions = material.get("extensions", {})
+    glass = getattr(gltf, "glass", "drop")
+    transmission = extensions.get("KHR_materials_transmission", {}).get("transmissionFactor", 0.0)
+    if transmission > 0 and (pbr.get("metallicFactor", 1.0) >= 0.5 or pbr.get("metallicRoughnessTexture")):
+        # Blender's Principled shader lets metal win over transmission, and Poly Haven's brass and steel carry a transmission of 1,
+        # so a metal (or a material whose metalness comes from a map) is not glass
+        warn("%s has KHR_materials_transmission but is metal; the transmission is ignored" % name)
+        transmission = 0.0
+    see_through = material.get("alphaMode", "OPAQUE") == "BLEND" or transmission > 0
+    if material.get("alphaMode") == "MASK":
+        warn("%s has alphaMode MASK; a prop has no cutouts, so it is drawn opaque" % name)
+    elif material.get("alphaMode") == "BLEND":
+        warn("%s has alphaMode BLEND; the prop is drawn opaque%s" % (name, ", tinted dark by its alpha" if glass == "tint" else ""))
+    if transmission > 0:
+        warn("%s uses KHR_materials_transmission; the prop is drawn opaque%s" % (name, ", tinted dark by 1 - transmission" if glass == "tint" else ""))
+    if "KHR_materials_volume" in extensions:
+        warn("%s uses KHR_materials_volume, which is dropped (no refraction or absorption)" % name)
     width, height = size
     factor = np.array(pbr.get("baseColorFactor", [1, 1, 1, 1]), np.float32)
     base_image, base_uv = texture_image(gltf, pbr.get("baseColorTexture"), warn, name + " base color")
     base = channels(base_image, size)[:, :, :3] if base_image else np.ones((height, width, 3), np.float32)
     base = base * factor[:3]
+    if glass == "tint" and see_through:
+        alpha = factor[3] * (channels(base_image, size)[:, :, 3:4] if base_image else 1.0)
+        alpha = np.minimum(alpha, 1.0 - transmission) if transmission > 0 else alpha
+        base = base * alpha + GLASS_TINT * (1 - alpha)
     emissive = np.array(material.get("emissiveFactor", [0, 0, 0]), np.float32) * material.get("extensions", {}).get("KHR_materials_emissive_strength", {}).get("emissiveStrength", 1.0)
     if emissive.any():
         glow_image, _ = texture_image(gltf, material.get("emissiveTexture"), warn, name + " emissive")
@@ -364,7 +399,10 @@ def bake_material(gltf, index, size, warn):
     rough_factor = pbr.get("roughnessFactor", 1.0)
     metal_factor = pbr.get("metallicFactor", 1.0)
     orm = np.ones((height, width, 3), np.float32)
-    if occlusion_image is not None:
+    override = getattr(gltf, "ao_override", {}).get(index)
+    if override is not None:
+        orm[:, :, 0] = np.asarray(override.resize(size, Image.LANCZOS) if override.size != size else override, np.float32) / 255.0
+    elif occlusion_image is not None and occlusion_uv in (0, base_uv):
         orm[:, :, 0] = channels(occlusion_image, size)[:, :, 0]
     if metal_image is not None:
         packed = channels(metal_image, size)
@@ -373,7 +411,14 @@ def bake_material(gltf, index, size, warn):
     else:
         orm[:, :, 1] = rough_factor
         orm[:, :, 2] = metal_factor
-    if any(uv not in (0, base_uv) for uv in (normal_uv, metal_uv, occlusion_uv) if uv):
+    coat = extensions.get("KHR_materials_clearcoat", {})
+    if coat.get("clearcoatFactor", 0.0) > 0:
+        # A clear lacquer layer: the surface reads glossier. Roughness moves toward the coat's by the coat's strength.
+        strength = coat["clearcoatFactor"]
+        coat_rough = coat.get("clearcoatRoughnessFactor", CLEARCOAT_ROUGHNESS)
+        orm[:, :, 1] = orm[:, :, 1] * (1 - strength) + np.minimum(orm[:, :, 1], coat_rough) * strength
+        warn("%s has a clearcoat; it is approximated by lowering the roughness (no second specular layer, no coat normal map)" % name)
+    if any(uv not in (0, base_uv) for uv in (normal_uv, metal_uv) if uv) or (occlusion_uv not in (0, base_uv) and override is None):
         warn("%s reads a map through TEXCOORD_1; only TEXCOORD_0 is kept" % name)
     return base, normal, orm
 
@@ -392,7 +437,7 @@ def to_png(array):
     return out.getvalue()
 
 
-def merge_materials(gltf, parts, edge, warn):
+def merge_materials(gltf, parts, edge, warn, max_repeats=MAX_REPEATS):
     """Gives every part the one material's UVs. Returns (base, normal, orm) arrays (h, w, 3) at most edge px long.
 
     One material: its maps are resized and the UVs stay as they are. Several: a grid of cells, one per material in
@@ -406,6 +451,7 @@ def merge_materials(gltf, parts, edge, warn):
         matrix = uv_matrix(gltf, part["material"], warn)
         if matrix is not None:
             part["uvs"] = part["uvs"] @ matrix[:2, :2].T + matrix[:2, 2]
+    bake_second_uv_occlusion(gltf, parts, used, edge, warn)
     if len(used) == 1:
         source = largest_texture(gltf, used[0])
         if source is None:
@@ -435,7 +481,7 @@ def merge_materials(gltf, parts, edge, warn):
             uv = uv - np.floor(uv.min(axis=1, keepdims=True) + 1e-4)
             part["uvs"] = uv.reshape(-1, 2)
             extent = max(extent, float(uv.max()))
-        repeats = min(MAX_REPEATS, max(1, math.ceil(extent - REPEAT_SLACK)))
+        repeats = min(max_repeats, max(1, math.ceil(extent - REPEAT_SLACK)))
         sub = cell // repeats
         maps = bake_material(gltf, material, (sub, sub), warn)
         if repeats > 1:
@@ -455,9 +501,74 @@ def merge_materials(gltf, parts, edge, warn):
             part["uvs"] = uv.reshape(-1, 2)
             split_parts.append(part)
     if clamped:
-        warn("%d triangles tile a texture across more than %d repeats; their UVs were clamped into the atlas cell" % (clamped, MAX_REPEATS))
+        warn("%d triangles tile a texture across more than %d repeats; their UVs were clamped into the atlas cell (--max-repeats raises the limit at the cost of resolution)" % (clamped, max_repeats))
     parts[:] = split_parts
     return tuple(a[: cell * rows, : cell * columns] for a in atlas)
+
+
+def bake_second_uv_occlusion(gltf, parts, used, edge, warn):
+    """An occlusion map read through TEXCOORD_1 (a lightmap-style second unwrap) is rasterized into the TEXCOORD_0 layout: each
+    triangle of every part of the material is filled in the map at its TEXCOORD_0 position with the occlusion found at its
+    TEXCOORD_1 position (nearest texel), then the gaps are grown a few texels over. That only works when TEXCOORD_0 is an
+    unwrap that does not overlap or repeat, so a material whose TEXCOORD_0 leaves 0..1 (tiling), or that has a part without
+    TEXCOORD_1, is warned about and its occlusion map is dropped. Stores a Pillow image per material in gltf.ao_override."""
+    gltf.ao_override = {}
+    for material in used:
+        if material is None:
+            continue
+        info = gltf.doc["materials"][material].get("occlusionTexture")
+        if not info or info.get("texCoord", 0) != 1:
+            continue
+        name = gltf.doc["materials"][material].get("name", "material %s" % material)
+        mine = [p for p in parts if p["material"] == material]
+        image, _ = texture_image(gltf, info, lambda text: None, name + " occlusion")
+        if image is None or any("uvs1" not in p for p in mine):
+            continue  # the generic TEXCOORD_1 warning in bake_material says it is dropped
+        everything = np.concatenate([p["uvs"] for p in mine])
+        if everything.min() < -1e-3 or everything.max() > 1 + 1e-3:
+            warn("%s reads occlusion through TEXCOORD_1 but its TEXCOORD_0 tiles; the occlusion map is dropped" % name)
+            gltf.ao_override[material] = None
+            continue
+        source = np.asarray(image.convert("L"), np.float32)
+        height, width = source.shape
+        out = np.ones((edge, edge), np.float32)
+        covered = np.zeros((edge, edge), bool)
+        for part in mine:
+            for tri in part["triangles"]:
+                target = part["uvs"][tri] * edge
+                lookup = part["uvs1"][tri]
+                low = np.maximum(np.floor(target.min(axis=0)).astype(int), 0)
+                high = np.minimum(np.ceil(target.max(axis=0)).astype(int) + 1, edge)
+                ys, xs = np.mgrid[low[1]:high[1], low[0]:high[0]]
+                points = np.stack([xs.ravel() + 0.5, ys.ravel() + 0.5], axis=1)
+                a, b, c = target
+                denominator = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1])
+                if abs(denominator) < 1e-12:
+                    continue
+                w0 = ((b[1] - c[1]) * (points[:, 0] - c[0]) + (c[0] - b[0]) * (points[:, 1] - c[1])) / denominator
+                w1 = ((c[1] - a[1]) * (points[:, 0] - c[0]) + (a[0] - c[0]) * (points[:, 1] - c[1])) / denominator
+                w2 = 1 - w0 - w1
+                inside = (w0 >= -0.02) & (w1 >= -0.02) & (w2 >= -0.02)
+                if not inside.any():
+                    continue
+                at = w0[inside, None] * lookup[0] + w1[inside, None] * lookup[1] + w2[inside, None] * lookup[2]
+                px = np.clip((at[:, 0] % 1.0 * width).astype(int), 0, width - 1)
+                py = np.clip((at[:, 1] % 1.0 * height).astype(int), 0, height - 1)
+                tx, ty = xs.ravel()[inside], ys.ravel()[inside]
+                out[ty, tx] = source[py, px] / 255.0
+                covered[ty, tx] = True
+        for _ in range(4):  # grow the filled texels over the gaps so filtering does not pull in white
+            grown = out.copy()
+            reached = covered.copy()
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                shifted = np.roll(out, (dy, dx), (0, 1))
+                shifted_mask = np.roll(covered, (dy, dx), (0, 1))
+                take = shifted_mask & ~reached
+                grown[take] = shifted[take]
+                reached |= take
+            out, covered = grown, reached
+        gltf.ao_override[material] = Image.fromarray((np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8), "L")
+        warn("%s reads occlusion through TEXCOORD_1; it was rasterized into the TEXCOORD_0 layout" % name)
 
 
 def largest_texture(gltf, index):
@@ -756,7 +867,9 @@ def write_glb(path, positions, normals, uvs, triangles, maps, name):
 def convert(source, args, warn):
     """Runs the steps on a .gltf/.glb path. Returns (stats dict, output path)."""
     gltf = Gltf(source)
-    parts = load_parts(gltf, warn, args.keep_blend)
+    glass = getattr(args, "glass", None) or ("opaque" if args.keep_blend else "drop")
+    gltf.glass = glass
+    parts = load_parts(gltf, warn, glass)
     if not parts:
         raise SystemExit("%s has no triangle meshes" % source)
     materials = {p["material"] for p in parts}
@@ -766,7 +879,7 @@ def convert(source, args, warn):
     size = every.max(axis=0) - every.min(axis=0)
     longest = float(size.max()) * ((args.meters / float(size.max())) if args.meters else 1.0)
     edge = args.texture_edge or shrink_textures.texture_edge(longest)
-    maps = merge_materials(gltf, parts, edge, warn)
+    maps = merge_materials(gltf, parts, edge, warn, getattr(args, "max_repeats", None) or MAX_REPEATS)
     positions, normals, uvs, triangles = merge_parts(parts)
     merged_faces = len(triangles)
     positions, normals, uvs, triangles = decimate(positions, normals, uvs, triangles, args.faces)
@@ -838,6 +951,8 @@ def main(argv):
     parser.add_argument("--source-url")
     parser.add_argument("--texture-edge", type=int)
     parser.add_argument("--keep-blend", action="store_true")
+    parser.add_argument("--glass", choices=GLASS_MODES)
+    parser.add_argument("--max-repeats", type=int, default=MAX_REPEATS)
     args = parser.parse_args(argv)
     warnings = Warnings()
     local = os.path.exists(args.model)

@@ -65,7 +65,7 @@ Set these on the model's `Skeleton3D` in the import settings, for both the chara
 
 ## Goblin
 
-`build_goblin.py` exports the OpenGameArt goblin. Its proportions don't work with the human animations, so `scripts/world/creature_model.gd` poses its bones in code.
+`build_goblin.py` exports the OpenGameArt goblin. The export has one flat normal per triangle corner, which looks faceted next to the villagers, so run `python3 smooth_goblin.py goblin.glb` on the result. It averages the normals of triangles that meet at a point and bend by less than 85 degrees, and sets a matte material (roughness 0.85), and needs only Python, not Blender. (#474) Its proportions don't work with the human animations, so `scripts/world/creature_model.gd` poses its bones in code.
 
 ## Things that went wrong
 

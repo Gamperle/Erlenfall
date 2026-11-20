@@ -46,7 +46,7 @@ Face budgets and texture tiers come from the 105 props in `tools/asset_pipeline/
 
 - **Tiers:** the pipeline bakes everything at 1,024 px, and `tools/asset_pipeline/shrink_textures.py` shrinks props of 1.25 m or less to 512 px ([#426](https://github.com/Gamperle/Erlenfall/issues/426)). `provenance.py validate` and `shrink_textures.py --check` fail a prop whose textures are larger than its tier ([#445](https://github.com/Gamperle/Erlenfall/issues/445)). The largest prop of each tier has about 400 px per meter (512 px over 1.25 m, 1,024 px over 2.5 m), and smaller props get more. Keep that as the minimum.
 - **One mesh, one material.** A prop is one mesh with one material (base color, normal, roughness and occlusion). Buildings and walls are joined by `ModelBuilder.merged`, one surface per material, and the smoke test checks the surface count.
-- **Characters:** about 15,000 triangles with 1,024 px textures each (`tools/character_pipeline/README.md`). Goblins are far lower and flat-shaded, which fits the enemy but is a different style (see Gaps).
+- **Characters:** about 15,000 triangles with 1,024 px textures each (`tools/character_pipeline/README.md`). Goblins are far lower (about 1,800 triangles) with a plain palette texture. Their normals are smoothed and their material is matte like the villagers' (`tools/character_pipeline/smooth_goblin.py`), but the faceted shape and flat palette colors remain a simpler style that fits the enemy (see Gaps).
 - **Free-standing walls:** 450 to 900 faces for 8 m of wall, built in code.
 - Shapes keep **a readable silhouette at 20 m**: chunky handles, thick straps, clear openings. Thin spikes, hair-thin ropes and glass are where generated models fail.
 
@@ -107,6 +107,6 @@ Seen in the screenshot above, to be decided with the maintainer. They are tracke
 
 - Trees and shrubs are flat-shaded low-poly shapes, while props, houses and ground are textured and realistic.
 - ~~The plaster was heavily mottled and the grass strongly saturated~~ Fixed in [#461](https://github.com/Gamperle/Erlenfall/issues/461): plaster keeps 35% of its photos' color and shows the mossy photo on less of the wall (`Surfaces.PHOTO_SATURATION`, `SECOND_PHOTO_THRESHOLD`), and the grass tints and colors are more muted olive.
-- Villagers show a T pose and little color or clothing variety beyond their sweater or robe; the goblin is a different, flat-shaded style ([#462](https://github.com/Gamperle/Erlenfall/issues/462)).
+- Villagers show a T pose and little color or clothing variety beyond their sweater or robe; the goblin has smooth shading and a matte material now, but is still low-poly with flat palette colors instead of painted textures ([#462](https://github.com/Gamperle/Erlenfall/issues/462), [#474](https://github.com/Gamperle/Erlenfall/issues/474)).
 
 Changes to this guide go in a pull request like any other, and the maintainer approves the direction ([#272](https://github.com/Gamperle/Erlenfall/issues/272)).

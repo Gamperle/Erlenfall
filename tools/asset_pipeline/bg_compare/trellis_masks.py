@@ -10,7 +10,7 @@ import urllib.request
 
 from PIL import Image
 
-R = r"D:\erlenfall-assets\bgcompare218"
+R = os.environ.get("BGCOMPARE_RUN", r"D:\erlenfall-assets\bgcompare218")  # #501 ran it with bgcompare501
 COMFY = r"D:\erlenfall-assets\comfyui"
 SERVER = "http://127.0.0.1:8188"
 faces = int(sys.argv[1])
@@ -29,14 +29,15 @@ for job in sys.argv[2:]:
     target = os.path.join(out, f"{name}__{model}_{faces}.glb")
     if os.path.exists(target):
         continue
-    pic = f"bgcmp218_{name}.png"
+    tag = "bgcmp" + os.path.basename(R)[9:]
+    pic = f"{tag}_{name}.png"
     shutil.copy(os.path.join(R, "input", name + ".png"), os.path.join(COMFY, "input", pic))
     w = json.load(open(r"D:\erlenfall-assets\trellis2_api.json"))
     w["122"]["inputs"]["image"] = pic
     w["186"]["inputs"]["target_face_count"] = faces
-    w["save"]["inputs"]["filename_prefix"] = f"trellis/bgcmp218_{name}__{model}"
+    w["save"]["inputs"]["filename_prefix"] = f"trellis/{tag}_{name}__{model}"
     if model != "pipeline":
-        maskfile = f"bgcmp218_mask_{model}_{name}.png"
+        maskfile = f"{tag}_mask_{model}_{name}.png"
         Image.open(os.path.join(R, "masks", model, name + ".png")).convert("RGB").save(os.path.join(COMFY, "input", maskfile))
         w["900"] = {"class_type": "LoadImageMask", "inputs": {"image": maskfile, "channel": "red"}}
         w["303"]["inputs"]["mask"] = ["900", 0]

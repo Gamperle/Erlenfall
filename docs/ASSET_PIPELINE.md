@@ -344,11 +344,49 @@ The first round had no chain picture and one picture per prop. This round drew 3
 
 So the first round's finding holds and is much stronger: **u2net closes every area with fine gaps** (net, cage, a heap of chain), which is exactly what a TripoSR fallback mesh would copy. BiRefNet and BEN2 both keep the gaps and agree closely (IoU 0.93 to 0.99 for most pictures). BEN2 was not better anywhere in this sample, and was a little worse in one way: gray, semi-transparent patches inside dark chain links and pitchfork handles, where BiRefNet's mask is a clean white.
 
-**Updated recommendation:** unchanged. BiRefNet stays the default (it is also the TRELLIS.2 default and the TripoSR route since #492) and u2net stays out of new props. BEN2 is still a second opinion only: across 42 pictures it was ahead once (the rack) and slightly behind on dark chain links, so there is no evidence to prefer it. The pipeline default is not changed. These are masks only: whether the meshes keep chain links, net cells and cage gaps open was not tested ([#501](https://github.com/Gamperle/Erlenfall/issues/501)).
+**Updated recommendation:** unchanged. BiRefNet stays the default (it is also the TRELLIS.2 default and the TripoSR route since #492) and u2net stays out of new props. BEN2 is still a second opinion only: across 42 pictures it was ahead once (the rack) and slightly behind on dark chain links, so there is no evidence to prefer it. The pipeline default is not changed. These are masks only: whether the meshes keep chain links, net cells and cage gaps open is answered in the third round below ([#501](https://github.com/Gamperle/Erlenfall/issues/501)).
 
 **Pictures that would make good props** (not added to the game, which is out of scope here): `hanging_chain_0` and `hanging_chain_2`, `wooden_ladder_0`, `rope_ladder_1`, `split_rail_fence_0`, `pitchfork_0` and `pitchfork_2`, `garden_rake_0`, `wire_cage_0` and `wire_cage_2` (a cage with a door), and `chain_pile_1`. The scythe pictures came out as pick-like tools (double curved blades on a straight shaft) and are not scythes. The fishing net frames are drawn as open boxes, so they are no good as nets.
 
-Not verified in this round: meshes (above), a TRELLIS.2 or TripoSR run on the new pictures, and the training-data licenses.
+Not verified in this round: meshes (done in the next round), and the training-data licenses.
+
+#### Third round: meshes from chains, a net, a cage and a ladder ([#501](https://github.com/Gamperle/Erlenfall/issues/501))
+
+Run on 2026-11-20 in the new folder `D:\erlenfall-assets\bgcompare501` (nothing else on the PC was changed). Five of the #494 pictures were turned into meshes with each of the three masks, by both generators: `hanging_chain_0`, `chain_pile_0`, `fishing_net_frame_1`, `wire_cage_0` and `wooden_ladder_2` (the ladder with the weakest u2net mask, IoU 0.76). The pictures and masks are copies from `run494` and `bgcompare494`. Same method as the first round: *TRELLIS.2* with the pipeline's workflow at 12,000 faces and the in-workflow BiRefNet mask replaced by the mask file (`bg_compare/trellis_masks.py`, `BGCOMPARE_RUN` names the folder), *TripoSR* at marching-cubes resolution 256 with texture baking and the picture prepared from the mask (`bg_compare/prep_triposr.py`). Renders were made in Blender 5.2 and looked at one by one. One mesh per cell, no repeats, so single-seed differences between the masks are partly luck. Pictures: [pictures.jpg](bg_compare_501/pictures.jpg) (chain, heap, net, cage, ladder); TRELLIS.2, front and side per mask (u2net, BiRefNet, BEN2): [trellis2.jpg](bg_compare_501/trellis2.jpg); TripoSR, front and back per mask: [triposr.jpg](bg_compare_501/triposr.jpg).
+
+**TRELLIS.2 (uses the mask only to crop).** The mask hardly matters, as in the first round: even the solid u2net masks of the net and the cage gave open meshes, with the cells open.
+
+| Picture | u2net | BiRefNet | BEN2 |
+| --- | --- | --- | --- |
+| hanging chain | links open, hook at the top wrong | links open, **top is cut off and a piece floats above the chain** | links open, a ring at the top instead of the hook, paler color |
+| chain heap | open links, low heap | the same | the same, more orange |
+| net | cell grid the most regular of the three | cells open, more torn | cells open, more torn |
+| cage | 3 sides of dark wire with many triangular film shards inside the cells | the same | thinnest wires, open top like the picture, fewest shards |
+| ladder | all rungs, clean | clean | clean |
+
+So **no mask kept a chain, net or cage from coming out open in TRELLIS.2**. What it gets wrong is the same for all three masks: the hook of the hanging chain is lost or changed, the net comes out as a bell or sack and not as the flat hammock in the picture, and the cage and the net are full of small triangular shards (film across cells that should be empty). These are not the mask's fault, and the cage is not usable as a prop without cleanup.
+
+**TripoSR (uses the mask fully).** Here the mask decides.
+
+| Picture | u2net | BiRefNet | BEN2 |
+| --- | --- | --- | --- |
+| hanging chain | hook and thin chain, links mostly solid | the same | the same, one link opened |
+| chain heap | ball of loops | ball of loops | ball of loops |
+| net | **a closed box: the net is a textured wall and the top is closed** | open net, but speckled and torn at the edges | open net, one corner loose; the cleanest |
+| cage | **a closed box with a grid printed on the wall** | frame left, most wires gone, a wall missing | frame and corners kept, wires mostly gone |
+| ladder | fine, a fragment floats | fine, a fragment floats | fine, no fragment |
+
+u2net's mask does what it did in the mask comparison: it closes the net and the cage into a solid box, and TripoSR copies that. BiRefNet and BEN2 keep the gaps open, but TripoSR cannot build thin wires or net cords: what remains is a frame with holes where the wires were, in the cage's case worse with BiRefNet. The heap became a ball in all three, because TripoSR makes a round object from any heap. No TripoSR chain looks like a chain with open links.
+
+**Recommendation.**
+
+1. **Chains, nets, cages and other lattices: use TRELLIS.2, with the BiRefNet default.** The mask is not what decides, so there is no reason to change it. The chain, the heap and the ladder are usable meshes (the ladder and the heap are the best). The net and the cage need the shards cleaned away, or they should stay out of the game. Pick pictures where the hook or end piece is not at the edge.
+2. **Do not use TripoSR for them, with any mask.** If it is used anyway, never with u2net (closed box). BiRefNet and BEN2 gave similar open results with no clear winner, BEN2 a little cleaner on the net and cage, BiRefNet is the pipeline default.
+3. The pipeline defaults are unchanged. No props were added to the game.
+
+Found on the way and not fixed: the copy of `run_triposr.py` on the PC (`D:\erlenfall-assets\run_triposr.py`, 2026-11-18) is older than the repository's, so it lacks the `0` folder fix of [#493](https://github.com/Gamperle/Erlenfall/issues/493) and `--mask`, and `bg_compare218\run_triposr_masks.ps1` failed five times per picture on it until the folders were created by hand ([#512](https://github.com/Gamperle/Erlenfall/issues/512)). TRELLIS.2 turns cage and net cells into shards ([#513](https://github.com/Gamperle/Erlenfall/issues/513)).
+
+Not verified: more than one seed per cell, TripoSR with higher marching-cubes resolution or a bigger texture (which might keep more wire), BEN2 inside TRELLIS.2 itself, and the training-data licenses.
 
 ### SDXL license
 

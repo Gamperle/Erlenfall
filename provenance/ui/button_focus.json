@@ -1,0 +1,24 @@
+{
+	"schema": 1,
+	"asset": "assets/ui/button_focus.png",
+	"kind": "ui_texture",
+	"origin": "pipeline",
+	"name": "button_focus",
+	"stages": [
+		{
+			"step": "build",
+			"tool": "build_ui_textures.py",
+			"date": "2026-11-17",
+			"versions": {
+				"python": "3.14.4",
+				"numpy": "2.3.5",
+				"Pillow": "12.1.1"
+			},
+			"function": "build_buttons",
+			"source_textures": [],
+			"source_sha256": {},
+			"output_sha256": "e3bc2aab87e58ada7ca25808b5804164947c55e64b6c94fa0344b039d405105d"
+		}
+	],
+	"manual_edits": []
+}

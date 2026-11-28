@@ -1,0 +1,29 @@
+{
+	"schema": 1,
+	"asset": "assets/textures/coal_relief.png",
+	"kind": "derived_texture",
+	"origin": "backfill",
+	"name": "coal_relief",
+	"stages": [
+		{
+			"step": "pack",
+			"tool": "build_relief_maps.py",
+			"date": null,
+			"versions": {
+				"python": null,
+				"numpy": null,
+				"Pillow": null
+			},
+			"source": "https://polyhaven.com/a/dark_rock_02",
+			"polyhaven_asset": "dark_rock_02",
+			"resolution": "1k",
+			"source_maps_sha256": {
+				"nor_gl": null,
+				"arm": null
+			},
+			"output_sha256": "3a9251ae31a310f9c075a05552f189aad9b8a2b1bfdf10db1c68be382187f124"
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
+	"manual_edits": []
+}

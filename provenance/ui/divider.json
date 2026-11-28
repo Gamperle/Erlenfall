@@ -1,0 +1,24 @@
+{
+	"schema": 1,
+	"asset": "assets/ui/divider.png",
+	"kind": "ui_texture",
+	"origin": "pipeline",
+	"name": "divider",
+	"stages": [
+		{
+			"step": "build",
+			"tool": "build_ui_textures.py",
+			"date": "2026-11-17",
+			"versions": {
+				"python": "3.14.4",
+				"numpy": "2.3.5",
+				"Pillow": "12.1.1"
+			},
+			"function": "build_small_parts",
+			"source_textures": [],
+			"source_sha256": {},
+			"output_sha256": "3b10217784081f54192765a381b8cb3c6b2aeb9d008d4ea4ce4b75cf983a139e"
+		}
+	],
+	"manual_edits": []
+}

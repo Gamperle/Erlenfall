@@ -1,0 +1,29 @@
+{
+	"schema": 1,
+	"asset": "assets/textures/rubble_2_relief.png",
+	"kind": "derived_texture",
+	"origin": "backfill",
+	"name": "rubble_2_relief",
+	"stages": [
+		{
+			"step": "pack",
+			"tool": "build_relief_maps.py",
+			"date": null,
+			"versions": {
+				"python": null,
+				"numpy": null,
+				"Pillow": null
+			},
+			"source": "https://polyhaven.com/a/rocky_gravel",
+			"polyhaven_asset": "rocky_gravel",
+			"resolution": "1k",
+			"source_maps_sha256": {
+				"nor_gl": null,
+				"arm": null
+			},
+			"output_sha256": "4fe8013b0ee9ec2a75a80fbbefe1d2e53a7c1ef8cf09a8fcd1a67daeb3a17ca7"
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
+	"manual_edits": []
+}

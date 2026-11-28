@@ -43,6 +43,20 @@
 			},
 			"date": null,
 			"meters": 0.4
+		},
+		{
+			"step": "textures",
+			"tool": "shrink_textures.py",
+			"script": "shrink_textures.py",
+			"versions": {
+				"Pillow": "12.1.1"
+			},
+			"date": "2026-11-17",
+			"longest_side_meters": 0.4,
+			"texture_edge": 512,
+			"from_edge": 1024,
+			"rule": "512 px up to 1.25 m longest side, else 1024 px",
+			"note": "Downscaled with Lanczos; normal maps renormalized (#426)"
 		}
 	],
 	"manual_edits": [],

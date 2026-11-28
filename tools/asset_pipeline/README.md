@@ -83,6 +83,8 @@ ssh ASSET_PC "powershell -NoProfile -ExecutionPolicy Bypass -File D:\erlenfall-a
 
 Most models take 3 to 9 minutes. Small ones such as swords take about a minute, and detailed boxes such as chests and crates up to 25. The models land in `klein2\trellis`, and finished ones are skipped, so the script can be run again after a dropped connection. Long SSH sessions to this PC have dropped several times, so for a big batch, run it a few names at a time.
 
+`build_batch.sh` does that for you. With `ASSET_PC` set to the SSH login, `tools/asset_pipeline/build_batch.sh klein2 4` finds the pictures in `klein2\input` that have no model yet, makes them four at a time, retries dropped connections, and lists whatever is still missing at the end (exit code 1). Start it in the background so it outlives your terminal.
+
 TRELLIS.2 sees only the front, like TripoSR did, but it gets thin parts, backs, and proportions much more right:
 
 ![TRELLIS.2 beside TripoSR for a hand cart and a crate](examples/3_trellis_vs_triposr.jpg)
@@ -94,12 +96,25 @@ It does worse on loose, fibrous materials. It turned haystacks into brown lumps 
 ## 5. Size the models
 
 ```bash
+scp tools/asset_pipeline/{size_models.ps1,shrink_textures.py,provenance.py} ASSET_PC:D:/erlenfall-assets/
 ssh ASSET_PC "powershell -NoProfile -ExecutionPolicy Bypass -File D:\erlenfall-assets\size_models.ps1 -Batch klein2"
 ```
 
 `size_glb.py` scales each model to its real size, stands it on its base, and keeps its texture maps. TRELLIS.2 models usually face Godot's front already, but the well came out facing sideways, so `turns` in the batch file turns it by -90 degrees. Render each model from the front beside its picture to catch these.
 
 ![Some of the TRELLIS.2 props, as they face in the game](examples/4_trellis_models.jpg)
+
+`size_models.ps1` ends by running `shrink_textures.py` on the batch's `props` folder (#445), so new models arrive at their tier. This needs `shrink_textures.py` and `provenance.py` copied next to `size_models.ps1` and Pillow and numpy in the PC's `python` (both are installed there); without the script it prints a warning and leaves 1024 px. `provenance.py validate` (and CI) fails on any prop in `assets/props` whose textures exceed its tier, so a model that skipped this step is caught when it is copied in.
+
+By hand, shrink the textures to what the prop's size needs. TRELLIS.2 bakes every model at 1024 px, but a bowl is never seen that large, and each 1024 px set (color, normal, roughness/occlusion) costs about 4.6 MB of video memory. `shrink_textures.py` picks the edge from the sized model's longest side: **512 px up to 1.25 m, 1024 px above**. It only shrinks, so running it again changes nothing, and it works on the GLBs in `assets/props` on any machine with Pillow, with no Blender:
+
+```bash
+python3 tools/asset_pipeline/shrink_textures.py                         # report only
+python3 tools/asset_pipeline/shrink_textures.py --apply --records --ledger
+python3 tools/asset_pipeline/shrink_textures.py --check                 # exit 1 if any prop is above its tier
+```
+
+`--records` adds a `textures` stage to each changed prop's provenance record and `--ledger` adds a note to its ASSETS.md row. Change the thresholds (`SMALL_MAX_METERS`, `SMALL_EDGE`, `LARGE_EDGE`) at the top of the script. To compare before and after, `shoot_models.gd` photographs single props up close: `DISPLAY=:0 godot --path . --script res://tools/asset_pipeline/shoot_models.gd -- out_dir bucket_1 bowl_1` (#426).
 
 ## 6. Place them and check
 
@@ -139,6 +154,8 @@ Last, list every new file in [ASSETS.md](../../ASSETS.md) with its seed and subj
 | `setup_comfy.ps1` | Installs ComfyUI with ROCm PyTorch and the TRELLIS.2 models |
 | `run_trellis.ps1`, `make_trellis.py`, `trellis2_api.json` | Make models with TRELLIS.2 |
 | `size_models.ps1`, `size_glb.py` | Scale models to real size for Godot |
+| `shrink_textures.py` | Shrinks embedded textures to 512 px for props up to 1.25 m, run after sizing |
+| `shoot_models.gd` | Photographs single props up close, for comparing texture changes |
 | `shoot_props.gd` | Photographs placed props in the game |
 | `../prop_tuner/prop_tuner.tscn` | Shows every prop beside a 2 m pole to correct its size and height |
 | `make_models.ps1`, `run_triposr.py`, `render_preview.py`, `watchdog.ps1` | Make models with TripoSR, the fallback |

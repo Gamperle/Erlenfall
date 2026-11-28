@@ -1,0 +1,13 @@
+{
+	"seed": 12000,
+	"chosen_by": "Claude for Markus Gamperle",
+	"objects": {
+		"haystack_a": { "subject": "chunky stylized haystack, a smooth solid rounded dome of thick golden hay with broad bundled ridges and a dense matte surface, simple shapes, no individual loose straws", "faces": 3000, "meters": 2.6 },
+		"haystack_b": { "subject": "neat stack of three rectangular golden hay bales tied with twine, two bales on the bottom and one on top, tight solid blocks", "faces": 3000, "meters": 1.6 },
+		"haystack_c": { "subject": "tall conical hay rick, a smooth tapering mound of tightly packed golden hay combed into thick vertical strands, solid and dense", "faces": 3000, "meters": 2.6 },
+		"campfire_a": { "subject": "campfire of five thick short logs leaning together inside a ring of large smooth rounded grey boulders, unlit, simple chunky shapes", "faces": 3000, "meters": 1.2 },
+		"campfire_b": { "subject": "low fire pit, a thick solid ring of grey fieldstone with a mound of dark ash and three heavy charred logs in the middle, unlit", "faces": 3000, "meters": 1.2 },
+		"bucket_a": { "subject": "empty wooden bucket made of thick wide staves with two wide dark iron bands, plain smooth round rim, no handle, no rope", "faces": 1500, "meters": 0.4 },
+		"bucket_b": { "subject": "squat wooden pail of chunky wide planks with two thick iron hoops and a thick stiff iron handle", "faces": 1500, "meters": 0.4 }
+	}
+}

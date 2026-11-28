@@ -41,6 +41,8 @@ def write_provenance():
          "bake_texture": "--bake-texture" in sys.argv, "cudnn": False, "script": "run_triposr.py",
          "picture_sha256": provenance.sha256(picture) if picture and os.path.exists(picture) else None},
         kind="ai_prop", asset=f"assets/props/{name}.glb", batch=os.path.basename(base), name=name,
+        # Who picked the picture, worded the way ASSETS.md words it. The records need it, so set CHOSEN_BY for a manual run.
+        **({"chosen_by": os.environ["CHOSEN_BY"]} if os.environ.get("CHOSEN_BY") else {}),
     )
 
 

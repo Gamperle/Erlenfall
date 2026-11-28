@@ -1,0 +1,29 @@
+{
+	"schema": 1,
+	"asset": "assets/textures/grass_dry_relief.png",
+	"kind": "derived_texture",
+	"origin": "backfill",
+	"name": "grass_dry_relief",
+	"stages": [
+		{
+			"step": "pack",
+			"tool": "build_relief_maps.py",
+			"date": null,
+			"versions": {
+				"python": null,
+				"numpy": null,
+				"Pillow": null
+			},
+			"source": "https://polyhaven.com/a/grass_path_2",
+			"polyhaven_asset": "grass_path_2",
+			"resolution": "1k",
+			"source_maps_sha256": {
+				"nor_gl": null,
+				"arm": null
+			},
+			"output_sha256": "ec2ae7d04a937144ee806982cf92cf134efbd82b44079cd1d2482959a23c00ff"
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
+	"manual_edits": []
+}

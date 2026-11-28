@@ -1,0 +1,29 @@
+{
+	"schema": 1,
+	"asset": "assets/textures/plaster_2_relief.png",
+	"kind": "derived_texture",
+	"origin": "backfill",
+	"name": "plaster_2_relief",
+	"stages": [
+		{
+			"step": "pack",
+			"tool": "build_relief_maps.py",
+			"date": null,
+			"versions": {
+				"python": null,
+				"numpy": null,
+				"Pillow": null
+			},
+			"source": "https://polyhaven.com/a/worn_mossy_plasterwall",
+			"polyhaven_asset": "worn_mossy_plasterwall",
+			"resolution": "1k",
+			"source_maps_sha256": {
+				"nor_gl": null,
+				"arm": null
+			},
+			"output_sha256": "8daff2267d563f3ac0f83b3936adcbe179934ca20c83ad68281c3d3e3ce42fc3"
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
+	"manual_edits": []
+}

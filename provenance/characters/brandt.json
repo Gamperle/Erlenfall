@@ -1,0 +1,59 @@
+{
+	"schema": 1,
+	"asset": "assets/characters/brandt.glb",
+	"kind": "character",
+	"origin": "backfill",
+	"name": "brandt",
+	"stages": [
+		{
+			"step": "build",
+			"tool": "build_character.py with MPFB",
+			"date": null,
+			"versions": {
+				"Blender": null,
+				"MPFB": null
+			},
+			"recipe": {
+				"id": "brandt",
+				"shape": {
+					"gender": 1.0,
+					"age": 0.85,
+					"muscle": 0.4,
+					"weight": 0.6
+				},
+				"skin": "old_caucasian_male",
+				"clothes": [
+					"donitz_monk_robe",
+					"shoes03"
+				],
+				"footwear": [
+					"shoes03"
+				],
+				"colors": {
+					"donitz_monk_robe": [
+						0.45,
+						0.18,
+						0.18
+					]
+				},
+				"hair": "short01",
+				"hair_color": [
+					0.68,
+					0.66,
+					0.63
+				],
+				"brows": "eyebrow009",
+				"eyes": "low-poly"
+			},
+			"recipes_file_sha256": null,
+			"asset_packs": [
+				"system assets",
+				"Suits 02"
+			],
+			"full_detail": null,
+			"output_sha256": "09d3a85daff43b71cbe66a475fc50b271a9c60221738360c071b4262bf1d343a"
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
+	"manual_edits": []
+}

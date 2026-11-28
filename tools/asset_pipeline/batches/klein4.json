@@ -1,0 +1,66 @@
+{
+	"seed": 9000,
+	"objects": {
+		"iron_dagger": {
+			"subject": "plain iron dagger with a short double-edged blade and a leather-wrapped wooden grip, point up",
+			"faces": 800,
+			"meters": 0.35
+		},
+		"iron_axe": {
+			"subject": "single-bit iron woodcutter's axe with a wedge-shaped steel head and a long straight wooden handle, head at the top",
+			"faces": 1200,
+			"meters": 0.8
+		},
+		"short_bow": {
+			"subject": "short wooden hunting bow with a taut bowstring, seen from the side, standing upright",
+			"faces": 1200,
+			"meters": 1.0
+		},
+		"long_bow": {
+			"subject": "tall wooden longbow of one smooth stave with a taut bowstring, seen from the side, standing upright",
+			"faces": 1200,
+			"meters": 1.6
+		},
+		"iron_ingot": {
+			"subject": "single rough bar of dark iron, a trapezoid ingot with a flat top",
+			"faces": 500,
+			"meters": 0.25
+		},
+		"iron_nails": {
+			"subject": "small bundle of hand-forged iron nails with square heads, lying together",
+			"faces": 1000,
+			"meters": 0.15
+		},
+		"arrow_bundle": {
+			"subject": "bundle of five wooden arrows with grey feather fletching and iron heads, tied together with a cord, standing upright",
+			"faces": 1200,
+			"meters": 0.7
+		},
+		"torch": {
+			"subject": "wooden torch with a rag wrapped and tarred at the top, unlit, standing upright",
+			"faces": 800,
+			"meters": 0.6
+		},
+		"healing_potion": {
+			"subject": "small round glass bottle of red liquid with a cork stopper",
+			"faces": 1200,
+			"meters": 0.15
+		},
+		"fire_flask": {
+			"subject": "small round clay flask with a narrow neck and a cloth wick stuffed in it",
+			"faces": 1200,
+			"meters": 0.18
+		},
+		"iron_ore_chunk": {
+			"subject": "single rough chunk of rust-brown iron ore rock",
+			"faces": 800,
+			"meters": 0.25
+		},
+		"coal_chunk": {
+			"subject": "single rough chunk of black coal",
+			"faces": 800,
+			"meters": 0.2
+		}
+	},
+	"turns": {}
+}

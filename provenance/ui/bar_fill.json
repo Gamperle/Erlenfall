@@ -1,0 +1,28 @@
+{
+	"schema": 1,
+	"asset": "assets/ui/bar_fill.png",
+	"kind": "ui_texture",
+	"origin": "pipeline",
+	"name": "bar_fill",
+	"stages": [
+		{
+			"step": "build",
+			"tool": "build_ui_textures.py",
+			"date": "2026-11-17",
+			"versions": {
+				"python": "3.14.4",
+				"numpy": "2.3.5",
+				"Pillow": "12.1.1"
+			},
+			"function": "build_bars",
+			"source_textures": [
+				"assets/textures/wood_2.jpg"
+			],
+			"source_sha256": {
+				"wood_2.jpg": "01c9a372cfd7a7bf471b59c2458ed3ccecc93448aebf7ba0cc5b3b5b6ed24349"
+			},
+			"output_sha256": "c9069bf084e29d4d0ccc859f70a95c43a10d0eb35db48047c6db02a44b9b3994"
+		}
+	],
+	"manual_edits": []
+}

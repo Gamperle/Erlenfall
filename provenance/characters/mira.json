@@ -1,0 +1,73 @@
+{
+	"schema": 1,
+	"asset": "assets/characters/mira.glb",
+	"kind": "character",
+	"origin": "backfill",
+	"name": "mira",
+	"stages": [
+		{
+			"step": "build",
+			"tool": "build_character.py with MPFB",
+			"date": null,
+			"versions": {
+				"Blender": null,
+				"MPFB": null
+			},
+			"recipe": {
+				"id": "mira",
+				"smooth_chest": [
+					"toigo_fisherman_sweater"
+				],
+				"shape": {
+					"gender": 0.0,
+					"age": 0.5,
+					"muscle": 0.5,
+					"weight": 0.4,
+					"cupsize": 0.62,
+					"firmness": 0.55
+				},
+				"skin": "young_caucasian_female",
+				"clothes": [
+					"toigo_wool_pants",
+					"toigo_fisherman_sweater",
+					"shoes03"
+				],
+				"footwear": [
+					"shoes03"
+				],
+				"colors": {
+					"toigo_wool_pants": [
+						0.4,
+						0.33,
+						0.25
+					],
+					"toigo_fisherman_sweater": [
+						0.4,
+						0.5,
+						0.42
+					]
+				},
+				"hair": "short04",
+				"brows": "eyebrow001",
+				"eyes": "low-poly",
+				"under_hem": {
+					"toigo_wool_pants": "toigo_fisherman_sweater"
+				},
+				"trim_above": {
+					"shoes03": 0.11
+				}
+			},
+			"recipes_file_sha256": null,
+			"asset_packs": [
+				"system assets",
+				"Shirts 01",
+				"Skirts 01",
+				"Pants 01"
+			],
+			"full_detail": null,
+			"output_sha256": "63aafdfd7d689380f4fe9be9a1c4dd1ffda3934c4274f8107f97ea99bfe03ed9"
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
+	"manual_edits": []
+}

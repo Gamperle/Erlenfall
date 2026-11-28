@@ -1,0 +1,28 @@
+{
+	"schema": 1,
+	"asset": "assets/ui/hud_plate.png",
+	"kind": "ui_texture",
+	"origin": "pipeline",
+	"name": "hud_plate",
+	"stages": [
+		{
+			"step": "build",
+			"tool": "build_ui_textures.py",
+			"date": "2026-11-17",
+			"versions": {
+				"python": "3.14.4",
+				"numpy": "2.3.5",
+				"Pillow": "12.1.1"
+			},
+			"function": "build_hud_parts",
+			"source_textures": [
+				"assets/textures/iron_ore_2.jpg"
+			],
+			"source_sha256": {
+				"iron_ore_2.jpg": "369f69eb86a7dcc4e5b6e30b1f3a4da5ce6ba50cf417de937efb4f09101f88d4"
+			},
+			"output_sha256": "2f4197f283a31abc24196ae0fd8d8c06c256e4732cbf7ad639b88d053b29f882"
+		}
+	],
+	"manual_edits": []
+}

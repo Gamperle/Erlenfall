@@ -1,0 +1,64 @@
+{
+	"schema": 1,
+	"asset": "assets/props/iron_ore_chunk_5.glb",
+	"kind": "ai_prop",
+	"origin": "backfill",
+	"batch": "klein4",
+	"object": "iron_ore_chunk",
+	"name": "iron_ore_chunk_5",
+	"chosen_by": "Claude for Markus Gamperle",
+	"subject": "single rough chunk of rust-brown iron ore rock",
+	"prompt": "A single single rough chunk of rust-brown iron ore rock, 3d game prop, straight-on front view at eye level, centered, the entire object visible with empty space around it, isolated on a plain white background, realistic proportions, worn handmade materials, soft even studio lighting. No text, no people, no other objects.",
+	"seed": 9105,
+	"stages": [
+		{
+			"step": "image",
+			"tool": "FLUX.2 klein 4B",
+			"versions": {},
+			"date": null,
+			"width": 1024,
+			"height": 1024,
+			"steps": 4,
+			"guidance": 1.0,
+			"candidate": 5
+		},
+		{
+			"step": "mesh",
+			"tool": "TRELLIS.2 (Comfy-Org int8 build)",
+			"versions": {
+				"ComfyUI": "0.43.0"
+			},
+			"helpers": [
+				"BiRefNet",
+				"DINOv3"
+			],
+			"date": null,
+			"faces": 800
+		},
+		{
+			"step": "size",
+			"tool": "Blender",
+			"versions": {
+				"Blender": "5.2"
+			},
+			"date": null,
+			"meters": 0.25
+		},
+		{
+			"step": "textures",
+			"tool": "shrink_textures.py",
+			"script": "shrink_textures.py",
+			"versions": {
+				"Pillow": "12.1.1"
+			},
+			"date": "2026-11-17",
+			"longest_side_meters": 0.25,
+			"texture_edge": 512,
+			"from_edge": 1024,
+			"rule": "512 px up to 1.25 m longest side, else 1024 px",
+			"note": "Downscaled with Lanczos; normal maps renormalized (#426)"
+		}
+	],
+	"manual_edits": [],
+	"backfill_note": "Rebuilt from ASSETS.md and the batch file. Dates and tool versions it doesn't state are null."
+}

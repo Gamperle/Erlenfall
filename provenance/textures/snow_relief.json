@@ -1,0 +1,29 @@
+{
+	"schema": 1,
+	"asset": "assets/textures/snow_relief.png",
+	"kind": "derived_texture",
+	"origin": "backfill",
+	"name": "snow_relief",
+	"stages": [
+		{
+			"step": "pack",
+			"tool": "build_relief_maps.py",
+			"date": null,
+			"versions": {
+				"python": null,
+				"numpy": null,
+				"Pillow": null
+			},
+			"source": "https://polyhaven.com/a/snow_02",
+			"polyhaven_asset": "snow_02",
+			"resolution": "1k",
+			"source_maps_sha256": {
+				"nor_gl": null,
+				"arm": null
+			},
+			"output_sha256": "eef2f0516dfb2bdcfb72bd75f5f4c15d05c05ed4cfeea435d83d07e73b0d6df2"
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
+	"manual_edits": []
+}

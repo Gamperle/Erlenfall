@@ -11,7 +11,8 @@ static func item_name(item_id: String) -> String:
 	return TranslationServer.translate(_get_data()["items"][item_id]["name"])
 
 
-## Builds the item's look from its "model" parts, or returns null if it has none. Weapons stand on their grip, pointing up.
+## Builds the item's look, or returns null if it has none. Weapons stand on their grip, pointing up.
+## An item with a "scene" uses that model when no parts were chosen. Otherwise the look is built from its "model" parts.
 ## The variant (see variant_key) says which option each part uses. Parts without a choice keep their own look.
 static func item_model(item_id: String, variant: String = "") -> Node3D:
 	var parts: Array = _get_data()["items"].get(item_id, {}).get("model", [])
@@ -20,6 +21,14 @@ static func item_model(item_id: String, variant: String = "") -> Node3D:
 	var model := Node3D.new()
 	model.name = "ItemModel"
 	var choices := variant_choices(item_id, variant)
+	var item: Dictionary = _get_data()["items"][item_id]
+	if choices.is_empty() and item.has("scene"):
+		var scene: PackedScene = load(item["scene"])
+		if scene != null:
+			var shape: Node3D = scene.instantiate()
+			shape.scale = Vector3.ONE * float(item.get("scene_scale", 1.0))
+			model.add_child(shape)
+			return model
 	for part: Dictionary in parts:
 		var option := _option(choices.get(part.get("slot", ""), ""))
 		var size := Vector3(part["size"][0], part["size"][1], part["size"][2])

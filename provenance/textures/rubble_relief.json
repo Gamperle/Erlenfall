@@ -1,0 +1,29 @@
+{
+	"schema": 1,
+	"asset": "assets/textures/rubble_relief.png",
+	"kind": "derived_texture",
+	"origin": "backfill",
+	"name": "rubble_relief",
+	"stages": [
+		{
+			"step": "pack",
+			"tool": "build_relief_maps.py",
+			"date": null,
+			"versions": {
+				"python": null,
+				"numpy": null,
+				"Pillow": null
+			},
+			"source": "https://polyhaven.com/a/rocks_ground_02",
+			"polyhaven_asset": "rocks_ground_02",
+			"resolution": "1k",
+			"source_maps_sha256": {
+				"nor_gl": null,
+				"arm": null
+			},
+			"output_sha256": "153f9455b9815439611099a8e2af35f05371b841bb56bf96b4bb3512f920506f"
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
+	"manual_edits": []
+}

@@ -1,10 +1,12 @@
 """Turns a raw TripoSR model into a game-ready GLB: straighten, reduce faces, re-bake, export.
 
-Usage: blender -b -P cleanup_mesh.py -- mesh.obj texture.png out_prefix max_faces [long|upright|keep]
+Usage: blender -b -P cleanup_mesh.py -- mesh.obj texture.png out_prefix max_faces [long|upright|keep [provenance_folder]]
 
 "long" stands thin objects like swords on end. "keep" skips straightening, for objects with sloped sides such as tents. Writes <out_prefix>.glb and <out_prefix>_front.png and _back.png.
+With a provenance folder it adds a "cleanup" stage to <folder>/<name>.json (see provenance.py, #398).
 """
 import math
+import os
 import sys
 import time
 
@@ -244,6 +246,18 @@ def main():
     bpy.ops.export_scene.gltf(filepath=prefix + ".glb", export_format="GLB", use_selection=True)
     bpy.data.objects.remove(high)
     render_previews(low, prefix)
+    if len(args) > 5:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import provenance
+
+        name = os.path.basename(prefix)
+        provenance.add_stage(
+            os.path.join(args[5], name + ".json"),
+            {"step": "cleanup", "tool": "Automatic cleanup (cleanup_mesh.py)", "versions": {"Blender": bpy.app.version_string},
+             "date": provenance.today(), "max_faces": max_faces, "mode": mode, "faces_before": raw_faces, "faces_after": len(low.data.polygons),
+             "loose_pieces_removed": removed, "tilt_degrees": round(tilt, 1), "texture_size": TEXTURE_SIZE, "script": "cleanup_mesh.py"},
+            kind="ai_prop", asset=f"assets/props/{name}.glb", name=name,
+        )
     print(
         f"RESULT faces {raw_faces} -> {len(low.data.polygons)}, removed {removed}, "
         f"tilt {tilt:.1f} deg, {time.time() - start:.0f}s",

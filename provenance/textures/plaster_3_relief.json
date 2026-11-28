@@ -1,0 +1,29 @@
+{
+	"schema": 1,
+	"asset": "assets/textures/plaster_3_relief.png",
+	"kind": "derived_texture",
+	"origin": "backfill",
+	"name": "plaster_3_relief",
+	"stages": [
+		{
+			"step": "pack",
+			"tool": "build_relief_maps.py",
+			"date": null,
+			"versions": {
+				"python": null,
+				"numpy": null,
+				"Pillow": null
+			},
+			"source": "https://polyhaven.com/a/grey_plaster_02",
+			"polyhaven_asset": "grey_plaster_02",
+			"resolution": "1k",
+			"source_maps_sha256": {
+				"nor_gl": null,
+				"arm": null
+			},
+			"output_sha256": "d8a9d5cd4990e41cf5d03ff009ce6f06c8d1943d4773263afbfc6e0a0a5b5e49"
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
+	"manual_edits": []
+}

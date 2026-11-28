@@ -1,4 +1,5 @@
 # Turns every picture in <batch>\input into a textured model and preview renders.
+# run_triposr.py adds a "mesh" stage to <batch>\provenance\<name>.json (copy provenance.py next to it).
 # Finished models are skipped, so it can safely be run again. See docs/ASSET_PIPELINE.md.
 param(
     [Parameter(Mandatory)][string]$Batch,
@@ -12,7 +13,7 @@ $env:TMP = $env:TEMP
 $env:HF_HOME = "$Root\hf-cache"
 $env:U2NET_HOME = "$Root\u2net"
 $py = "$Root\venv\Scripts\python.exe"
-New-Item -ItemType Directory -Force "$base\models", "$base\previews", "$base\logs" | Out-Null
+New-Item -ItemType Directory -Force "$base\models", "$base\previews", "$base\logs", "$base\provenance" | Out-Null
 
 Set-Location "$Root\TripoSR"
 foreach ($image in Get-ChildItem "$base\input\*.png" | Sort-Object Name) {

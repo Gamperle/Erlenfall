@@ -24,7 +24,11 @@ TEXTURE_SIZE = 1024
 
 batch = sys.argv[1]
 base = os.path.join(ROOT, batch)
-objects = json.load(open(os.path.join(HERE, "batches", batch + ".json")))["objects"]
+config = json.load(open(os.path.join(HERE, "batches", batch + ".json")))
+objects = config["objects"]
+# Who picked the pictures in <batch>/input: the CHOSEN_BY environment variable, else the batch file's "chosen_by"
+# (for example "Claude for Markus Gamperle"), worded the way ASSETS.md words it.
+CHOSEN_BY = os.environ.get("CHOSEN_BY") or config.get("chosen_by")
 # PowerShell passes a -File list as one comma-separated argument.
 names = [n for arg in sys.argv[2:] for n in arg.split(",") if n] or sorted(f[:-4] for f in os.listdir(os.path.join(base, "input")) if f.endswith(".png"))
 # A variant of the usual run, for models that came out badly (#154). TRELLIS_SEED sets the seed of the three shape
@@ -100,6 +104,7 @@ for name in names:
          "comfy_prompt_id": prompt_id,
          **({"shape_seed": SHAPE_SEED} if SHAPE_SEED is not None else {})},
         kind="ai_prop", asset=f"assets/props/{name}.glb", batch=batch, object=name.rsplit("_", 1)[0], name=name, subject=item["subject"],
+        **({"chosen_by": CHOSEN_BY} if CHOSEN_BY else {}),
     )
     print(f"{name} ok {item['faces']} faces {time.time() - start:.0f}s", flush=True)
 print("finished", flush=True)

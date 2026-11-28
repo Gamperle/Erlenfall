@@ -127,3 +127,17 @@ These need exact sizes and entries in `data/village_layout.json`. Each is built 
 1. **Greenlight scope.** All 60 Gen names, or a trimmed list? A sensible first cut is everything marked Low or Medium, which is about 40 names, and I'd save the High ones for a second pass.
 2. **Build items.** Should I build them with `ModelBuilder` now, or leave them until the interiors work in [#39](https://github.com/Gamperle/Erlenfall/issues/39)?
 3. **Interiors.** The carpenter and forge props only make sense indoors, which the game doesn't have yet beyond the forge. Make them anyway so interiors can use them?
+
+## Remaining placeholder art ([#21](https://github.com/Gamperle/Erlenfall/issues/21))
+
+An audit of the code and data on 2026-11-15 found what is still a primitive shape. "Now" means the asset pipeline can make it today.
+
+| Placeholder | Where | What replaces it | Status |
+| --- | --- | --- | --- |
+| Crafted item models are boxes: iron ingot, nails, dagger, sword, axe, short bow, long bow | `data/crafting.json`, `CraftingData.item_model` | One generated model per item | **Now**, batch `klein4`: dagger, axe, bows, ingot, nails. The sword already exists as `sword_*` |
+| Items with no model: arrow, torch, healing potion, fire flask, ore, coal | `data/crafting.json` | Generated models for what is held, thrown or placed | **Now**, batch `klein4` |
+| Nine villagers (Konrad, Agnes, Wendel, Oswin, Albrecht, Jakob, Falk, Marek, Lene) are code-made figures | `data/village_layout.json`, [#191](https://github.com/Gamperle/Erlenfall/issues/191) | Rigged models from `tools/character_pipeline` | Blocked: needs Blender 5.2 with MPFB and the MakeHuman packs, which neither this machine nor the asset PC has |
+| Wolf is a capsule quadruped | `BeastModel` | A rigged animal | Blocked: the pipeline makes no rigged models, and no CC0 wolf is chosen |
+| Fir and leaf trees, bushes, grass and boulders are code-built | `scripts/world/village.gd` | Detailed foliage and rocks | Blocked: TRELLIS.2 does badly on foliage, and the CC0 packs wait on the license decision in [#66](https://github.com/Gamperle/Erlenfall/issues/66) |
+| Crops are flat boxes | [#411](https://github.com/Gamperle/Erlenfall/issues/411) | Crop models | Needs a CC0 crops pack, same blocker |
+| Buildings are code-built | `ModelBuilder` | Stays code-built, see [WALLS_AND_BUILDINGS.md](WALLS_AND_BUILDINGS.md) | Decided, with the pieces in [#436](https://github.com/Gamperle/Erlenfall/issues/436) |

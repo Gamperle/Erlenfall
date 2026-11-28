@@ -1,0 +1,75 @@
+{
+	"schema": 1,
+	"asset": "assets/characters/hedda.glb",
+	"kind": "character",
+	"origin": "backfill",
+	"name": "hedda",
+	"stages": [
+		{
+			"step": "build",
+			"tool": "build_character.py with MPFB",
+			"date": null,
+			"versions": {
+				"Blender": null,
+				"MPFB": null
+			},
+			"recipe": {
+				"id": "hedda",
+				"smooth_chest": [
+					"toigo_fisherman_sweater"
+				],
+				"shape": {
+					"gender": 0.0,
+					"age": 0.95,
+					"muscle": 0.3,
+					"weight": 0.55,
+					"cupsize": 0.62,
+					"firmness": 0.35
+				},
+				"skin": "old_caucasian_female",
+				"clothes": [
+					"toigo_long_full_skirt",
+					"toigo_fisherman_sweater",
+					"shoes03"
+				],
+				"footwear": [
+					"shoes03"
+				],
+				"colors": {
+					"toigo_long_full_skirt": [
+						0.45,
+						0.35,
+						0.28
+					],
+					"toigo_fisherman_sweater": [
+						0.75,
+						0.68,
+						0.55
+					]
+				},
+				"hair": "braid01",
+				"brows": "eyebrow001",
+				"eyes": "low-poly",
+				"tucked": {
+					"toigo_fisherman_sweater": "toigo_long_full_skirt"
+				},
+				"hair_color": [
+					0.72,
+					0.7,
+					0.68
+				]
+			},
+			"recipes_file_sha256": null,
+			"asset_packs": [
+				"system assets",
+				"Shirts 01",
+				"Skirts 01",
+				"Pants 01"
+			],
+			"full_detail": null,
+			"output_sha256": "27ed19c884024cfe3692ef552a3cf6fdf6c245f1beb3e892637853fa8fcc76f0"
+		}
+	],
+	"backfill_note": "Rebuilt from ASSETS.md and the recipe files. Dates and tool versions they don't state are null.",
+	"manual_edits": []
+}

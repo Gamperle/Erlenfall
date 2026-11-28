@@ -45,10 +45,10 @@ This is a working list. When an entry is made, its row moves to [ASSETS.md](../A
 | `log_stack` | stack of whole round logs piled and chocked at the ends | 2.4 | 5000 | Low |
 | `tree_stump` | wide stump of a felled fir with roots and an axe-cut top | 1.0 | 3000 | Low |
 | `sawbuck` | X-legged wooden sawbuck holding a log | 1.3 | 2500 | Low |
-| `crosscut_saw` | long two-man crosscut saw with two wooden handles | 1.5 | 1000 | High: thin blade |
+| `crosscut_saw` | long two-man crosscut saw: one long flat steel blade with a row of sharp teeth along its lower edge and an upright wooden handle at each end, seen from the side | 1.5 | 1500 | Remade in `klein5` (#435): the klein3 pictures drew a drawknife and a cleaver |
 | `log_sled` | low wooden log sled with iron-shod runners | 2.2 | 3500 | Medium |
 | `log_cart` | two-wheeled timber cart loaded with logs | 3.0 | 6000 | Medium |
-| `sawpit_frame` | wooden sawpit frame with a log held on top and a pit saw | 3.0 | 5000 | High: it may draw a room |
+| `sawpit_frame` | long tree trunk lying on two sturdy wooden A-frame trestles, with a long two-man pit saw standing upright in a cut along the trunk | 3.0 | 5000 | Remade in `klein5` (#435): a pit can't be drawn on white, so it is a log on trestles with the saw in it |
 | `cant_hook` | long wooden cant hook with an iron hook | 1.5 | 800 | High: thin parts |
 
 ### Carpenter (13)
@@ -80,7 +80,7 @@ This is a working list. When an entry is made, its row moves to [ASSETS.md](../A
 | `ore_pile` | heap of crushed rust-brown ore chunks | 1.2 | 2500 | Low |
 | `ore_baskets` | two wicker baskets filled with ore | 0.8 | 3000 | High: wicker |
 | `ore_sacks` | two heavy stacked sacks of ore | 0.8 | 2500 | High: burlap, see [#154](https://github.com/Gamperle/Erlenfall/issues/154) |
-| `windlass_well` | wooden windlass with a crank, rope, and bucket over a shaft | 1.8 | 4500 | Medium: rope |
+| `windlass_well` | round fieldstone well with two wooden posts holding a horizontal wooden roller with a crank handle, a rope wound on the roller and a wooden bucket hanging from it | 1.8 | 5000 | Remade in `klein5` (#435): the klein3 pictures had no crank |
 | `mine_support_frame` | rough timber mine support: two posts and a lintel | 3.0 | 2500 | Low |
 | `hanging_lantern_mine` | iron mining lantern with a hook and a cage | 0.4 | 1500 | Medium: glass |
 | `miner_sledge` | stonemason's short heavy iron sledgehammer with a short wooden handle | 0.7 | 1200 | Medium: the drill was dropped, because the model drew a modern power drill |

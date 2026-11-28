@@ -33,7 +33,8 @@
 				"DINOv3"
 			],
 			"date": null,
-			"faces": 2500
+			"faces": 2500,
+			"models": null
 		},
 		{
 			"step": "size",

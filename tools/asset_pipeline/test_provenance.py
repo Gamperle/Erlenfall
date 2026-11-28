@@ -4,6 +4,7 @@ The GPU pipelines can't run in CI, so this builds a tiny fake repository (an ASS
 and a prop) and runs backfill, validation, and the stage-writing code the pipeline scripts use.
 """
 import json
+import hashlib
 import os
 import struct
 import sys
@@ -207,6 +208,52 @@ class ValidateTest(unittest.TestCase):
         self.assertIn("stage image has no tool versions", problems)
 
 
+class TrellisModelsTest(unittest.TestCase):
+    """The weight files the mesh stage names (#450)."""
+
+    WORKFLOW = {"15": {"class_type": "CLIPVisionLoader", "inputs": {"clip_name": "dino_v3_L_naf_fp32.safetensors"}},
+                "193": {"class_type": "LoadBackgroundRemovalModel", "inputs": {"bg_removal_name": "birefnet.safetensors"}},
+                "40": {"class_type": "UNETLoader", "inputs": {"unet_name": "missing.safetensors", "weight_dtype": "default"}},
+                "122": {"class_type": "LoadImage", "inputs": {"image": "pic.png"}}}
+
+    def stage(self, models):
+        return {"step": "mesh", "tool": "TRELLIS.2", "versions": {"ComfyUI": "0.43.0"}, "date": "2026-11-14", "models": models}
+
+    def test_workflow_models_hashes_found_files_and_never_guesses(self):
+        folder = tempfile.mkdtemp()
+        os.makedirs(os.path.join(folder, "clip_vision"))
+        with open(os.path.join(folder, "clip_vision", "dino_v3_L_naf_fp32.safetensors"), "wb") as file:
+            file.write(b"abc")
+        models = {m["file"]: m for m in provenance.workflow_models(self.WORKFLOW, folder)}
+        self.assertEqual(sorted(models), ["birefnet.safetensors", "dino_v3_L_naf_fp32.safetensors", "missing.safetensors"])
+        dino = models["dino_v3_L_naf_fp32.safetensors"]
+        self.assertEqual((dino["node"], dino["class"], dino["input"], dino["path"], dino["size"]),
+                         ("15", "CLIPVisionLoader", "clip_name", "clip_vision/dino_v3_L_naf_fp32.safetensors", 3))
+        self.assertEqual(dino["sha256"], hashlib.sha256(b"abc").hexdigest())
+        missing = models["missing.safetensors"]
+        self.assertEqual((missing["path"], missing["size"], missing["sha256"]), (None, None, None))
+
+    def test_validation(self):
+        good = {"file": "a.safetensors", "size": 3, "sha256": "a" * 64}
+        cases = (("pipeline", [good], ""), ("pipeline", None, "null models"), ("pipeline", [{"file": "a", "size": None, "sha256": None}], "no size or SHA-256"),
+                 ("pipeline", [], "non-empty list"), ("backfill", None, ""), ("backfill", [good], ""), ("backfill", "x", "non-empty list"))
+        for origin, models, expected in cases:
+            problems = " ".join(provenance.check_models(self.stage(models), origin))
+            if expected:
+                self.assertIn(expected, problems)
+            else:
+                self.assertEqual(problems, "")
+        stage = self.stage(None)
+        del stage["models"]
+        self.assertIn("no models", provenance.check_models(stage, "backfill")[0])
+
+    def test_backfilled_trellis_stage_has_null_models(self):
+        stages = provenance.tool_stage("FLUX.2 klein 4B, TRELLIS.2 (Comfy-Org int8 build) in ComfyUI 0.43.0, BiRefNet, DINOv3, Blender 5.2")
+        mesh = next(s for s in stages if s["step"] == "mesh")
+        self.assertIn("models", mesh)
+        self.assertIsNone(mesh["models"])
+
+
 class PipelineStagesTest(unittest.TestCase):
     """The calls draw_klein.py, make_trellis.py, and size_glb.py make, in that order."""
 
@@ -218,7 +265,9 @@ class PipelineStagesTest(unittest.TestCase):
             kind="ai_prop", asset="assets/props/barrel_2.glb", batch="b1", object="barrel", name="barrel_2",
             subject="upright oak barrel", prompt="A single upright oak barrel, 3d game prop.", seed=6002)
         provenance.add_stage(
-            path, {"step": "mesh", "tool": "TRELLIS.2", "versions": {"ComfyUI": "0.43.0"}, "date": "2026-11-14"},
+            path, {"step": "mesh", "tool": "TRELLIS.2", "versions": {"ComfyUI": "0.43.0"}, "date": "2026-11-14",
+                  "models": [{"node": "40", "class": "UNETLoader", "input": "unet_name", "file": "trellis_2_int8_convrot.safetensors",
+                              "path": "diffusion_models/trellis_2_int8_convrot.safetensors", "size": 5253048192, "sha256": "d" * 64}]},
             kind="ai_prop", asset="assets/props/barrel_2.glb", batch="b1", object="barrel", name="barrel_2", subject="upright oak barrel",
             chosen_by="Someone")
         record = provenance.add_stage(
@@ -228,14 +277,14 @@ class PipelineStagesTest(unittest.TestCase):
         del record["chosen_by"]
         self.assertIn("chosen_by is missing", " ".join(provenance.check_record(record, "barrel_2")))
         # Making the same object again replaces its stage and keeps the earlier ones.
-        again = provenance.add_stage(path, {"step": "mesh", "tool": "TRELLIS.2", "versions": {"ComfyUI": "0.44"}, "date": "2026-11-15"}, kind="ai_prop")
+        again = provenance.add_stage(path, {"step": "mesh", "tool": "TRELLIS.2", "versions": {"ComfyUI": "0.44"}, "date": "2026-11-15", "models": record["stages"][1]["models"]}, kind="ai_prop")
         self.assertEqual([s["step"] for s in again["stages"]], ["image", "mesh", "size"])
         self.assertEqual(again["seed"], 6002)
 
     def test_triposr_scripts_build_one_valid_record(self):
         """The calls run_triposr.py and cleanup_mesh.py make, then size_glb.py."""
         path = os.path.join(tempfile.mkdtemp(), "rock_1.json")
-        common = {"kind": "ai_prop", "asset": "assets/props/rock_1.glb", "name": "rock_1"}
+        common = {"kind": "ai_prop", "asset": "assets/props/rock_1.glb", "name": "rock_1", "chosen_by": "Someone"}
         provenance.add_stage(path, {"step": "image", "tool": "FLUX.2 klein 4B", "versions": {"torch": "2.14"}, "date": "2026-11-14"},
                              batch="b1", object="rock", subject="grey rock", prompt="A single grey rock.", seed=6011, **common)
         provenance.add_stage(path, {"step": "size", "tool": "Blender", "versions": {"Blender": "5.2"}, "date": "2026-11-15"}, **common)

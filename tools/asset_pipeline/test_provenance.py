@@ -235,7 +235,7 @@ class PipelineStagesTest(unittest.TestCase):
     def test_triposr_scripts_build_one_valid_record(self):
         """The calls run_triposr.py and cleanup_mesh.py make, then size_glb.py."""
         path = os.path.join(tempfile.mkdtemp(), "rock_1.json")
-        common = {"kind": "ai_prop", "asset": "assets/props/rock_1.glb", "name": "rock_1"}
+        common = {"kind": "ai_prop", "asset": "assets/props/rock_1.glb", "name": "rock_1", "chosen_by": "Someone"}
         provenance.add_stage(path, {"step": "image", "tool": "FLUX.2 klein 4B", "versions": {"torch": "2.14"}, "date": "2026-11-14"},
                              batch="b1", object="rock", subject="grey rock", prompt="A single grey rock.", seed=6011, **common)
         provenance.add_stage(path, {"step": "size", "tool": "Blender", "versions": {"Blender": "5.2"}, "date": "2026-11-15"}, **common)

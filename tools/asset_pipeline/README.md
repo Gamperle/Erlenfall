@@ -162,6 +162,7 @@ Last, list every new file in [ASSETS.md](../../ASSETS.md) with its seed and subj
 | `clean_models.ps1`, `cleanup_mesh.py`, `adjust_glb.py` | Clean and reshape TripoSR models |
 | `check_mesh.py` | Prints a raw model's face count and whether it's watertight |
 | `setup_pc.ps1`, `torchmcubes.py` | Set up the TripoSR and SDXL environments |
+| `bench_bake.py` | Times the parts of TripoSR texture baking (see the pipeline reference) |
 | `draw_pictures.py` | The older SDXL drawing script, kept for reference |
 
 The example pictures are in [`examples`](examples). Its `.gdignore` keeps them out of the game.

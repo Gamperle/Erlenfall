@@ -28,6 +28,7 @@ The scripts are in [tools/asset_pipeline](../tools/asset_pipeline):
 | `shoot_props.gd` | Photographs placed props in the game |
 | [`tools/prop_tuner`](../tools/prop_tuner) | A scene for correcting each prop's size and height against the player, saved to `data/prop_tuning.json` |
 | `setup_pc.ps1` | Installs the TripoSR and SDXL environments |
+| `bench_bake.py` | Times the parts of TripoSR texture baking and writes variants for comparison |
 | `make_models.ps1`, `run_triposr.py`, `render_preview.py`, `watchdog.ps1`, `torchmcubes.py` | Make models with TripoSR, the fallback |
 | `clean_models.ps1`, `cleanup_mesh.py`, `adjust_glb.py` | Clean TripoSR models, and reshape ones it gets out of proportion |
 | `check_mesh.py` | Prints a raw model's face count and whether it's watertight |
@@ -196,6 +197,36 @@ The picture matters more than anything else, because the model sees only that on
 - **Describe the shape, not only the name.** "Pointed horn" and "square steel head" helped the anvil and hammer.
 - **Prefer solid shapes.** Glass and hidden sides are the weakest.
 - **Walls are unreliable.** A stone wall works when the picture shows a clear outline. Every timber wall picture ran off the frame or showed a room. Walls are code-built instead, see [WALLS_AND_BUILDINGS.md](WALLS_AND_BUILDINGS.md) and [#61](https://github.com/Gamperle/Erlenfall/issues/61).
+
+## TripoSR texture baking speed
+
+Baking the texture of a TripoSR model (`--bake-texture`) took 10 s to 400 s per model, most of the time per model ([#62](https://github.com/Gamperle/Erlenfall/issues/62)). `bench_bake.py` times its parts on the PC (with the GPU synchronized, one run per cell, on six first-batch pictures, mesh from marching cubes at resolution 256, default 2048 px texture). The three parts of `bake_texture` are the `xatlas` UV unwrap, the OpenGL rasterize of the positions, and the triplane color query:
+
+| Picture | Faces | Unwrap (`xatlas`) | Rasterize | Color query | Share of bake in unwrap |
+| --- | --- | --- | --- | --- | --- |
+| `hammer_0` | 45,408 | 12.9 s | 0.13 s | 1.0 s | 92% |
+| `forge_1` | 92,030 | 30.9 s | 0.05 s | 1.0 s | 97% |
+| `barrel_1` | 154,124 | 62.3 s | 0.05 s | 1.0 s | 98% |
+| `anvil_1` | 160,926 | 66.2 s | 0.05 s | 1.0 s | 98% |
+| `chest_2` | 239,208 | 229.1 s | 0.05 s | 1.0 s | 99.6% |
+| `cupboard_4` | 248,572 | 391.6 s | 0.05 s | 1.0 s | 99.7% |
+
+The unwrap is the bottleneck, and it grows faster than the face count. Texture size doesn't matter (1024 px instead of 2048 px: the query drops from 1.0 s to 0.3 s and the unwrap stays the same). Mesh extraction takes a steady 4.1 to 4.3 s and the model step 3 s (the first convolution is no longer slow with cuDNN off).
+
+Reducing the mesh before unwrapping is the cheap speedup. The cleanup (`cleanup_mesh.py`) reduces the model to 1,500 to 8,000 faces afterwards, and the colors are queried from the triplane at each surface point, so the unwrapped mesh doesn't need all its faces. Bake time in seconds after reducing the mesh with `fast_simplification` (the reduction itself takes 0.02 to 0.24 s), and with a lower marching-cubes resolution for comparison:
+
+| Picture | No reduction | 30,000 faces | 15,000 faces | 8,000 faces | `--mc-resolution 192` | `--mc-resolution 128` |
+| --- | --- | --- | --- | --- | --- | --- |
+| `hammer_0` | 14.0 | 7.2 | 2.6 | 1.0 | 4.8 | 1.5 |
+| `forge_1` | 31.9 | 6.4 | 2.1 | 1.1 | 14.2 | 4.0 |
+| `barrel_1` | 63.3 | 6.1 | 2.2 | 1.3 | 35.3 | 16.9 |
+| `anvil_1` | 67.3 | 4.1 | 1.7 | 0.9 | 30.1 | 9.3 |
+| `chest_2` | 230.1 | 6.4 | 2.5 | 1.3 | 70.3 | 27.8 |
+| `cupboard_4` | 392.7 | 8.8 | 3.0 | 1.3 | 152.2 | 35.3 |
+
+A lower marching-cubes resolution helps much less than reducing the faces, and changes the model. `run_triposr.py` now reduces the extracted mesh to `BAKE_FACES` faces (default 30,000, `0` turns it off) before baking, which needs `fast_simplification` in the TripoSR venv (`setup_pc.ps1` installs it; without it the script warns and bakes the whole mesh). A whole TripoSR run of `cupboard_4` (model, mesh, bake, export) fell from about 410 s to 35 s, `anvil_1` and `hammer_0` ran in 26 s and 29 s.
+
+**Quality.** I ran `cleanup_mesh.py` on every variant of the six pictures and compared the cleaned models' front and back renders with the unreduced ones. With 30,000 faces they look the same to my eye, and the three through the real script (`cupboard_4`, `anvil_1`, `hammer_0`) look the same as the shipped models. Measured as PSNR against the unreduced result they are 30.7 to 41.4 dB at 30,000 faces (a rerun of the same model gives identical images, so this difference is real, but small: the cleanup decimates a slightly different mesh). At 15,000 faces `forge_1` and `anvil_1` fell by another 2 to 3 dB and at 8,000 the anvil's stump looked softer, so 30,000 is the setting that kept the output. The speedup is for models made from now on: the TripoSR props that are in the game were not remade.
 
 ## Known problems
 

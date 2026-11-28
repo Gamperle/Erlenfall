@@ -138,7 +138,7 @@ The picture matters more than anything else, because the model sees only that on
 | --- | --- | --- |
 | ComfyUI's UV unwrap fails with `HIPBLAS_STATUS_ALLOC_FAILED` on meshes of 10 million faces or more on Windows ROCm | The workflow reduces the mesh to the face budget before unwrapping | [Comfy-Org/ComfyUI#16124](https://github.com/Comfy-Org/ComfyUI/issues/16124) |
 | Some models take much longer, such as 25 minutes for a crate, in the upsample stage | None. 53 props took about 6 hours of GPU time | |
-| TRELLIS.2 does worse than TripoSR on hay, burlap, and a campfire | Those props still use TripoSR models | [#154](https://github.com/Gamperle/Erlenfall/issues/154) |
+| TRELLIS.2 does worse than TripoSR on hay, a campfire and a bucket | Those props still use TripoSR models. Two other shape seeds, Pixal3D and other hay pictures did not fix them (the sacks did improve and are TRELLIS.2 now) | [#453](https://github.com/Gamperle/Erlenfall/issues/453) |
 | TRELLIS.2 models are centered on their middle, and a few face sideways | `size_glb.py` stands them on their base, and `turns` in the batch file turns odd ones. The smoke test checks every prop is within 10 cm of the ground | |
 | Long SSH sessions to the PC drop, and the PC sleeps during work started over SSH | `make_trellis.py` keeps the PC awake while it runs. Run big batches a few names at a time | |
 | TRELLIS.2 sometimes changes a shape it can't read, such as turning an A-frame tent into a cone | Check the results, and redraw the picture if needed | |
